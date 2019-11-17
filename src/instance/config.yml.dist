@@ -1,0 +1,5 @@
+---
+secret_key: development
+db_uri: sqlite:///test.db
+image_folders:
+   - /home/user/Pictures
