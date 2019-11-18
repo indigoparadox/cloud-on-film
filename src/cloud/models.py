@@ -34,6 +34,7 @@ class Picture( db.Model ):
     id = db.Column( db.Integer, primary_key=True )
     relative_path = db.Column( db.String( 256 ), index=True, unique=True, nullable=True )
     library_id = db.Column( db.Integer, db.ForeignKey( 'libraries.id' ) )
+    library = db.relationship( 'Library', back_populates='pictures' )
     tag_id = db.Column( db.Integer, db.ForeignKey( 'tags.id' ) )
     tags = db.relationship( 'Tag', secondary=pictures_tags, back_populates='pictures' )
 
@@ -43,6 +44,7 @@ class Library( db.Model ):
     __tablename__ = 'libraries'
 
     id = db.Column( db.Integer, primary_key=True )
+    pictures = db.relationship( 'Picture', back_populates='library_id' )
     display_name = db.Column( db.String( 64 ), index=False, unique=True, nullable=False )
     machine_name = db.Column( db.String( 64 ), index=True, unique=True, nullable=False )
     absolute_path = db.Column( db.String( 256 ), index=True, unique=True, nullable=False )
