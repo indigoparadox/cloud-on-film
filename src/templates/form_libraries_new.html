@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<form method="POST">
+{{ form.hidden_tag() }}
+<div id="new_library_display_name">
+{{ form.display_name.label }}
+{{ form.display_name( size=24 ) }}
+</div>
+<div id="new_library_machine_name">
+{{ form.machine_name.label }}
+{{ form.machine_name( size=24 ) }}
+</div>
+<div id="new_library_path">
+{{ form.absolute_path.label }}
+{{ form.absolute_path( size=64 ) }}
+</div>
+<div id="new_library_submit">
+<input type="submit" value="Create" />
+</div>
+</form>
+
+{% endblock %}
+

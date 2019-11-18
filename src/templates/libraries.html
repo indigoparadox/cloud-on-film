@@ -1,0 +1,11 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<ul id="folders">
+{% for item in folders %}
+<li><a href="{{ url_for( 'cloud_libraries' ) }}/{{ item.machine_name }}">{{ item.display_name }}</a></li>
+{% endfor %}
+</ul>
+
+{% endblock %}

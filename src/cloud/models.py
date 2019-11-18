@@ -43,6 +43,7 @@ class Library( db.Model ):
     __tablename__ = 'libraries'
 
     id = db.Column( db.Integer, primary_key=True )
-    name = db.Column( db.String( 64 ), index=True, unique=True, nullable=False )
+    display_name = db.Column( db.String( 64 ), index=False, unique=True, nullable=False )
+    machine_name = db.Column( db.String( 64 ), index=True, unique=True, nullable=False )
     absolute_path = db.Column( db.String( 256 ), index=True, unique=True, nullable=False )
 
