@@ -21,14 +21,18 @@ def create_app():
 
     app = Flask( __name__, instance_relative_config=False,
         static_folder='../static', template_folder='../templates' )
-    
+
     # Load our hybrid YAML config.
     with app.open_instance_resource( 'config.yml', 'r' ) as config_f:
         cfg = Config( config_f )
         app.config.from_object( cfg )
 
+    db.init_app( app )
+    
     with app.app_context():
         from . import routes
+
+        db.create_all()
 
         return app
 
