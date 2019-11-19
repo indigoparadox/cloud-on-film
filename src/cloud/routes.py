@@ -6,6 +6,7 @@ from .models import db, Library
 from .forms import NewLibraryForm, UploadLibraryForm
 from . import libraries
 from werkzeug import secure_filename
+import json
 
 @current_app.cli.command( "update" )
 def cloud_cli_update():
@@ -41,9 +42,12 @@ def cloud_libraries_upload():
     logger = logging.getLogger( 'cloud.library.upload' )
     form = UploadLibraryForm( request.form )
 
-    if 'POST' == request.method and form.validate():
+    if 'POST' == request.method and form.validate_on_submit():
 
-        filename = secure_filename( form.upload.data.filename )
+        photos = json.loads( request.files['upload'].read().decode( 'utf-8' ) )
+        for photo in photos:
+            if photo['tags']:
+                print( photo['tags'] )
 
     return render_template( 'form_libraries_upload.html', form=form )
 

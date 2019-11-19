@@ -24,9 +24,3 @@ def enumerate_path( machine_name, relative_path ):
 
     return query.all()
 
-def upload_csv( data ):
-
-    for line in data.split( '\n' ):
-        print( line )
-        return
-
