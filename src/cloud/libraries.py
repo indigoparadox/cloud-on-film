@@ -24,3 +24,7 @@ def enumerate_path( machine_name, relative_path ):
 
     return query.all()
 
+def import_picture( picture ):
+
+    pass
+

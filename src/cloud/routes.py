@@ -44,10 +44,10 @@ def cloud_libraries_upload():
 
     if 'POST' == request.method and form.validate_on_submit():
 
-        photos = json.loads( request.files['upload'].read().decode( 'utf-8' ) )
-        for photo in photos:
-            if photo['tags']:
-                print( photo['tags'] )
+        pictures = \
+            json.loads( request.files['upload'].read().decode( 'utf-8' ) )
+        for picture in pictures:
+            libraries.import_picture( picture )
 
     return render_template( 'form_libraries_upload.html', form=form )
 
