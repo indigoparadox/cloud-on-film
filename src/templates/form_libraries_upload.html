@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<form method="POST" enctype="multipart/form-data">
+{{ form.hidden_tag() }}
+<div id="upload_library">
+{{ form.upload.label }}
+{{ form.upload }}
+</div>
+<input type="submit" value="Upload" />
+</div>
+</form>
+
+{% endblock %}
+

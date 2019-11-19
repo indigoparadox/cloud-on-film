@@ -3,8 +3,9 @@ import logging
 from flask import Flask, render_template, request, current_app, flash
 from sqlalchemy import exc
 from .models import db, Library
-from .forms import NewLibraryForm
+from .forms import NewLibraryForm, UploadLibraryForm
 from . import libraries
+from werkzeug import secure_filename
 
 @current_app.cli.command( "update" )
 def cloud_cli_update():
@@ -33,6 +34,18 @@ def cloud_libraries_new():
             db.session.rollback()
 
     return render_template( 'form_libraries_new.html', form=form )
+
+@current_app.route( '/libraries/upload', methods=['GET', 'POST'] )
+def cloud_libraries_upload():
+
+    logger = logging.getLogger( 'cloud.library.upload' )
+    form = UploadLibraryForm( request.form )
+
+    if 'POST' == request.method and form.validate():
+
+        filename = secure_filename( form.upload.data.filename )
+
+    return render_template( 'form_libraries_upload.html', form=form )
 
 @current_app.route( '/libraries' )
 @current_app.route( '/libraries/<string:machine_name>' )

@@ -1,7 +1,7 @@
 
 import logging 
 import os
-from .models import db, Library, Picture
+from .models import db, Library, Picture, Tag
 
 def update():
 
@@ -19,8 +19,14 @@ def enumerate():
 def enumerate_path( machine_name, relative_path ):
 
     query = db.session.query( Picture ) \
-        .join( Library, Picture.library_id ) \
+        .join( Library, Picture.library ) \
         .filter( Library.machine_name == machine_name )
 
     return query.all()
+
+def upload_csv( data ):
+
+    for line in data.split( '\n' ):
+        print( line )
+        return
 

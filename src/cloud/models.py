@@ -13,8 +13,12 @@ class User( db.Model ):
     __tablename__ = 'users'
 
     id = db.Column( db.Integer, primary_key=True )
-    email = db.Column( db.String( 128 ), index=True, unique=True, nullable=False )
-    created = db.Column( db.DateTime, index=False, unique=False, nullable=False )
+    email = db.Column(
+        db.String( 128 ), index=True, unique=True, nullable=False )
+    created = db.Column(
+        db.DateTime, index=False, unique=False, nullable=False )
+    userpic_id = db.Column( db.Integer, db.ForeignKey( 'pictures.id' ) )
+    tags = db.relationship( 'Tag', back_populates='owner' )
 
 
 pictures_tags = db.Table( 'pictures_tags', db.metadata,
@@ -30,6 +34,7 @@ class Tag( db.Model ):
     parent_id = db.Column( db.Integer, unique=False, nullable=True )
     name = db.Column(
         db.String( 64 ), index=True, unique=False, nullable=False )
+    owner = db.relationship( 'User', back_populates='tags' )
     owner_id = db.Column( db.Integer, db.ForeignKey( 'users.id' ) )
     picture_id = db.Column( db.Integer, db.ForeignKey( 'pictures.id' ) )
     pictures = db.relationship(
@@ -61,6 +66,7 @@ class Picture( db.Model ):
         db.Enum( HashEnum ), index=False, unique=False, nullable=False )
     comment = db.Column( db.Text, index=False, unique=False, nullable=True )
     nsfw = db.Column( db.Boolean, index=True, unique=False, nullable=False )
+    rating = db.Column( db.Integer, index=True, unique=False, nullable=True )
 
 
 class Library( db.Model ):
@@ -68,7 +74,7 @@ class Library( db.Model ):
     __tablename__ = 'libraries'
 
     id = db.Column( db.Integer, primary_key=True )
-    pictures = db.relationship( 'Picture', back_populates='library_id' )
+    pictures = db.relationship( 'Picture', back_populates='library' )
     display_name = db.Column(
         db.String( 64 ), index=False, unique=True, nullable=False )
     machine_name = db.Column(
