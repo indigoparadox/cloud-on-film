@@ -59,7 +59,7 @@ def cloud_libraries( machine_name=None, relative_path=None ):
     logger = logging.getLogger( 'cloud.libraries' )
 
     if not machine_name and not relative_path:
-        folders = libraries.enumerate()
+        folders = libraries.enumerate_libs()
     elif not relative_path:
         folders = libraries.enumerate_path( machine_name, relative_path )
 

@@ -2,6 +2,7 @@
 import logging 
 import os
 from .models import db, Library, Picture, Tag
+import re
 
 def update():
 
@@ -11,7 +12,7 @@ def update():
         for dirname in dirnames:
             logger.info( dirname )
 
-def enumerate():
+def enumerate_libs():
 
     query = db.session.query( Library )
     return query.all()
@@ -26,5 +27,26 @@ def enumerate_path( machine_name, relative_path ):
 
 def import_picture( picture ):
 
-    pass
+    logger = logging.getLogger( 'libraries.import.picture' )
+
+    # Find matching library.
+    relative_path = None
+    library = None
+    for lib in enumerate_libs():
+        match = re.match(
+            r'^{}\/(.*)'.format( lib.absolute_path ), picture['filename'] )
+        if match:
+            relative_path = match.groups()[0]
+            library = lib
+            break
+
+    # Don't accept pictures not in a library.
+    if not library:
+        logger.warning( 'Unable to find library for: {}'.format(
+            picture['filename'] ) )
+        return
+
+    #pic = Picture(
+    #db.session.add( pic )
+    #db.session.commit()
 

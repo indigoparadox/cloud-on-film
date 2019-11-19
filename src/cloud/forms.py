@@ -13,5 +13,5 @@ class NewLibraryForm( FlaskForm ):
 
 class UploadLibraryForm( FlaskForm ):
 
-    upload = FileField( 'CSV File' )
+    upload = FileField( 'Library Import File' )
 
