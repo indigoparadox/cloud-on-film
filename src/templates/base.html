@@ -23,7 +23,7 @@
 {% with libraries = enumerate_libs() %}
 <ul>
 {% for lib in libraries %}
-<li><a href="{{ url_for( 'cloud_libraries', machine_name='x', relative_path='y' ) }}/{{ lib.machine_name }}">{{ lib.display_name }}</a></li>
+<li><a href="{{ url_for( 'cloud_libraries', machine_name='{{ lib.machine_name }}', relative_path=None ) }}">{{ lib.display_name }}</a></li>
 {% endfor %}
 </ul>
 {% endwith %}

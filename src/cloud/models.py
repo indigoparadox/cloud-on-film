@@ -81,7 +81,7 @@ class Folder( db.Model ):
     library_id = db.Column( db.Integer, db.ForeignKey( 'libraries.id' ) )
     library = db.relationship( 'Library', back_populates='folders' )
     display_name = db.Column(
-        db.String( 256 ), index=True, unique=True, nullable=False )
+        db.String( 256 ), index=True, unique=False, nullable=False )
 
 
 class Library( db.Model ):

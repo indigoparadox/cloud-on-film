@@ -7,7 +7,7 @@ from .models import db, Library, Picture, Tag, HashEnum, Folder
 from PIL import Image
 import re
 from datetime import datetime
-from flask import current_app
+from flask import current_app, abort
 
 class PictureImportException( Exception ):
     pass
@@ -28,14 +28,47 @@ def enumerate_libs():
 
 current_app.jinja_env.globals.update( enumerate_libs=enumerate_libs )
 
+def build_folder_path( folder_id ):
+    
+    parent_list = []
+
+    # Traverse the folder's parents upwards.
+    while isinstance( folder_id, int ):
+        query = db.session.query( Folder ) \
+            .filter( Folder.id == folder_id )
+        folder = query.first()
+        if folder:
+            parent_list.insert( 0, folder.display_name )
+            folder_id = folder.parent_id
+
+    return '/'.join( parent_list )
+
+current_app.jinja_env.globals.update( build_folder_path=build_folder_path )
+
 def enumerate_path( machine_name, relative_path ):
 
-    query = db.session.query( Folder ) \
-        .join( Library ) \
-        .filter( Library.machine_name == machine_name )
+    parent_folder_id = None
+    library_id = None
 
-    paths_out = query.all()
-    return paths_out
+    # Drill down through the path to the current folder.
+    if relative_path:
+        path_element_list = relative_path.split( '/' )
+        for path_element_name in path_element_list:
+            query = db.session.query( Folder ) \
+                .filter( Folder.parent_id == parent_folder_id ) \
+                .filter( Folder.display_name == path_element_name ) \
+                .join( Library ) \
+                .filter( Library.machine_name == machine_name )
+            parent_folder = query.first()
+            if not parent_folder:
+                abort( 404 )
+            parent_folder_id = parent_folder.id
+
+    # Build a list of folders inside of the current folder.
+    query = db.session.query( Folder ) \
+        .filter( Folder.parent_id == parent_folder_id )
+
+    return query.all()
 
 def import_picture( picture ):
 
