@@ -4,7 +4,7 @@
 
 <ul id="folders">
 {% for item in folders %}
-<li><a href="{{ url_for( 'cloud_libraries' ) }}/{{ item.machine_name }}">{{ item.display_name }}</a></li>
+<li><a href="{{ url_for( 'cloud_libraries', machine_name=item.machine_name, relative_path=item.relative_path ) }}">{{ item.display_name }}</a></li>
 {% endfor %}
 </ul>
 

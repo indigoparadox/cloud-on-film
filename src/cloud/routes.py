@@ -47,21 +47,20 @@ def cloud_libraries_upload():
         pictures = \
             json.loads( request.files['upload'].read().decode( 'utf-8' ) )
         for picture in pictures:
-            libraries.import_picture( picture )
+            try:
+                libraries.import_picture( picture )
+            except libraries.PictureImportException as e:
+                logger.warning( e )
 
     return render_template( 'form_libraries_upload.html', form=form )
 
-@current_app.route( '/libraries' )
 @current_app.route( '/libraries/<string:machine_name>' )
 @current_app.route( '/libraries/<string:machine_name>/<path:relative_path>' )
 def cloud_libraries( machine_name=None, relative_path=None ):
 
     logger = logging.getLogger( 'cloud.libraries' )
 
-    if not machine_name and not relative_path:
-        folders = libraries.enumerate_libs()
-    elif not relative_path:
-        folders = libraries.enumerate_path( machine_name, relative_path )
+    folders = libraries.enumerate_path( machine_name, relative_path )
 
     return render_template( 'libraries.html', folders=folders )
 

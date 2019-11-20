@@ -1,8 +1,16 @@
 
 import logging 
 import os
-from .models import db, Library, Picture, Tag
+import stat
+import hashlib
+from .models import db, Library, Picture, Tag, HashEnum, Folder
+from PIL import Image
 import re
+from datetime import datetime
+from flask import current_app
+
+class PictureImportException( Exception ):
+    pass
 
 def update():
 
@@ -15,15 +23,19 @@ def update():
 def enumerate_libs():
 
     query = db.session.query( Library )
+
     return query.all()
+
+current_app.jinja_env.globals.update( enumerate_libs=enumerate_libs )
 
 def enumerate_path( machine_name, relative_path ):
 
-    query = db.session.query( Picture ) \
-        .join( Library, Picture.library ) \
+    query = db.session.query( Folder ) \
+        .join( Library ) \
         .filter( Library.machine_name == machine_name )
 
-    return query.all()
+    paths_out = query.all()
+    return paths_out
 
 def import_picture( picture ):
 
@@ -42,11 +54,96 @@ def import_picture( picture ):
 
     # Don't accept pictures not in a library.
     if not library:
-        logger.warning( 'Unable to find library for: {}'.format(
+        raise PictureImportException( 'Unable to find library for: {}'.format(
             picture['filename'] ) )
-        return
 
-    #pic = Picture(
-    #db.session.add( pic )
-    #db.session.commit()
+    # See if this picture's folder exists already.
+
+    # Spelunk into folders starting from the library we found.
+    folder_relative_path = os.path.dirname( relative_path )
+    folder_path_list = folder_relative_path.split( '/' )
+    parent_folder = None
+    folder = None
+    for subfolder in folder_path_list:
+        query = db.session.query( Folder ) \
+            .filter( Folder.display_name == subfolder )
+
+        # Parent is either folder from the last iteration or NULL for the root.
+        parent_folder_id = None
+        if parent_folder:
+            parent_folder_id = parent_folder.id
+        query = query.filter( Folder.parent_id == parent_folder_id )
+
+        folder = query.first()
+        if None == folder:
+            
+            # Create the missing folder.
+            new_folder = Folder(
+                library_id=lib.id, parent_id=parent_folder_id,
+                display_name=subfolder)
+            db.session.add( new_folder )
+            db.session.commit()
+
+            if parent_folder:
+                logger.info( 'Created folder {} under {}'.format(
+                    subfolder, parent_folder.display_name ) )
+            else:
+                logger.info(
+                    'Created folder {} under root'.format( subfolder ) )
+
+            # Get the ID for the just-created folder.
+            query = db.session.query( Folder ) \
+                .filter( Folder.display_name == subfolder ) \
+                .filter( Folder.parent_id == parent_folder_id )
+            folder = query.first()
+
+        assert( folder )
+        parent_folder = folder
+
+    # See if the picture already exists.
+    display_name = os.path.basename( picture['filename'] )
+    query = db.session.query( Picture ) \
+        .filter( Picture.folder_id == folder.id ) \
+        .filter( Picture.display_name == display_name )
+    if None != query.first():
+        raise PictureImportException(  'Picture already exists: {}'.format(
+            picture['filename'] ) )
+
+    # Make sure the picture file exists.
+    if not os.path.exists( picture['filename'] ):
+        raise PictureImportException( 'Picture file does not exist: {}'.format(
+            picture['filename'] ) )
+
+    im = Image.open( picture['filename'] )
+    if not im:
+        raise PictureImportException( 'Unable to read picture: {}'.format(
+            picture['filename'] ) )
+
+    ha = hashlib.md5()
+    with open( picture['filename'], 'rb' ) as picture_f:
+        buf = picture_f.read( 4096 )
+        while 0 < len( buf ):
+            ha.update( buf )
+            buf = picture_f.read( 4096 )
+
+    st = os.stat( picture['filename'] )
+
+    pic = Picture(
+        display_name=display_name,
+        folder_id=folder.id,
+        timestamp=datetime.fromtimestamp( st[stat.ST_MTIME] ),
+        filesize=st[stat.ST_SIZE],
+        width=im.size[0],
+        height=im.size[1],
+        added=datetime.fromtimestamp( picture['time_created'] ),
+        filehash=ha.hexdigest(),
+        filehash_algo=HashEnum.md5,
+        comment=picture['comment'],
+        rating=picture['rating'],
+        nsfw=False )
+    db.session.add( pic )
+    db.session.commit()
+
+    logger.info( 'Imported picture {} under {}'.format(
+        display_name, folder.display_name ) )
 

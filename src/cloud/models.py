@@ -46,13 +46,13 @@ class Picture( db.Model ):
     __tablename__ = 'pictures'
 
     id = db.Column( db.Integer, primary_key=True )
-    relative_path = db.Column(
-        db.String( 256 ), index=True, unique=True, nullable=True )
-    library_id = db.Column( db.Integer, db.ForeignKey( 'libraries.id' ) )
-    library = db.relationship( 'Library', back_populates='pictures' )
+    folder_id = db.Column( db.Integer, db.ForeignKey( 'folders.id' ) )
+    folder = db.relationship( 'Folder', back_populates='pictures' )
     tag_id = db.Column( db.Integer, db.ForeignKey( 'tags.id' ) )
     tags = db.relationship(
         'Tag', secondary=pictures_tags, back_populates='pictures' )
+    display_name = db.Column(
+        db.String( 256 ), index=True, unique=False, nullable=False )
     timestamp = db.Column(
         db.DateTime, index=False, unique=False, nullable=False )
     filesize = db.Column(
@@ -69,12 +69,27 @@ class Picture( db.Model ):
     rating = db.Column( db.Integer, index=True, unique=False, nullable=True )
 
 
+class Folder( db.Model ):
+
+    __tablename__ = 'folders'
+
+    id = db.Column( db.Integer, primary_key=True )
+    pictures = db.relationship( 'Picture', back_populates='folder' )
+    parent_id = db.Column(
+        db.Integer, db.ForeignKey( 'folders.id' ), nullable=True )
+    parent = db.relationship( 'Folder', remote_side=[id] )
+    library_id = db.Column( db.Integer, db.ForeignKey( 'libraries.id' ) )
+    library = db.relationship( 'Library', back_populates='folders' )
+    display_name = db.Column(
+        db.String( 256 ), index=True, unique=True, nullable=False )
+
+
 class Library( db.Model ):
 
     __tablename__ = 'libraries'
 
     id = db.Column( db.Integer, primary_key=True )
-    pictures = db.relationship( 'Picture', back_populates='library' )
+    folders = db.relationship( 'Folder', back_populates='library' )
     display_name = db.Column(
         db.String( 64 ), index=False, unique=True, nullable=False )
     machine_name = db.Column(
