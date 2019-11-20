@@ -45,7 +45,7 @@ def build_folder_path( folder_id ):
 
 current_app.jinja_env.globals.update( build_folder_path=build_folder_path )
 
-def enumerate_path( machine_name, relative_path ):
+def get_path_folder_id( machine_name, relative_path ):
 
     parent_folder_id = None
     library_id = None
@@ -64,10 +64,23 @@ def enumerate_path( machine_name, relative_path ):
                 abort( 404 )
             parent_folder_id = parent_folder.id
 
+    return parent_folder.id
+
+def enumerate_path_folders( machine_name, relative_path ):
+
+    parent_folder_id = get_path_folder_id( machine_name, relative_path )
+
     # Build a list of folders inside of the current folder.
     query = db.session.query( Folder ) \
         .filter( Folder.parent_id == parent_folder_id )
+    return query.all()
+    
+def enumerate_path_pictures( machine_name, relative_path ):
 
+    parent_folder_id = get_path_folder_id( machine_name, relative_path )
+
+    query = db.session.query( Picture ) \
+        .filter( Picture.folder_id == parent_folder_id )
     return query.all()
 
 def import_picture( picture ):

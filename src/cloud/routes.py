@@ -60,9 +60,10 @@ def cloud_libraries( machine_name=None, relative_path=None ):
 
     logger = logging.getLogger( 'cloud.libraries' )
 
-    folders = libraries.enumerate_path( machine_name, relative_path )
+    folders = libraries.enumerate_path_folders( machine_name, relative_path )
+    pictures = libraries.enumerate_path_pictures( machine_name, relative_path )
 
-    return render_template( 'libraries.html', folders=folders )
+    return render_template( 'libraries.html', folders=folders, pictures=pictures )
 
 @current_app.route( '/' )
 def cloud_root():

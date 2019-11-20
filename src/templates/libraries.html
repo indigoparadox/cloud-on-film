@@ -8,4 +8,10 @@
 {% endfor %}
 </ul>
 
+<ul id="pictures">
+{% for item in pictures %}
+<li><a href="{{ url_for( 'cloud_libraries', machine_name=item.folder.library.machine_name, relative_path=None ) }}/{{ build_folder_path( item.folder_id ) }}">{{ item.display_name }}</a></li>
+{% endfor %}
+</ul>
+
 {% endblock %}
