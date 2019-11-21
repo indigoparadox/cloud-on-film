@@ -16,6 +16,11 @@ import importlib
 def cloud_cli_update():
     libraries.update()
 
+@current_app.route( '/callbacks/edit', methods=['POST'] )
+def cloud_edit_filedata():
+
+    pass
+
 @current_app.route( '/thumbnails/<int:file_id>' )
 def cloud_plugin_file( file_id ):
 

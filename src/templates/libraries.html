@@ -1,26 +1,50 @@
 {% extends 'base.html' %}
 
+{% block scripts %}
+<link rel="stylesheet" href="{{ url_for( 'static', filename='gallery.css' ) }}" />
+{% endblock %}
+
 {% block content %}
 
-<ul id="folders">
+<div id="folders" class="w-100 row">
 {% for item in folders %}
-<li><a href="{{ url_for( 'cloud_libraries', machine_name=item.library.machine_name, relative_path=None ) }}/{{ build_folder_path( item.id ) }}">{{ item.display_name }}</a></li>
+<div><a href="{{ url_for( 'cloud_libraries', machine_name=item.library.machine_name, relative_path=None ) }}/{{ build_folder_path( item.id ) }}">{{ item.display_name }}</a></div>
 {% endfor %}
-</ul>
+</div> <!-- /row -->
 
-<ul id="pictures">
+<div id="pictures" class="w-100 row">
 {% for item in pictures %}
 {% if item.filetype == 'picture' %}
-<li>
+<div class="col-md-2 col-sm-3 coll-xs-6 card">
 <a href="{{ url_for(
    'cloud_libraries', machine_name=item.folder.library.machine_name,
    relative_path=None ) }}/{{ build_folder_path( item.folder_id )
 }}"><img
+   class="img-responsive"
    src="{{ url_for( 'cloud_plugin_file', file_id=item.id ) }}"
    alt="{{ item.display_name }}"
-/></a></li>
+/></a>
+<form action="{{ url_for( 'cloud_edit_filedata' ) }}" method="POST">
+<div class="card-body">
+<h3 class="card-title">{{ item.display_name }}</h3>
+<p class="card-text">
+{{ item.comment }}
+</p>
+<div class="d-flex justify-content-between align-items-center">
+{% if item.nsfw %}
+<small class="text-muted nsfw">
+NSFW
+</small>
+{% endif %}
+<small class="text-muted rating">
+{{ item.rating }}
+</small>
+</div>
+</div> <!-- /card-body -->
+</form>
+</div> <!-- /card -->
 {% endif %}
 {% endfor %}
-</ul>
+</div> <!-- /row -->
 
 {% endblock %}
