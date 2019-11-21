@@ -40,10 +40,27 @@ def build_folder_path( folder_id ):
         if folder:
             parent_list.insert( 0, folder.display_name )
             folder_id = folder.parent_id
+        else:
+            folder_id = None
 
     return '/'.join( parent_list )
 
 current_app.jinja_env.globals.update( build_folder_path=build_folder_path )
+
+def build_file_path( file_id, absolute_fs=False ):
+    query = db.session.query( FileItem ) \
+        .filter( FileItem.id == file_id )
+    item = query.first()
+    assert( None != item )
+
+    file_path = os.path.join(
+        build_folder_path( item.folder.id ),
+        item.display_name )
+
+    if absolute_fs:
+        file_path = os.path.join( item.folder.library.absolute_path, file_path )
+
+    return file_path
 
 def get_path_folder_id( machine_name, relative_path ):
 

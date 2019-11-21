@@ -2,19 +2,39 @@
 import logging 
 from flask import Flask, render_template, request, current_app, flash, send_file
 from sqlalchemy import exc
-from .models import db, Library
+from .models import db, Library, FileItem
 from .forms import NewLibraryForm, UploadLibraryForm
 from . import libraries
 from werkzeug import secure_filename
 import json
+import os
+import mimetypes
+import io
+import importlib
 
 @current_app.cli.command( "update" )
 def cloud_cli_update():
     libraries.update()
 
-@current_app.route( '/thumbnails/<int:plugin_id>/<int:file_id>' )
-def cloud_plugin_file( plugin_id, file_id ):
-    pass
+@current_app.route( '/thumbnails/<int:file_id>' )
+def cloud_plugin_file( file_id ):
+
+    # TODO: Safety checks.
+
+    query = db.session.query( FileItem ) \
+        .filter( FileItem.id == file_id )
+    item = query.first()
+
+    p = importlib.import_module(
+        '.plugins.{}.files'.format( item.filetype  ), 'cloud' )
+    file_path = p.generate_thumbnail( file_id, (160, 120) )
+
+    #file_path = os.path.join(
+    #    libraries.build_file_path( file_id, absolute_fs=True ) )
+
+    with open( file_path, 'rb' ) as pic_f:
+        return send_file( io.BytesIO( pic_f.read() ),
+            mimetypes.guess_type( file_path )[0] )
 
 @current_app.route( '/libraries/new', methods=['GET', 'POST'] )
 def cloud_libraries_new():
