@@ -1,6 +1,6 @@
 
 import logging 
-from flask import Flask, render_template, request, current_app, flash
+from flask import Flask, render_template, request, current_app, flash, send_file
 from sqlalchemy import exc
 from .models import db, Library
 from .forms import NewLibraryForm, UploadLibraryForm
@@ -11,6 +11,10 @@ import json
 @current_app.cli.command( "update" )
 def cloud_cli_update():
     libraries.update()
+
+@current_app.route( '/thumbnails/<int:plugin_id>/<int:file_id>' )
+def cloud_plugin_file( plugin_id, file_id ):
+    pass
 
 @current_app.route( '/libraries/new', methods=['GET', 'POST'] )
 def cloud_libraries_new():
@@ -49,7 +53,7 @@ def cloud_libraries_upload():
         for picture in pictures:
             try:
                 libraries.import_picture( picture )
-            except libraries.PictureImportException as e:
+            except libraries.FileItemImportException as e:
                 logger.warning( e )
 
     return render_template( 'form_libraries_upload.html', form=form )

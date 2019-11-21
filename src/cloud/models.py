@@ -17,12 +17,23 @@ class User( db.Model ):
         db.String( 128 ), index=True, unique=True, nullable=False )
     created = db.Column(
         db.DateTime, index=False, unique=False, nullable=False )
-    userpic_id = db.Column( db.Integer, db.ForeignKey( 'pictures.id' ) )
     tags = db.relationship( 'Tag', back_populates='owner' )
 
 
-pictures_tags = db.Table( 'pictures_tags', db.metadata,
-    db.Column( 'pictures_id', db.Integer, db.ForeignKey( 'pictures.id' ) ),
+class FileMeta( db.Model ):
+
+    __tablename__ = 'file_meta'
+
+    id = db.Column( db.Integer, primary_key=True )
+    key = db.Column( db.String( 12 ), index=True, unique=False, nullable=False )
+    value = \
+        db.Column( db.String( 256 ), index=False, unique=False, nullable=True )
+    item_id = db.Column( db.Integer, db.ForeignKey( 'files.id' ) )
+    item = db.relationship( 'FileItem', back_populates='meta' )
+
+
+files_tags = db.Table( 'files_tags', db.metadata,
+    db.Column( 'files_id', db.Integer, db.ForeignKey( 'files.id' ) ),
     db.Column( 'tags_id', db.Integer, db.ForeignKey( 'tags.id' ) ) )
 
 
@@ -36,29 +47,30 @@ class Tag( db.Model ):
         db.String( 64 ), index=True, unique=False, nullable=False )
     owner = db.relationship( 'User', back_populates='tags' )
     owner_id = db.Column( db.Integer, db.ForeignKey( 'users.id' ) )
-    picture_id = db.Column( db.Integer, db.ForeignKey( 'pictures.id' ) )
-    pictures = db.relationship(
-        'Picture', secondary=pictures_tags, back_populates='tags' )
+    file_id = db.Column( db.Integer, db.ForeignKey( 'files.id' ) )
+    files = db.relationship(
+        'FileItem', secondary=files_tags, back_populates='tags' )
 
 
-class Picture( db.Model ):
+class FileItem( db.Model ):
 
-    __tablename__ = 'pictures'
+    __tablename__ = 'files'
 
     id = db.Column( db.Integer, primary_key=True )
+    meta = db.relationship( 'FileMeta', back_populates='item' )
     folder_id = db.Column( db.Integer, db.ForeignKey( 'folders.id' ) )
-    folder = db.relationship( 'Folder', back_populates='pictures' )
+    folder = db.relationship( 'Folder', back_populates='files' )
     tag_id = db.Column( db.Integer, db.ForeignKey( 'tags.id' ) )
     tags = db.relationship(
-        'Tag', secondary=pictures_tags, back_populates='pictures' )
+        'Tag', secondary=files_tags, back_populates='files' )
     display_name = db.Column(
         db.String( 256 ), index=True, unique=False, nullable=False )
+    filetype= db.Column(
+        db.String( 12 ), index=True, unique=False, nullable=True )
     timestamp = db.Column(
         db.DateTime, index=False, unique=False, nullable=False )
     filesize = db.Column(
         db.Integer, index=False, unique=False, nullable=False )
-    width = db.Column( db.Integer, index=False, unique=False, nullable=False )
-    height = db.Column( db.Integer, index=False, unique=False, nullable=False )
     added = db.Column( db.DateTime, index=False, unique=False, nullable=False )
     filehash = db.Column(
         db.String( 512 ), index=False, unique=False, nullable=False )
@@ -74,7 +86,7 @@ class Folder( db.Model ):
     __tablename__ = 'folders'
 
     id = db.Column( db.Integer, primary_key=True )
-    pictures = db.relationship( 'Picture', back_populates='folder' )
+    files = db.relationship( 'FileItem', back_populates='folder' )
     parent_id = db.Column(
         db.Integer, db.ForeignKey( 'folders.id' ), nullable=True )
     parent = db.relationship( 'Folder', remote_side=[id] )
@@ -82,6 +94,14 @@ class Folder( db.Model ):
     library = db.relationship( 'Library', back_populates='folders' )
     display_name = db.Column(
         db.String( 256 ), index=True, unique=False, nullable=False )
+
+
+class Plugin( db.Model ):
+
+    __tablename__ = 'plugins'
+
+    id = db.Column( db.Integer, primary_key=True )
+    
 
 
 class Library( db.Model ):

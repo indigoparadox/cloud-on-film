@@ -3,13 +3,13 @@ import logging
 import os
 import stat
 import hashlib
-from .models import db, Library, Picture, Tag, HashEnum, Folder
+from .models import db, Library, FileItem, Tag, HashEnum, Folder, FileMeta
 from PIL import Image
 import re
 from datetime import datetime
 from flask import current_app, abort
 
-class PictureImportException( Exception ):
+class FileItemImportException( Exception ):
     pass
 
 def update():
@@ -47,6 +47,7 @@ current_app.jinja_env.globals.update( build_folder_path=build_folder_path )
 
 def get_path_folder_id( machine_name, relative_path ):
 
+    parent_folder = None
     parent_folder_id = None
     library_id = None
 
@@ -64,7 +65,10 @@ def get_path_folder_id( machine_name, relative_path ):
                 abort( 404 )
             parent_folder_id = parent_folder.id
 
-    return parent_folder.id
+    if parent_folder:
+        return parent_folder.id
+    else:
+        return None
 
 def enumerate_path_folders( machine_name, relative_path ):
 
@@ -79,8 +83,8 @@ def enumerate_path_pictures( machine_name, relative_path ):
 
     parent_folder_id = get_path_folder_id( machine_name, relative_path )
 
-    query = db.session.query( Picture ) \
-        .filter( Picture.folder_id == parent_folder_id )
+    query = db.session.query( FileItem ) \
+        .filter( FileItem.folder_id == parent_folder_id )
     return query.all()
 
 def import_picture( picture ):
@@ -100,7 +104,7 @@ def import_picture( picture ):
 
     # Don't accept pictures not in a library.
     if not library:
-        raise PictureImportException( 'Unable to find library for: {}'.format(
+        raise FileItemImportException( 'Unable to find library for: {}'.format(
             picture['filename'] ) )
 
     # See if this picture's folder exists already.
@@ -148,21 +152,21 @@ def import_picture( picture ):
 
     # See if the picture already exists.
     display_name = os.path.basename( picture['filename'] )
-    query = db.session.query( Picture ) \
-        .filter( Picture.folder_id == folder.id ) \
-        .filter( Picture.display_name == display_name )
+    query = db.session.query( FileItem ) \
+        .filter( FileItem.folder_id == folder.id ) \
+        .filter( FileItem.display_name == display_name )
     if None != query.first():
-        raise PictureImportException(  'Picture already exists: {}'.format(
+        raise FileItemImportException(  'FileItem already exists: {}'.format(
             picture['filename'] ) )
 
     # Make sure the picture file exists.
     if not os.path.exists( picture['filename'] ):
-        raise PictureImportException( 'Picture file does not exist: {}'.format(
+        raise FileItemImportException( 'FileItem file does not exist: {}'.format(
             picture['filename'] ) )
 
     im = Image.open( picture['filename'] )
     if not im:
-        raise PictureImportException( 'Unable to read picture: {}'.format(
+        raise FileItemImportException( 'Unable to read picture: {}'.format(
             picture['filename'] ) )
 
     ha = hashlib.md5()
@@ -174,20 +178,34 @@ def import_picture( picture ):
 
     st = os.stat( picture['filename'] )
 
-    pic = Picture(
+    pic = FileItem(
         display_name=display_name,
         folder_id=folder.id,
         timestamp=datetime.fromtimestamp( st[stat.ST_MTIME] ),
         filesize=st[stat.ST_SIZE],
-        width=im.size[0],
-        height=im.size[1],
         added=datetime.fromtimestamp( picture['time_created'] ),
         filehash=ha.hexdigest(),
         filehash_algo=HashEnum.md5,
+        filetype='picture',
         comment=picture['comment'],
         rating=picture['rating'],
         nsfw=False )
     db.session.add( pic )
+    db.session.commit()
+
+    query = db.session.query( FileItem ) \
+        .filter( FileItem.folder_id == folder.id ) \
+        .filter( FileItem.display_name == display_name )
+    pic = query.first()
+    assert( None != pic )
+    meta = FileMeta(
+        item_id=pic.id, key='width', value=str( im.size[0] ) )
+    db.session.add( meta )
+    db.session.commit()
+
+    meta = FileMeta(
+        item_id=pic.id, key='height', value=str( im.size[1] ) )
+    db.session.add( meta )
     db.session.commit()
 
     logger.info( 'Imported picture {} under {}'.format(
