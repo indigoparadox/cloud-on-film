@@ -110,11 +110,19 @@ def cloud_libraries( machine_name=None, relative_path=None ):
 
     logger = logging.getLogger( 'cloud.libraries' )
 
+    l_globals = {
+        'library_name': machine_name,
+        'title': os.path.basename(relative_path )
+            if relative_path else machine_name }
+
     try:
         # Show a folder listing.
-        folders = libraries.enumerate_path_folders( machine_name, relative_path )
-        pictures = libraries.enumerate_path_pictures( machine_name, relative_path )
-        return render_template( 'libraries.html', folders=folders, pictures=pictures )
+        folders = \
+            libraries.enumerate_path_folders( machine_name, relative_path )
+        pictures = \
+            libraries.enumerate_path_pictures( machine_name, relative_path )
+        return render_template(
+            'libraries.html', **l_globals, folders=folders, pictures=pictures )
 
     except libraries.InvalidFolderException as e:
 
@@ -130,7 +138,8 @@ def cloud_libraries( machine_name=None, relative_path=None ):
             # Wrong library.
             abort( 403 )
 
-        return render_template( 'file_item.html', file_item=file_item )
+        return render_template(
+            'file_item.html', **l_globals, file_item=file_item, )
 
 @current_app.route( '/' )
 def cloud_root():
