@@ -4,3 +4,10 @@
    font-weight: bold;
 }
 
+#pictures .card {
+   max-width: 160px !important;
+}
+
+#pictures form {
+   /* max-width: 120px !important; */
+}

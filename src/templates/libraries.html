@@ -4,33 +4,51 @@
 <link rel="stylesheet" href="{{ url_for( 'static', filename='gallery.css' ) }}" />
 {% endblock %}
 
+{% block sidebar %}
+
+{% with libraries = enumerate_libs() %}
+<ul class="libraries">
+{% for lib in libraries %}
+<li><a href="{{ url_for( 'cloud_libraries', machine_name='{{ lib.machine_name }}', relative_path=None ) }}">{{ lib.display_name }}</a></li>
+{% endfor %}
+</ul>
+{% endwith %}
+
+{% endblock %}
+
 {% block content %}
 
 <div id="folders" class="w-100 row">
 {% for item in folders %}
-<div><a href="{{ url_for( 'cloud_libraries', machine_name=item.library.machine_name, relative_path=None ) }}/{{ build_folder_path( item.id ) }}">{{ item.display_name }}</a></div>
+<div class="folder">
+<a href="{{ url_for( 'cloud_libraries', machine_name=item.library.machine_name, relative_path=None ) }}/{{ build_folder_path( item.id ) }}">{{ item.display_name }}</a></div>
 {% endfor %}
 </div> <!-- /row -->
 
-<div id="pictures" class="w-100 row">
+<div id="pictures" class="row">
 {% for item in pictures %}
 {% if item.filetype == 'picture' %}
-<div class="col-md-2 col-sm-3 coll-xs-6 card">
+<div class="col-md-2 col-sm-4 coll-xs-6 px-0 card bg-secondary">
 <a href="{{ url_for(
    'cloud_libraries', machine_name=item.folder.library.machine_name,
    relative_path=None ) }}/{{ build_folder_path( item.folder_id )
-}}"><img
+}}" class="thumbnail"><img
    class="img-responsive"
    src="{{ url_for( 'cloud_plugin_file', file_id=item.id ) }}"
    alt="{{ item.display_name }}"
 /></a>
 <form action="{{ url_for( 'cloud_edit_filedata' ) }}" method="POST">
-<div class="card-body">
+
+<div class="card-body d-flex flex-column">
+
+<!-- body text -->
 <h3 class="card-title">{{ item.display_name }}</h3>
 <p class="card-text">
 {{ item.comment }}
 </p>
-<div class="d-flex justify-content-between align-items-center">
+
+<!-- button bar -->
+<div class="d-flex">
 {% if item.nsfw %}
 <small class="text-muted nsfw">
 NSFW
@@ -40,7 +58,9 @@ NSFW
 {{ item.rating }}
 </small>
 </div>
+
 </div> <!-- /card-body -->
+
 </form>
 </div> <!-- /card -->
 {% endif %}

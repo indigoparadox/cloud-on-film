@@ -3,19 +3,29 @@
 <head>
 <title>{{ title }}</title>
 <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.3.1/css/bootstrap.css" />
-<script src="https://code.jquery.com/jquery-3.3.1.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
+<script type="text/javascript">var flaskRoot = '{{ url_for( 'cloud_root' ) }}';</script>
+<script src="https://code.jquery.com/jquery-3.3.1.min.js" crossorigin="anonymous"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
 <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
+<script src="{{ url_for( 'static', filename='sidebar.js' ) }}"></script>
 <link rel="stylesheet" href="{{ url_for( 'static', filename='style.css' ) }}" />
 {% block scripts %}{% endblock %}
 </head>
-<body>
+<body class="h-100 bg-dark">
+
+<div id="sidebar" class="sidebar h-100 bg-secondary">
+<a id="sidebar-toggle" href="#"></a>
+<div id="sidebar-inner">
+{% block sidebar %}{% endblock %}
+</div>
+</div>
+
+<div id="main">
 
 <div class="container">
 
 <div class="row">
- <h1>{{ title }}</h1>
-
+<h1>{{ title }}</h1>
 {% with flashes = get_flashed_messages() %}
 {% if flashes %}
 <ul class="flashes">
@@ -26,21 +36,13 @@
 {% endif %}
 {% endwith %}
 
-<nav class="nav libraries">
-{% with libraries = enumerate_libs() %}
-<ul>
-{% for lib in libraries %}
-<li><a href="{{ url_for( 'cloud_libraries', machine_name='{{ lib.machine_name }}', relative_path=None ) }}">{{ lib.display_name }}</a></li>
-{% endfor %}
-</ul>
-{% endwith %}
-</nav>
-
 </div> <!-- /row -->
 
 {% block content %}{% endblock %}
 
 </div> <!-- /container -->
+
+</div> <!-- /main -->
 
 </body>
 </html>

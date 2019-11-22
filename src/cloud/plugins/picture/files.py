@@ -21,6 +21,9 @@ def generate_thumbnail( file_id, size ):
 
     #assert( width > 0 and height > 0 )
 
+    if not os.path.exists( current_app.config['THUMBNAIL_PATH'] ):
+        os.makedirs( current_app.config['THUMBNAIL_PATH'] )
+
     thumb_path = os.path.join(
         current_app.config['THUMBNAIL_PATH'],
         '{}_{}x{}.jpg'.format( item.filehash, size[0], size[1] ) )

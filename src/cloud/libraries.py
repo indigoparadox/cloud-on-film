@@ -93,7 +93,8 @@ def enumerate_path_folders( machine_name, relative_path ):
 
     # Build a list of folders inside of the current folder.
     query = db.session.query( Folder ) \
-        .filter( Folder.parent_id == parent_folder_id )
+        .filter( Folder.parent_id == parent_folder_id ) \
+        .order_by( Folder.display_name.asc() )
     return query.all()
     
 def enumerate_path_pictures( machine_name, relative_path ):
@@ -101,7 +102,8 @@ def enumerate_path_pictures( machine_name, relative_path ):
     parent_folder_id = get_path_folder_id( machine_name, relative_path )
 
     query = db.session.query( FileItem ) \
-        .filter( FileItem.folder_id == parent_folder_id )
+        .filter( FileItem.folder_id == parent_folder_id ) \
+        .order_by( FileItem.display_name.asc() )
     return query.all()
 
 def import_picture( picture ):
