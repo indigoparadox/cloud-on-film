@@ -13,6 +13,7 @@
 </head>
 <body class="h-100 bg-dark">
 
+{% if not no_sidebar %}
 <div id="sidebar" class="sidebar h-100 bg-secondary">
 <a id="sidebar-toggle" href="#"></a>
 <div id="sidebar-inner">
@@ -21,6 +22,7 @@
 </div>
 
 <div id="main">
+{% endif %}{# /no_sidebar #}
 
 <div class="container">
 
@@ -42,7 +44,9 @@
 
 </div> <!-- /container -->
 
+{% if not no_sidebar %}
 </div> <!-- /main -->
+{% endif %}{# /no_sidebar #}
 
 </body>
 </html>

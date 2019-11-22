@@ -12,6 +12,12 @@ from flask import current_app, abort
 class FileItemImportException( Exception ):
     pass
 
+class InvalidFolderException( Exception ):
+    def __init__( self, *args, **kwargs ):
+        self.display_name = kwargs['display_name']
+        self.parent_id = kwargs['parent_id']
+        super().__init__( *args )
+
 def update():
 
     logger = logging.getLogger( 'cloud.update' )
@@ -79,7 +85,9 @@ def get_path_folder_id( machine_name, relative_path ):
                 .filter( Library.machine_name == machine_name )
             parent_folder = query.first()
             if not parent_folder:
-                abort( 404 )
+                raise InvalidFolderException(
+                    parent_id=parent_folder_id,
+                    display_name=path_element_name )
             parent_folder_id = parent_folder.id
 
     if parent_folder:

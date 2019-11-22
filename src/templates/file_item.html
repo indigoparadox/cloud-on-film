@@ -1,0 +1,11 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<img
+   class="img-responsive"
+   src="{{ url_for( 'cloud_plugin_fullsize', file_id=file_item.id ) }}"
+   alt="{{ file_item.display_name }}"
+/>
+
+{% endblock %}
