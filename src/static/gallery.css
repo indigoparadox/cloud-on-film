@@ -11,3 +11,20 @@
 #pictures form {
    /* max-width: 120px !important; */
 }
+
+.libraries-thumbnail {
+   margin: 0 auto;
+   width: 160px;
+   height: 120px;
+}
+
+.libraries-thumbnail-wrapper {
+   width: 160px;
+   height: 120px;
+}
+
+.libraries-thumbnail-wrapper a {
+   display: block;
+   width: 160px;
+   height: 120px;
+}

@@ -7,7 +7,7 @@ $().ready( function() {
          'background-image': 'url( ' + flaskRoot + 'static/arrow-right-32.png )',
          'display': 'block'
       } )
-      .click( function( e ) { sidebarToggle(); } );
+      .click( function( e ) { sidebarToggle(); e.preventDefault() } );
    $('#sidebar-inner').hide();
    $('#sidebar').css( 'width', '32px' );
 } )
