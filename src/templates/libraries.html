@@ -1,8 +1,12 @@
 {% extends 'base.html' %}
 
 {% block scripts %}
+<link rel="stylesheet" href="{{ url_for( 'static', filename='featherlight.min.css' ) }}" />
+<link rel="stylesheet" href="{{ url_for( 'static', filename='featherlight.gallery.min.css' ) }}" />
 <link rel="stylesheet" href="{{ url_for( 'static', filename='gallery.css' ) }}" />
 <script src="{{ url_for( 'static', filename='jquery.unveil2.min.js' ) }}"></script>
+<script src="{{ url_for( 'static', filename='featherlight.min.js' ) }}"></script>
+<script src="{{ url_for( 'static', filename='featherlight.gallery.min.js' ) }}"></script>
 <script type="application/javascript">
 $().ready( function() {
    $('.libraries-thumbnail-wrapper')
@@ -17,6 +21,11 @@ $().ready( function() {
          'debug': true,
          //'placeholder': "{{ url_for( 'static', filename='art-palette-72.png' ) }}"
       } );
+   
+   $('a.thumbnail').featherlightGallery( {
+      'type': 'iframe'
+   } );
+
 } );
 </script>
 {% endblock %}
@@ -54,12 +63,15 @@ $().ready( function() {
 {% if item.filetype == 'picture' %}
 <div class="col-md-2 col-sm-4 coll-xs-6 px-0 card bg-secondary">
 
+{% set img_href = url_for(
+   'cloud_libraries', machine_name=item.folder.library.machine_name,
+   relative_path=None ) + '/' + build_folder_path( item.folder_id ) + '/' +
+   item.display_name %}
 <div class="px-0 py-0 libraries-thumbnail-wrapper"
    data-src="{{ url_for( 'cloud_plugin_preview', file_id=item.id ) }}">
-<a href="{{ url_for(
-   'cloud_libraries', machine_name=item.folder.library.machine_name,
-   relative_path=None ) }}/{{ build_folder_path( item.folder_id ) }}/{{
-      item.display_name }}" class="thumbnail">
+<a href="{{ img_href }}" class="thumbnail"
+   data-featherlight-iframe-width="2000px"
+   data-featherlight-iframe-max-width="90%">
 <noscript>
 <img
    class="img-responsive libraries-thumbnail"
