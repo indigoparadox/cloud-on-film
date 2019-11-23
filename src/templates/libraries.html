@@ -48,8 +48,19 @@ $().ready( function() {
 {% if lib.machine_name == library_name %}
 <li class="active">
 {% else %}
-<li></li>
+<li>
 {% endif %}
+<a href="{{ url_for( 'cloud_libraries', machine_name='{{ lib.machine_name }}', relative_path=None ) }}">{{ lib.display_name }}</a>
+</li>
+{% endfor %}
+</ul>
+{% endwith %} <!-- /libraries -->
+
+<h2>Tags</h2>
+{% with tag_roots = enumerate_tag_roots() %}
+<ul class="tags">
+{% for tag_root in tag_roots %}
+<li class="active">
 <a href="{{ url_for( 'cloud_libraries', machine_name='{{ lib.machine_name }}', relative_path=None ) }}">{{ lib.display_name }}</a>
 </li>
 {% endfor %}

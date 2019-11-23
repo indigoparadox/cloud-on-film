@@ -1,6 +1,6 @@
 
 from flask_wtf import FlaskForm
-from wtforms import StringField, FileField
+from wtforms import StringField, FileField, BooleanField
 from wtforms.validators import DataRequired
 
 class NewLibraryForm( FlaskForm ):
@@ -10,6 +10,7 @@ class NewLibraryForm( FlaskForm ):
     display_name = StringField( 'Display Name', validators=[DataRequired()] )
     machine_name = StringField( 'Machine Name', validators=[DataRequired()] )
     absolute_path = StringField( 'Absolute Path', validators=[DataRequired()] )
+    auto_nsfw = BooleanField( 'Automatic NSFW' )
 
 class UploadLibraryForm( FlaskForm ):
 

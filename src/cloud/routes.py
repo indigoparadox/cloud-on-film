@@ -5,6 +5,8 @@ from sqlalchemy import exc
 from .models import db, Library, FileItem
 from .forms import NewLibraryForm, UploadLibraryForm
 from . import libraries
+from . import tags
+from . import importing
 from werkzeug import secure_filename
 import json
 import os
@@ -79,7 +81,8 @@ def cloud_libraries_new():
             lib = Library(
                 display_name=form.display_name.data,
                 machine_name=form.machine_name.data,
-                absolute_path=form.absolute_path.data )
+                absolute_path=form.absolute_path.data,
+                auto_nsfw=form.auto_nsfw.data )
             db.session.add( lib )
             db.session.commit()
             flash( 'Library created.' )
@@ -102,8 +105,8 @@ def cloud_libraries_upload():
             json.loads( request.files['upload'].read().decode( 'utf-8' ) )
         for picture in pictures:
             try:
-                libraries.import_picture( picture )
-            except libraries.FileItemImportException as e:
+                importing.picture( picture )
+            except importing.FileItemImportException as e:
                 logger.warning( e )
 
     return render_template( 'form_libraries_upload.html', form=form )

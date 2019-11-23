@@ -37,19 +37,32 @@ files_tags = db.Table( 'files_tags', db.metadata,
     db.Column( 'tags_id', db.Integer, db.ForeignKey( 'tags.id' ) ) )
 
 
+class TagMeta( db.Model ):
+
+    __tablename__ = 'tag_meta'
+
+    id = db.Column( db.Integer, primary_key=True )
+    key = db.Column( db.String( 12 ), index=True, unique=False, nullable=False )
+    value = \
+        db.Column( db.String( 256 ), index=False, unique=False, nullable=True )
+    item_id = db.Column( db.Integer, db.ForeignKey( 'tags.id' ) )
+    item = db.relationship( 'Tag', back_populates='meta' )
+
+
 class Tag( db.Model ):
 
     __tablename__ = 'tags'
 
     id = db.Column( db.Integer, primary_key=True )
     parent_id = db.Column( db.Integer, unique=False, nullable=True )
-    name = db.Column(
+    display_name = db.Column(
         db.String( 64 ), index=True, unique=False, nullable=False )
     owner = db.relationship( 'User', back_populates='tags' )
     owner_id = db.Column( db.Integer, db.ForeignKey( 'users.id' ) )
     file_id = db.Column( db.Integer, db.ForeignKey( 'files.id' ) )
     files = db.relationship(
         'FileItem', secondary=files_tags, back_populates='tags' )
+    meta = db.relationship( 'TagMeta', back_populates='item' )
 
 
 class FileItem( db.Model ):
@@ -81,6 +94,18 @@ class FileItem( db.Model ):
     rating = db.Column( db.Integer, index=True, unique=False, nullable=True )
 
 
+class FolderMeta( db.Model ):
+
+    __tablename__ = 'folder_meta'
+
+    id = db.Column( db.Integer, primary_key=True )
+    key = db.Column( db.String( 12 ), index=True, unique=False, nullable=False )
+    value = \
+        db.Column( db.String( 256 ), index=False, unique=False, nullable=True )
+    item_id = db.Column( db.Integer, db.ForeignKey( 'folders.id' ) )
+    item = db.relationship( 'Folder', back_populates='meta' )
+
+
 class Folder( db.Model ):
 
     __tablename__ = 'folders'
@@ -94,6 +119,7 @@ class Folder( db.Model ):
     library = db.relationship( 'Library', back_populates='folders' )
     display_name = db.Column(
         db.String( 256 ), index=True, unique=False, nullable=False )
+    meta = db.relationship( 'FolderMeta', back_populates='item' )
 
 
 class Plugin( db.Model ):
@@ -101,7 +127,18 @@ class Plugin( db.Model ):
     __tablename__ = 'plugins'
 
     id = db.Column( db.Integer, primary_key=True )
-    
+
+
+class LibraryMeta( db.Model ):
+
+    __tablename__ = 'library_meta'
+
+    id = db.Column( db.Integer, primary_key=True )
+    key = db.Column( db.String( 12 ), index=True, unique=False, nullable=False )
+    value = \
+        db.Column( db.String( 256 ), index=False, unique=False, nullable=True )
+    item_id = db.Column( db.Integer, db.ForeignKey( 'libraries.id' ) )
+    item = db.relationship( 'Library', back_populates='meta' )
 
 
 class Library( db.Model ):
@@ -116,5 +153,9 @@ class Library( db.Model ):
         db.String( 64 ), index=True, unique=True, nullable=False )
     absolute_path = db.Column(
         db.String( 256 ), index=True, unique=True, nullable=False )
+    auto_nsfw = db.Column(
+        db.Boolean, index=False, unique=False, nullable=False )
+    meta = db.relationship( 'LibraryMeta', back_populates='item' )
+
 
 
