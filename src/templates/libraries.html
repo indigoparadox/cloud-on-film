@@ -1,5 +1,8 @@
 {% extends 'base.html' %}
 
+{% set arrow_right = url_for( 'static', filename='arrow-right-64.png' ) %}
+{% set arrow_left = url_for( 'static', filename='arrow-left-64.png' ) %}
+
 {% block scripts %}
 <link rel="stylesheet" href="{{ url_for( 'static', filename='featherlight.min.css' ) }}" />
 <link rel="stylesheet" href="{{ url_for( 'static', filename='featherlight.gallery.min.css' ) }}" />
@@ -22,9 +25,15 @@ $().ready( function() {
          //'placeholder': "{{ url_for( 'static', filename='art-palette-72.png' ) }}"
       } );
    
-   $('a.thumbnail').featherlightGallery( {
-      'type': 'iframe'
-   } );
+   $('a.thumbnail')
+      .each( function( elem ) {
+         $(this).attr( 'href', $(this).data( 'fullsize' ) );
+      } )
+      .featherlightGallery( {
+         'type': 'image',
+         'previousIcon': '<img src="{{ arrow_left }}" alt="Previous" />',
+         'nextIcon': '<img src="{{ arrow_right }}" alt="Next" />',
+      } );
 
 } );
 </script>
@@ -70,8 +79,7 @@ $().ready( function() {
 <div class="px-0 py-0 libraries-thumbnail-wrapper"
    data-src="{{ url_for( 'cloud_plugin_preview', file_id=item.id ) }}">
 <a href="{{ img_href }}" class="thumbnail"
-   data-featherlight-iframe-width="2000px"
-   data-featherlight-iframe-max-width="90%">
+   data-fullsize="{{ url_for( 'cloud_plugin_fullsize', file_id=item.id ) }}">
 <noscript>
 <img
    class="img-responsive libraries-thumbnail"

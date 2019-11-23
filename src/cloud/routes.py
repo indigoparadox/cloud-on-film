@@ -44,6 +44,8 @@ def cloud_plugin_preview( file_id ):
 @current_app.route( '/fullsize/<int:file_id>' )
 def cloud_plugin_fullsize( file_id ):
 
+    logger = logging.getLogger( 'cloud.plugin.fullsize' )
+
     # TODO: Safety checks.
 
     query = db.session.query( FileItem ) \
@@ -57,10 +59,12 @@ def cloud_plugin_fullsize( file_id ):
 
     file_path = os.path.join(
         libraries.build_file_path( file_id, absolute_fs=True ) )
+    file_type = mimetypes.guess_type( file_path )[0]
+    
+    logger.info( '{} mimetype: {}'.format( file_path, file_type ) )
 
     with open( file_path, 'rb' ) as pic_f:
-        return send_file( io.BytesIO( pic_f.read() ),
-            mimetypes.guess_type( file_path )[0] )
+        return send_file( io.BytesIO( pic_f.read() ), file_type )
 
 @current_app.route( '/libraries/new', methods=['GET', 'POST'] )
 def cloud_libraries_new():
