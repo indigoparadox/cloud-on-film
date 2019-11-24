@@ -54,7 +54,10 @@ class Tag( db.Model ):
     __tablename__ = 'tags'
 
     id = db.Column( db.Integer, primary_key=True )
-    parent_id = db.Column( db.Integer, unique=False, nullable=True )
+    parent_id = db.Column( 
+        db.Integer, db.ForeignKey( 'tags.id' ), nullable=True )
+    parent = db.relationship( 'Tag', remote_side=[id] )
+    #tag_parent = db.relationship( 'Tag', remote_side=[id] )
     display_name = db.Column(
         db.String( 64 ), index=True, unique=False, nullable=False )
     owner = db.relationship( 'User', back_populates='tags' )
@@ -63,6 +66,8 @@ class Tag( db.Model ):
     files = db.relationship(
         'FileItem', secondary=files_tags, back_populates='tags' )
     meta = db.relationship( 'TagMeta', back_populates='item' )
+    children = db.relationship( 'Tag', backref=db.backref(
+        'tag_parent', remote_side=[id] ) )
 
 
 class FileItem( db.Model ):
@@ -115,11 +120,14 @@ class Folder( db.Model ):
     parent_id = db.Column(
         db.Integer, db.ForeignKey( 'folders.id' ), nullable=True )
     parent = db.relationship( 'Folder', remote_side=[id] )
+    #folder_parent = db.relationship( 'Folder', remote_side=[id] )
     library_id = db.Column( db.Integer, db.ForeignKey( 'libraries.id' ) )
     library = db.relationship( 'Library', back_populates='folders' )
     display_name = db.Column(
         db.String( 256 ), index=True, unique=False, nullable=False )
     meta = db.relationship( 'FolderMeta', back_populates='item' )
+    children = db.relationship( 'Folder', backref=db.backref(
+        'folder_parent', remote_side=[id] ) )
 
 
 class Plugin( db.Model ):
@@ -158,4 +166,16 @@ class Library( db.Model ):
     meta = db.relationship( 'LibraryMeta', back_populates='item' )
 
 
+class WorkerSemaphore( db.Model ):
+
+    __tablename__ = "db_semaphores"
+
+    id = db.Column( db.String( 64 ), primary_key=True )
+    # Timestamp stored as integer for simpler math later.
+    timestamp = \
+        db.Column( db.Integer, index=False, unique=False, nullable=False )
+    progress = \
+        db.Column( db.Integer, index=False, unique=False, nullable=False )
+    note = \
+        db.Column( db.String( 256 ), index=False, unique=False, nullable=True )
 
