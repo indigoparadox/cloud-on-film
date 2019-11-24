@@ -41,7 +41,8 @@ threads = {}
 
 def start_import_thread( pictures ):
     id = uuid.uuid1()
-    threads[id.hex] = ItemImportThread( pictures, current_app )
+    threads[id.hex] = ItemImportThread(
+        pictures, current_app._get_current_object() )
     threads[id.hex].start()
     return id.hex
 

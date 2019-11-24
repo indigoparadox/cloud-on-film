@@ -118,7 +118,7 @@ def cloud_libraries_upload( id='' ):
     elif 'GET' == request.method and id:
         try:
             title = 'Uploading thread #{}'.format( id )
-            progress = threads[id].progress
+            progress = int( threads[id].progress )
         except KeyError as e:
             return redirect( url_for( 'cloud_libraries_upload' ) )
 
