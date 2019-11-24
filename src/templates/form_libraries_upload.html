@@ -12,7 +12,7 @@ function updateProgress() {
         $('#current-filename').html( data['filename'] );
         if( data['progress'] != last_progress ) {
             $('#thread-progress')
-                .animate( { 'width': data['progress'] + '%' } );
+                .css( { 'width': data['progress'] + '%' } );
         }
         last_progress = data['progress'];
         setTimeout( updateProgress, 1000 );
