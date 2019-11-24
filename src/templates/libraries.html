@@ -61,7 +61,7 @@ $().ready( function() {
 <ul class="tags">
 {% for tag_root in tag_roots %}
 <li class="active">
-<a href="{{ url_for( 'cloud_libraries', machine_name='{{ lib.machine_name }}', relative_path=None ) }}">{{ lib.display_name }}</a>
+<a href="">{{ tag_root.display_name }}</a>
 </li>
 {% endfor %}
 </ul>
