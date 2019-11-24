@@ -4,12 +4,18 @@
 <script type="text/javascript">
 
 var thread_id = '{{ id }}';
+var last_progress = 0;
 
 function updateProgress() {
     $.post( "{{ url_for( 'cloud_libraries_upload', id=id ) }}",
     function( data ) {
-        $('#thread-progress').css( 'width', data + '%' );
-        setTimeout( updateProgress, 3000 );
+        $('#current-filename').html( data['filename'] );
+        if( data['progress'] != last_progress ) {
+            $('#thread-progress')
+                .animate( { 'width': data['progress'] + '%' } );
+        }
+        last_progress = data['progress'];
+        setTimeout( updateProgress, 1000 );
     } );
 }
 
@@ -26,8 +32,9 @@ $().ready( function() {
 <div class="py-3">
 <div class="progress">
 <div id="thread-progress" class="progress-bar" role="progressbar"
-    aria-valuenow="{{ progress }}" aria-valuemin="0" aria-valuemax="100"></div>
+    style="width: 0"></div>
  </div>
+ <div id="current-filename"></div>
 </div>
 {% else %}
 <form action="" method="POST" enctype="multipart/form-data">

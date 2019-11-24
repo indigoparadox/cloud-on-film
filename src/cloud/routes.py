@@ -1,6 +1,6 @@
 
 import logging 
-from flask import Flask, render_template, request, current_app, flash, send_file, abort, redirect, url_for
+from flask import Flask, render_template, request, current_app, flash, send_file, abort, redirect, url_for, jsonify
 from sqlalchemy import exc
 from .models import db, Library, FileItem
 from .forms import NewLibraryForm, UploadLibraryForm
@@ -108,13 +108,14 @@ def cloud_libraries_upload( id='' ):
     title = 'Upload Library Data'
     progress = 0
     
-    if 'POST' == request.method and form.validate_on_submit() and not id:
+    if 'POST' == request.method and id:
+        return jsonify( { 'filename': threads[id].filename,
+            'progress': int( threads[id].progress ) } )
+    elif 'POST' == request.method and form.validate_on_submit() and not id:
         pictures = \
             json.loads( request.files['upload'].read().decode( 'utf-8' ) )
         id = start_import_thread( pictures )
         return redirect( url_for( 'cloud_libraries_upload', id=id ) )
-    elif 'POST' == request.method and id:
-        return str( threads[id].progress )
     elif 'GET' == request.method and id:
         try:
             title = 'Uploading thread #{}'.format( id )

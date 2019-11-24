@@ -18,6 +18,7 @@ class FileItemImportException( Exception ):
 class ItemImportThread( Thread ):
     def __init__( self, pictures, app ):
         self.progress = 0
+        self.filename = ''
         self.pictures = pictures
         self.app = app
         super().__init__()
@@ -31,10 +32,11 @@ class ItemImportThread( Thread ):
             idx = 0
             for pic in self.pictures:
                 self.progress = 100 * idx / pictures_len
+                self.filename = pic['filename']
                 try:
                     picture( pic )
                 except FileItemImportException as e:
-                    self.logger.warning( e )
+                    self.logger.debug( e )
                 idx += 1
 
 threads = {}
@@ -83,7 +85,7 @@ def path( path_list, path_type=Folder, library_id=None, parent=None ):
         db.session.flush()
         db.session.refresh( item )
 
-        logger.info( 'Created {} {} under {}'.format(
+        logger.debug( 'Created {} {} under {}'.format(
             path_type.__name__, display_name,
             parent.display_name if parent else 'root' ) )
         
@@ -191,6 +193,6 @@ def picture( picture ):
     
     db.session.commit()
 
-    logger.info( 'Imported picture {} under {}'.format(
+    logger.debug( 'Imported picture {} under {}'.format(
         display_name, folder.display_name ) )
 
