@@ -8,14 +8,14 @@ try:
     import uwsgi
     uwsgi_present = True
 except ImportError:
-    logger = logging.getLogger( 'init.uwsgi' )
     uwsgi_present = False
-    logger.warning( 'uwsgi not present; connection locking unavailable.' )
 
 # Setup the database stuff.
 db = SQLAlchemy()
 
 def create_app():
+
+    logging.basicConfig( level=logging.INFO )
 
     ''' App factory function. Call this from the runner/WSGI. '''
 
