@@ -12,54 +12,55 @@ from .models import db, HashEnum, Folder, FileItem, Tag, FileMeta
 class FileItemImportException( Exception ):
     pass
 
-def path( rel_path, path_type=Folder, library_id=None ):
+def path( path_list, path_type=Folder, library_id=None, parent=None ):
 
     logger = logging.getLogger( 'importing.path' )
 
-    path_list = rel_path.split( '/' )
+    if not path_list:
+        # No list left! We're done!
+        return parent
+    elif isinstance( path_list, str ):
+        path_list = path_list.split( '/' )
 
-    parent = None
-    item = None
-    for subitem in path_list:
-        query = db.session.query( path_type ) \
-            .filter( path_type.display_name == subitem )
+    assert( isinstance( path_list, list ) )
+    assert( len( path_list ) > 0 )
 
-        # Parent is either folder from the last iteration or NULL for the root.
-        parent_id = None
-        if parent:
-            parent_id = parent.id
-        query = query.filter( path_type.parent_id == parent_id )
+    # See if the item we're to create exists already.
+    display_name = path_list.pop( 0 )
+    query = db.session.query( path_type ) \
+        .filter( path_type.display_name == display_name ) \
+        .filter( path_type.parent_id == 
+            (parent.id if parent else None) )
+    item = query.first()
+    if None == item:
+        
+        # Create the missing item.
+        if path_type == Folder:
+            assert( library_id )
+            item = path_type( 
+                library_id=library_id,
+                parent_id=parent.id if parent else None,
+                display_name=display_name )
+        else:
+            item = path_type(
+                parent_id=parent.id if parent else None,
+                display_name=display_name )
+        db.session.add( item )
+        db.session.flush()
+        db.session.refresh( item )
 
-        item = query.first()
-        if None == item:
-            
-            # Create the missing folder.
-            new_item = path_type( parent_id=parent_id, display_name=subitem )
-            if isinstance( new_item, Folder ):
-                new_item.lbrary_id = library_id
-            db.session.add( new_item )
-            #db.session.commit()
-            db.session.flush()
-            db.session.refresh( new_item )
+        logger.info( 'Created {} {} under {}'.format(
+            path_type.__name__, display_name,
+            parent.display_name if parent else 'root' ) )
+        
+    assert( item )
+    if parent:
+        assert( item.parent_id == parent.id )
+    else:
+        assert( item.parent_id == None )
 
-            if parent:
-                logger.info( 'Created {} under {}'.format(
-                    subitem, parent.display_name ) )
-            else:
-                logger.info(
-                    'Created {} under root'.format( subitem ) )
-
-            # Get the ID for the just-created folder.
-            #query = db.session.query( path_type ) \
-            #    .filter( path_type.display_name == subitem ) \
-            #    .filter( path_type.parent_id == parent_id )
-            #item = query.first()
-            item = new_item
-
-        assert( item )
-        parent = item
-
-    return item
+    # Recurse into the next item.
+    return path( path_list, path_type, library_id, item )
 
 def picture( picture ):
 
