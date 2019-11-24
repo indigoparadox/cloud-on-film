@@ -1,12 +1,12 @@
 
 import logging 
-from flask import Flask, render_template, request, current_app, flash, send_file, abort
+from flask import Flask, render_template, request, current_app, flash, send_file, abort, redirect, url_for
 from sqlalchemy import exc
 from .models import db, Library, FileItem
 from .forms import NewLibraryForm, UploadLibraryForm
 from . import libraries
 from . import tags
-from . import importing
+from .importing import start_import_thread, threads
 from werkzeug import secure_filename
 import json
 import os
@@ -93,23 +93,37 @@ def cloud_libraries_new():
 
     return render_template( 'form_libraries_new.html', form=form )
 
+    if 'GET' == request.method:
+        return render_template( 'form_libraries_uploading.html', id=id )
+    elif 'POST' == request.method:
+        return threads[id].progress
+
 @current_app.route( '/libraries/upload', methods=['GET', 'POST'] )
-def cloud_libraries_upload():
+@current_app.route( '/libraries/upload/<id>', methods=['GET', 'POST'] )
+def cloud_libraries_upload( id='' ):
 
     logger = logging.getLogger( 'cloud.library.upload' )
     form = UploadLibraryForm( request.form )
 
-    if 'POST' == request.method and form.validate_on_submit():
-
+    title = 'Upload Library Data'
+    progress = 0
+    
+    if 'POST' == request.method and form.validate_on_submit() and not id:
         pictures = \
             json.loads( request.files['upload'].read().decode( 'utf-8' ) )
-        for picture in pictures:
-            try:
-                importing.picture( picture )
-            except importing.FileItemImportException as e:
-                logger.warning( e )
+        id = start_import_thread( pictures )
+        return redirect( url_for( 'cloud_libraries_upload', id=id ) )
+    elif 'POST' == request.method and id:
+        return str( threads[id].progress )
+    elif 'GET' == request.method and id:
+        try:
+            title = 'Uploading thread #{}'.format( id )
+            progress = threads[id].progress
+        except KeyError as e:
+            return redirect( url_for( 'cloud_libraries_upload' ) )
 
-    return render_template( 'form_libraries_upload.html', form=form )
+    return render_template( 'form_libraries_upload.html',
+        title=title, form=form, id=id, progress=progress )
 
 @current_app.route( '/libraries/<string:machine_name>' )
 @current_app.route( '/libraries/<string:machine_name>/<path:relative_path>' )

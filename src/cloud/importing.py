@@ -4,13 +4,46 @@ import re
 import os
 import stat
 import hashlib
+import uuid
+from flask import current_app
 from datetime import datetime
 from PIL import Image
 from . import libraries
 from .models import db, HashEnum, Folder, FileItem, Tag, FileMeta
+from threading import Thread
 
 class FileItemImportException( Exception ):
     pass
+
+class ItemImportThread( Thread ):
+    def __init__( self, pictures, app ):
+        self.progress = 0
+        self.pictures = pictures
+        self.app = app
+        super().__init__()
+
+    def run( self ):
+        with self.app.app_context():
+            self.logger = logging.getLogger(
+                'importing.threads.' + str( self.ident ) )
+
+            pictures_len = len( self.pictures )
+            idx = 0
+            for pic in self.pictures:
+                self.progress = 100 * idx / pictures_len
+                try:
+                    picture( pic )
+                except FileItemImportException as e:
+                    self.logger.warning( e )
+                idx += 1
+
+threads = {}
+
+def start_import_thread( pictures ):
+    id = uuid.uuid1()
+    threads[id.hex] = ItemImportThread( pictures, current_app )
+    threads[id.hex].start()
+    return id.hex
 
 def path( path_list, path_type=Folder, library_id=None, parent=None ):
 
