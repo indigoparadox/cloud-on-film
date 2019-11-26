@@ -7,6 +7,7 @@ from .models import db, Library, FileItem, Tag, HashEnum, Folder, FileMeta
 import re
 from datetime import datetime
 from flask import current_app, abort
+from sqlalchemy import or_
 
 class InvalidFolderException( Exception ):
     def __init__( self, *args, **kwargs ):
@@ -99,7 +100,9 @@ def enumerate_path_folders( machine_name, relative_path ):
     query = db.session.query( Folder ) \
         .filter( Folder.parent_id == parent_folder_id ) \
         .order_by( Folder.display_name.asc() )
-    return query.all()
+    folders = query.all()
+
+    return folders
     
 def enumerate_path_pictures( machine_name, relative_path ):
 

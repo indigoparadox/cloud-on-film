@@ -46,9 +46,17 @@
 {% block content %}
 
 <div id="folders" class="w-100 row">
+{% if this_folder %}
+<div class="folder parent_folder">
+<a href="{{ url_for( 'cloud_libraries', machine_name=this_folder.library.machine_name, relative_path=None ) }}/{{ build_folder_path( this_folder.id ) }}">
+..
+</a></div>      
+{% endif %}
 {% for item in folders %}
 <div class="folder">
-<a href="{{ url_for( 'cloud_libraries', machine_name=item.library.machine_name, relative_path=None ) }}/{{ build_folder_path( item.id ) }}">{{ item.display_name }}</a></div>
+<a href="{{ url_for( 'cloud_libraries', machine_name=item.library.machine_name, relative_path=None ) }}/{{ build_folder_path( item.id ) }}">
+{{ item.display_name }}
+</a></div>
 {% endfor %}
 </div> <!-- /row -->
 

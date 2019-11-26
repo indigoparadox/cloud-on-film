@@ -2,7 +2,7 @@
 import logging 
 from flask import Flask, render_template, request, current_app, flash, send_file, abort, redirect, url_for, jsonify
 from sqlalchemy import exc
-from .models import db, Library, FileItem
+from .models import db, Library, FileItem, Folder
 from .forms import NewLibraryForm, UploadLibraryForm
 from . import libraries
 from . import tags
@@ -143,8 +143,15 @@ def cloud_libraries( machine_name=None, relative_path=None ):
             libraries.enumerate_path_folders( machine_name, relative_path )
         pictures = \
             libraries.enumerate_path_pictures( machine_name, relative_path )
+
+        this_folder = libraries.get_path_folder_id( machine_name, relative_path )
+        query = db.session.query( Folder ) \
+            .filter( Folder.children.any( Folder.id == this_folder ) )
+        this_folder = query.first()
+
         return render_template(
-            'libraries.html', **l_globals, folders=folders, pictures=pictures )
+            'libraries.html', **l_globals, folders=folders, pictures=pictures,
+            this_folder=this_folder )
 
     except libraries.InvalidFolderException as e:
 
@@ -161,7 +168,7 @@ def cloud_libraries( machine_name=None, relative_path=None ):
             abort( 403 )
 
         return render_template(
-            'file_item.html', **l_globals, file_item=file_item, )
+            'file_item.html', **l_globals, file_item=file_item )
 
 @current_app.route( '/' )
 def cloud_root():
