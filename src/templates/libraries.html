@@ -1,8 +1,5 @@
 {% extends 'base.html' %}
 
-{% set arrow_right = url_for( 'static', filename='arrow-right-64.png' ) %}
-{% set arrow_left = url_for( 'static', filename='arrow-left-64.png' ) %}
-
 {% block scripts %}
 <link rel="stylesheet" href="{{ url_for( 'static', filename='featherlight.min.css' ) }}" />
 <link rel="stylesheet" href="{{ url_for( 'static', filename='featherlight.gallery.min.css' ) }}" />
@@ -45,19 +42,43 @@
 
 {% block content %}
 
-<div id="folders" class="w-100 row">
+<div id="libraries-folders" class="w-100 py-3 row">
+
+<!-- TODO: This should go on files page.
+<ul class="nav nav-tabs">
+   <li class="nav-item">
+{% if 'folders' == categories %}
+      <a id="nav-folders" class="nav-link active" href="{{ url_self( categories='folders' ) }}">
+{% else %}
+      <a id="nav-folders" class="nav-link" href="{{ url_self( categories='folders' ) }}">
+{% endif %}
+         Folders</a>
+   </li>
+   <li class="nav-item">
+{% if 'tags' == categories %}
+      <a id="nav-tags" class="nav-link active" href="{{ url_self( categories='tags' ) }}">
+{% else %}
+      <a id="nav-tags" class="nav-link" href="{{ url_self( categories='tags' ) }}">
+{% endif %}
+         Tags</a>
+   </li>
+</ul>
+-->
+
+<ul class="libraries-folders-inner">
 {% if this_folder %}
-<div class="folder parent_folder">
+<li class="libraries-folder libraries-parent-folder">
 <a href="{{ url_for( 'cloud_libraries', machine_name=this_folder.library.machine_name, relative_path=None ) }}/{{ build_folder_path( this_folder.id ) }}">
 ..
-</a></div>      
+</a></li>
 {% endif %}
 {% for item in folders %}
-<div class="folder">
+<li class="libraries-folder">
 <a href="{{ url_for( 'cloud_libraries', machine_name=item.library.machine_name, relative_path=None ) }}/{{ build_folder_path( item.id ) }}">
 {{ item.display_name }}
-</a></div>
+</a></li>
 {% endfor %}
+</ul>
 </div> <!-- /row -->
 
 <div id="pictures" class="row">

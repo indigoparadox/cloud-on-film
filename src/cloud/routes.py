@@ -14,6 +14,11 @@ import mimetypes
 import io
 import importlib
 
+def url_self( **args ):
+    return url_for( request.endpoint, **dict( request.view_args, **args ) )
+
+current_app.jinja_env.globals.update( url_self=url_self )
+
 @current_app.cli.command( "update" )
 def cloud_cli_update():
     libraries.update()
@@ -135,7 +140,10 @@ def cloud_libraries( machine_name=None, relative_path=None ):
     l_globals = {
         'library_name': machine_name,
         'title': os.path.basename(relative_path )
-            if relative_path else machine_name }
+            if relative_path else machine_name,
+        'categories': request.args.get( 'categories' )
+            if request.args.get( 'categories' ) in ['tags', 'folders']
+                else 'folders' }
 
     try:
         # Show a folder listing.
