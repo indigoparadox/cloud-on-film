@@ -10,33 +10,7 @@
 <script src="{{ url_for( 'static', filename='jquery.unveil2.min.js' ) }}"></script>
 <script src="{{ url_for( 'static', filename='featherlight.min.js' ) }}"></script>
 <script src="{{ url_for( 'static', filename='featherlight.gallery.min.js' ) }}"></script>
-<script type="application/javascript">
-$().ready( function() {
-   $('.libraries-thumbnail-wrapper')
-      .on( 'loading.unveil', function() {
-         $(this).css( 'opacity', '0' );
-      } )
-      .on( 'loaded.unveil', function() {
-         $(this).animate( { 'opacity': '1' } );
-      } )
-      .unveil( {
-         'offset': 200,
-         'debug': true,
-         //'placeholder': "{{ url_for( 'static', filename='art-palette-72.png' ) }}"
-      } );
-   
-   $('a.thumbnail')
-      .each( function( elem ) {
-         $(this).attr( 'href', $(this).data( 'fullsize' ) );
-      } )
-      .featherlightGallery( {
-         'type': 'image',
-         'previousIcon': '<img src="{{ arrow_left }}" alt="Previous" />',
-         'nextIcon': '<img src="{{ arrow_right }}" alt="Next" />',
-      } );
-
-} );
-</script>
+<script src="{{ url_for( 'static', filename='libraries.js' ) }}"></script>
 {% endblock %}
 
 {% block sidebar %}
