@@ -40,7 +40,7 @@ class FileMeta( db.Model ):
     value = \
         db.Column( db.String( 256 ), index=False, unique=False, nullable=True )
     item_id = db.Column( db.Integer, db.ForeignKey( 'files.id' ) )
-    item = db.relationship( 'FileItem', back_populates='meta' )
+    item = db.relationship( 'FileItem', back_populates='_meta' )
 
 files_tags = db.Table( 'files_tags', db.metadata,
     db.Column( 'files_id', db.Integer, db.ForeignKey( 'files.id' ) ),
@@ -99,7 +99,7 @@ class FileItem( db.Model ):
     __tablename__ = 'files'
 
     id = db.Column( db.Integer, primary_key=True )
-    meta = db.relationship( 'FileMeta', back_populates='item' )
+    _meta = db.relationship( 'FileMeta', back_populates='item' )
     folder_id = db.Column( db.Integer, db.ForeignKey( 'folders.id' ) )
     folder = db.relationship( 'Folder', back_populates='files' )
     tag_id = db.Column( db.Integer, db.ForeignKey( 'tags.id' ) )
@@ -127,6 +127,28 @@ class FileItem( db.Model ):
 
     def __repr__( self ):
         return self.display_name
+
+    def meta( self, key, value=None ):
+        query = db.session.query( FileMeta ) \
+            .filter( FileMeta.item_id == self.id ) \
+            .filter( FileMeta.key == key )
+        all = query.all()
+        if value and 0 < len( all ):
+            # Create a new metadata item.
+            all[0].value = value
+            db.session.commit()
+
+        elif value and 0 >= len( query.all() ):
+            # Create a new metadata item.
+            meta = FileMeta( key=key, value=value, item_id=self.id )
+            db.session.add( meta )
+            db.session.commit()
+
+        elif 0 < len( all ) and not value:
+            return all[0].value
+
+        else:
+            return None
 
     @property
     def path( self ):

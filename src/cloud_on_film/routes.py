@@ -11,6 +11,7 @@ import os
 import mimetypes
 import io
 import importlib
+from multiprocessing import Pool
 
 current_app.jinja_env.globals.update( folder_from_path=Folder.from_path )
 current_app.jinja_env.globals.update( library_enumerate_all=Library.enumerate_all )
@@ -27,6 +28,31 @@ def cloud_cli_update():
     for dirpath, dirnames, filenames in os.walk:
         for dirname in dirnames:
             logger.info( dirname )
+
+def cloud_update_item_meta( item ):
+
+    def calc_gcd( a, b ):
+        if 0 == b:
+            return a
+        return calc_gcd( b, a % b )
+
+    width = int( item.meta( 'width' ) )
+    height = int( item.meta( 'height' ) )
+    aspect_r = calc_gcd( width, height )
+    aspect_w = int( width / aspect_r )
+    aspect_h = int( height / aspect_r )
+
+    if 10 == aspect_h and 16 == aspect_w:
+        item.meta( 'aspect', '16x10' )
+    elif 9 == aspect_h and 16 == aspect_w:
+        item.meta( 'aspect', '16x9' )
+    elif 3 == aspect_h and 4 == aspect_w:
+        item.meta( 'aspect', '4x3' )
+
+@current_app.cli.command( "refresh" )
+def cloud_cli_refresh():
+    with Pool( 5 ) as p:
+        p.map( cloud_update_item_meta, db.session.query( FileItem ) )
 
 @current_app.route( '/callbacks/edit', methods=['POST'] )
 def cloud_edit_filedata():

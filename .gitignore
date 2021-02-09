@@ -2,6 +2,7 @@ env
 __pycache__
 *.swp
 *.pyc
+*.db
 node_modules
 *.min.js
 *.min.css

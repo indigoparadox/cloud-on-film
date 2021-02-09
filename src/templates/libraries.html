@@ -120,6 +120,11 @@
 NSFW
 </small>
 {% endif %}
+{% if item.meta( 'aspect' ) %}
+<small class="text-muted aspect-ratio">
+{{ item.meta( 'aspect' ) }}
+</small>
+{% endif %}
 <small class="rating">
 {% for i in range( 5 ) %}
 <a href="#" class="star star-{{ i }}"

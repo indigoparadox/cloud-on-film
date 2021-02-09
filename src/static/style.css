@@ -1,4 +1,11 @@
 
+.aspect-ratio {
+    background-image: url( 'aspect-ratio-32.png' );
+    background-size: 16px;
+    background-repeat: no-repeat;
+    padding-left: 16px;
+}
+
 /* Sidebar Stuff */
 
 .sidebar {

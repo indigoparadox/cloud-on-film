@@ -1,6 +1,5 @@
 
 from flask import current_app
-from ... import libraries
 from ...models import db, Library, FileItem
 import os
 from PIL import Image
