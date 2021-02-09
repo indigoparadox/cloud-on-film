@@ -146,13 +146,6 @@ def picture( picture ):
         raise FileItemImportException( 'Unable to read picture: {}'.format(
             picture['filename'] ) )
 
-    ha = hashlib.md5()
-    with open( picture['filename'], 'rb' ) as picture_f:
-        buf = picture_f.read( 4096 )
-        while 0 < len( buf ):
-            ha.update( buf )
-            buf = picture_f.read( 4096 )
-
     st = os.stat( picture['filename'] )
 
     pic = FileItem(
@@ -161,31 +154,27 @@ def picture( picture ):
         timestamp=datetime.fromtimestamp( st[stat.ST_MTIME] ),
         filesize=st[stat.ST_SIZE],
         added=datetime.fromtimestamp( picture['time_created'] ),
-        filehash=ha.hexdigest(),
+        filehash=FileItem.hash_file( picture['filename'] ),
         filehash_algo=HashEnum.md5,
         filetype='picture',
-        comment=picture['comment'],
-        rating=picture['rating'],
         nsfw=False )
     db.session.add( pic )
     #db.session.commit()
     db.session.flush()
     db.session.refresh( pic )
 
+    if picture['comment']:
+        pic.meta( 'comment', picture['comment'] )
+
+    pic.meta( 'rating', picture['rating'] )
+
     #query = db.session.query( FileItem ) \
     #    .filter( FileItem.folder_id == folder.id ) \
     #    .filter( FileItem.display_name == display_name )
     #pic = query.first()
     assert( None != pic )
-    meta = FileMeta(
-        item_id=pic.id, key='width', value=str( im.size[0] ) )
-    db.session.add( meta )
-    #db.session.commit()
-
-    meta = FileMeta(
-        item_id=pic.id, key='height', value=str( im.size[1] ) )
-    db.session.add( meta )
-    #db.session.commit()
+    pic.meta( 'width', str( im.size[0] ) )
+    pic.meta( 'height', str( im.size[1] ) )
 
     for tag in tags:
         tag.files.append( pic )

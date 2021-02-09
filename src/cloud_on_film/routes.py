@@ -11,6 +11,7 @@ import os
 import mimetypes
 import io
 import importlib
+import re
 from multiprocessing import Pool
 
 current_app.jinja_env.globals.update( folder_from_path=Folder.from_path )
@@ -24,35 +25,45 @@ current_app.jinja_env.globals.update( url_self=url_self )
 
 @current_app.cli.command( "update" )
 def cloud_cli_update():
-    logger = logging.getLogger( 'cloud.update' )
-    for dirpath, dirnames, filenames in os.walk:
-        for dirname in dirnames:
-            logger.info( dirname )
+    for library in db.session.query( Library ):
+        library_absolute_path = library.absolute_path
+        for dirpath, dirnames, filenames in os.walk( library_absolute_path ):
+            relative_path = re.sub( '^{}'.format( library_absolute_path ), '', dirpath )
+            try:
+                assert( None != library )
+                #print( 'lib_abs: ' + library.absolute_path )
+                folder = Folder().from_path( library, relative_path )
+                #print( folder )
+            except InvalidFolderException as e:
+                print( dirpath )
+                print( relative_path )
+                current_app.logger.error( e.absolute_path )
+            except LibraryRootException as e:
+                current_app.logger.error( 'root' )
+            #for dirname in dirnames:
+            #    current_app.logger.info( dirname )
 
 def cloud_update_item_meta( item ):
-
-    def calc_gcd( a, b ):
-        if 0 == b:
-            return a
-        return calc_gcd( b, a % b )
-
-    width = int( item.meta( 'width' ) )
-    height = int( item.meta( 'height' ) )
-    aspect_r = calc_gcd( width, height )
-    aspect_w = int( width / aspect_r )
-    aspect_h = int( height / aspect_r )
-
-    if 10 == aspect_h and 16 == aspect_w:
-        item.meta( 'aspect', '16x10' )
-    elif 9 == aspect_h and 16 == aspect_w:
-        item.meta( 'aspect', '16x9' )
-    elif 3 == aspect_h and 4 == aspect_w:
-        item.meta( 'aspect', '4x3' )
+    img = item.open_image()
+    db_width = item.meta( 'width' )
+    db_height = item.meta( 'height' )
+    if img and \
+    (int( db_width ) != int( img.size[0]  ) or \
+    int( db_height ) != int( img.size[1] )):
+        current_app.logger.info( 'updating metadata for {}, width={}, height={} (from {}, {})'.format(
+            item.absolute_path, img.size[0], img.size[1], db_width, db_height ) )
+        item.meta( 'width', str( img.size[0] ) )
+        item.meta( 'height', str( img.size[1] ) )
 
 @current_app.cli.command( "refresh" )
 def cloud_cli_refresh():
-    with Pool( 5 ) as p:
-        p.map( cloud_update_item_meta, db.session.query( FileItem ) )
+    #with Pool( 5 ) as p:
+    #    res = p.map( cloud_update_item_meta, db.session.query( FileItem ) )
+    #    #db.session.commit()
+    #    print( res )
+    for item in db.session.query( FileItem ):
+        cloud_update_item_meta( item )
+    db.session.commit()
 
 @current_app.route( '/callbacks/edit', methods=['POST'] )
 def cloud_edit_filedata():

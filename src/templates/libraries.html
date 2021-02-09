@@ -33,6 +33,11 @@
 {% for tag_root in tag_roots %}
 <li class="active">
 <a href="">{{ tag_root.display_name }}</a>
+<ul>
+   {% for tag_child in tag_root.children %}
+   <li>{{ tag_child.display_name }}</li>
+   {% endfor %}
+</ul>
 </li>
 {% endfor %}
 </ul>
@@ -128,7 +133,7 @@ NSFW
 <small class="rating">
 {% for i in range( 5 ) %}
 <a href="#" class="star star-{{ i }}"
-{% if i < item.rating %}
+{% if i < item.meta( 'rating', default=0 ) %}
    style="background-image: url( {{ url_for( 'static', filename='star-gold-32.png' ) }} )"
 {% else %}
    style="background-image: url( {{ url_for( 'static', filename='star-gray-32.png' ) }} )"

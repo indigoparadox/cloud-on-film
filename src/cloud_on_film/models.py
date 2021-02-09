@@ -1,7 +1,14 @@
 
+import os
+import errno
+import stat
+import hashlib
+from sqlalchemy.orm import query
 from . import db
 from enum import Enum
 from flask import current_app
+from PIL import Image
+from datetime import datetime
 
 class HashEnum( Enum ):
     md5 = 1
@@ -11,6 +18,7 @@ class HashEnum( Enum ):
 class InvalidFolderException( Exception ):
     def __init__( self, *args, **kwargs ):
         self.display_name = kwargs['display_name'] if 'display_name' in kwargs else None
+        self.absolute_path = kwargs['absolute_path'] if 'absolute_path' in kwargs else None
         self.parent_id = kwargs['parent_id'] if 'parent_id' in kwargs else None
         self.library_id = kwargs['library_id']
         super().__init__( *args )
@@ -56,6 +64,32 @@ class TagMeta( db.Model ):
         db.Column( db.String( 256 ), index=False, unique=False, nullable=True )
     item_id = db.Column( db.Integer, db.ForeignKey( 'tags.id' ) )
     item = db.relationship( 'Tag', back_populates='meta' )
+
+    @staticmethod
+    def store_aspect( item ):
+
+        def calc_gcd( a, b ):
+            if 0 == b:
+                return a
+            return calc_gcd( b, a % b )
+
+        width = int( item.meta( 'width' ) )
+        height = int( item.meta( 'height' ) )
+        aspect_r = calc_gcd( width, height )
+        aspect_w = int( width / aspect_r )
+        aspect_h = int( height / aspect_r )
+
+        if 10 == aspect_h and 16 == aspect_w:
+            item.meta( 'aspect', '16x10' )
+        elif 9 == aspect_h and 16 == aspect_w:
+            item.meta( 'aspect', '16x9' )
+        elif 3 == aspect_h and 4 == aspect_w:
+            item.meta( 'aspect', '4x3' )
+
+    @staticmethod
+    def store_width( item ):
+        # TODO
+        pass
 
 class Tag( db.Model ):
 
@@ -118,9 +152,7 @@ class FileItem( db.Model ):
         db.String( 512 ), index=False, unique=False, nullable=False )
     filehash_algo = db.Column(
         db.Enum( HashEnum ), index=False, unique=False, nullable=False )
-    comment = db.Column( db.Text, index=False, unique=False, nullable=True )
     nsfw = db.Column( db.Boolean, index=True, unique=False, nullable=False )
-    rating = db.Column( db.Integer, index=True, unique=False, nullable=True )
 
     def __str__( self ):
         return self.display_name
@@ -128,7 +160,10 @@ class FileItem( db.Model ):
     def __repr__( self ):
         return self.display_name
 
-    def meta( self, key, value=None ):
+    def meta( self, key, value=None, default=None ):
+
+        ''' Get a piece of FileItem metadata, or set it if value != None. '''
+
         query = db.session.query( FileMeta ) \
             .filter( FileMeta.item_id == self.id ) \
             .filter( FileMeta.key == key )
@@ -148,7 +183,13 @@ class FileItem( db.Model ):
             return all[0].value
 
         else:
-            return None
+            return default
+
+    def open_image( self ):
+        im = Image.open( self.absolute_path )
+        if not im:
+            raise FileNotFoundError( errno.ENOENT, os.strerror(errno.ENOENT), self.absolute_path )
+        return im
 
     @property
     def path( self ):
@@ -157,12 +198,65 @@ class FileItem( db.Model ):
     @property
     def absolute_path( self ):
         return '/'.join( [self.folder.absolute_path, self.display_name] )
+    
+    @staticmethod
+    def hash_file( library_id, relative_path, hash_algo=HashEnum.md5 ):
+        if not isinstance( library_id, Library ):
+            library_id = Library.from_id( library_id )
+
+        # We don't need to bother with the folder, since this can just fail if the file doesn't really exist.
+        absolute_path = os.path.join( library_id.absolute_path, relative_path )
+        ha = hashlib.md5()
+        with open( absolute_path, 'rb' ) as file_f:
+            buf = file_f.read( 4096 )
+            while 0 < len( buf ):
+                ha.update( buf )
+                buf = file_f.read( 4096 )
+        return ha.hexdigest()
 
     @staticmethod
     def from_id( file_id ):
         query = db.session.query( FileItem ) \
             .filter( FileItem.id == file_id )
         return query.first()
+
+    @staticmethod
+    def from_path( library_id, relative_path ):
+        # TODO: Check if exists on FS and create FileItem if so but not in DB.
+
+        filename = os.path.basename( relative_path )
+        
+        # Get the folder from path so we're sure the folder is added to the DB before the file is.
+        folder = Folder.from_path( library_id, os.path.dirname( relative_path ) )
+        item = db.session.query( FileItem ) \
+            .filter( FileItem.folder_id == folder.id ) \
+            .filter( FileItem.display_name == os.path.basename( relative_path ) ) \
+            .first()
+
+        absolute_path = os.path.join( folder.absolute_path, filename )
+
+        if not item and not os.path.exists( absolute_path ):
+            raise FileNotFoundError( errno.ENOENT, os.strerror(errno.ENOENT), absolute_path )
+        
+        elif not item:
+            # Item doesn't exist in DB, but it does on FS, so add it to the DB.
+            st = os.stat( absolute_path )
+            current_app.logger.info( 'creating entry for file: {}'.format( absolute_path ) )
+            item = FileItem(
+                display_name=filename,
+                folder_id=folder.id,
+                timestamp=datetime.fromtimestamp( st[stat.ST_MTIME] ),
+                filesize=st[stat.ST_SIZE],
+                added=datetime.now(),
+                filehash=FileItem.hash_file( library_id, relative_path, HashEnum.md5 ),
+                filehash_algo=HashEnum.md5,
+                # TODO: Determine the file type dynamically.
+                filetype='picture',
+                nsfw=False )
+            db.session.add( item )
+            db.session.commit()
+
+        return item
 
 class FolderMeta( db.Model ):
 
@@ -220,23 +314,55 @@ class Folder( db.Model ):
         return '/'.join( [self.library.absolute_path, self.path] )
 
     @staticmethod
-    def from_path( library_id, path ):
+    def from_path( library, path ):
         if not path:
-            raise LibraryRootException( library_id=library_id )
+            raise LibraryRootException( library_id=library.id )
 
-        if isinstance( library_id, Library ):
-            library_id = library_id.id
+        if not isinstance( library, Library ):
+            library = Library.from_id( library )
 
-        path = path.split( '/' )
+        path_right = path.split( '/' )
+        path_left = []
         
         folder_iter = None
-        while( len( path ) > 0 ):
-            query = db.session.query( Folder ) \
-                .filter( Folder.library_id == library_id, Folder.display_name == path[0] )
+        parent = None
+
+        library_absolute_path = library.absolute_path
+
+        while( len( path_right ) > 0 ):
+            query = db.session.query( Folder ).filter(
+                Folder.library_id == library.id,
+                Folder.display_name == path_right[0] )
             folder_iter = query.first()
-            if not folder_iter:
-                raise InvalidFolderException( display_name=path[0], library_id=library_id )
-            path.pop( 0 )
+            
+            #print( 'path_right[0]: ' + path_right[0] )
+            #print( 'folder_iter: ' + str( folder_iter ) )
+            #print( 'parent: ' + str( parent ) )
+
+            # Use the parent's absolute path if available, otherwise use the library's.
+            absolute_path = os.path.join( library.absolute_path, path_right[0] )
+            if parent:
+                absolute_path = os.path.join( parent.absolute_path, path_right[0] )
+            
+            #print( 'abs_path: ' + absolute_path )
+            if not os.path.exists( absolute_path ) and not folder_iter:
+                # Folder does not exist on FS or in DB.
+                raise InvalidFolderException( display_name=path[0], library_id=library.id, absolute_path=absolute_path )
+            elif os.path.exists( absolute_path ) and not folder_iter:
+                # Add folder to DB if it does exist.
+                current_app.logger.info( 'creating missing DB entry for {} under {}...'.format( absolute_path, parent ) )
+                
+                # Assume we're under the root by default, but use parent if available.
+                parent_id = None
+                if parent:
+                    parent_id = parent.id
+
+                assert( library )
+                folder_iter = Folder( parent_id=parent_id, library_id=library.id, display_name=path_right[0] )
+                db.session.add( folder_iter )
+                db.session.commit()
+            path_left.append( path_right.pop( 0 ) )
+            parent = folder_iter
 
         return folder_iter
 
@@ -290,6 +416,12 @@ class Library( db.Model ):
     def from_machine_name( machine_name ):
         query = db.session.query( Library ) \
             .filter( Library.machine_name == machine_name )
+        return query.first()
+
+    @staticmethod
+    def from_id( id ):
+        query = db.session.query( Library ) \
+            .filter( Library.id == id )
         return query.first()
 
     @staticmethod
