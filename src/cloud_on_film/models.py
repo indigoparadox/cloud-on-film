@@ -185,6 +185,9 @@ class FileItem( db.Model ):
         else:
             return default
 
+    def meta_int( self, key, default=None ):
+        return int( self.meta( key, default=default ) )
+
     def open_image( self ):
         im = Image.open( self.absolute_path )
         if not im:
@@ -315,11 +318,11 @@ class Folder( db.Model ):
 
     @staticmethod
     def from_path( library, path ):
-        if not path:
-            raise LibraryRootException( library_id=library.id )
-
         if not isinstance( library, Library ):
             library = Library.from_id( library )
+
+        if not path:
+            raise LibraryRootException( library_id=library.id )
 
         path_right = path.split( '/' )
         path_left = []

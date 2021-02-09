@@ -133,7 +133,7 @@ NSFW
 <small class="rating">
 {% for i in range( 5 ) %}
 <a href="#" class="star star-{{ i }}"
-{% if i < item.meta( 'rating', default=0 ) %}
+{% if i < item.meta_int( 'rating', default=0 ) %}
    style="background-image: url( {{ url_for( 'static', filename='star-gold-32.png' ) }} )"
 {% else %}
    style="background-image: url( {{ url_for( 'static', filename='star-gray-32.png' ) }} )"
