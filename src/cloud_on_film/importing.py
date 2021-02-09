@@ -8,8 +8,7 @@ import uuid
 from flask import current_app
 from datetime import datetime
 from PIL import Image
-from . import libraries
-from .models import db, HashEnum, Folder, FileItem, Tag, FileMeta
+from .models import db, HashEnum, Folder, FileItem, Tag, FileMeta, Library
 from threading import Thread
 
 class FileItemImportException( Exception ):
@@ -36,7 +35,7 @@ class ItemImportThread( Thread ):
                 try:
                     picture( pic )
                 except FileItemImportException as e:
-                    self.logger.debug( e )
+                    self.logger.error( e )
                 idx += 1
 
 threads = {}
@@ -105,7 +104,7 @@ def picture( picture ):
     # Find matching library.
     relative_path = None
     library = None
-    for lib in libraries.enumerate_libs():
+    for lib in Library.enumerate_all():
         match = re.match(
             r'^{}\/(.*)'.format( lib.absolute_path ), picture['filename'] )
         if match:

@@ -13,9 +13,11 @@ except ImportError:
 # Setup the database stuff.
 db = SQLAlchemy()
 
-def create_app():
+def create_app( config=None ):
 
     logging.basicConfig( level=logging.INFO )
+    log_werkzeug = logging.getLogger( 'werkzeug' )
+    log_werkzeug.setLevel( logging.ERROR )
 
     ''' App factory function. Call this from the runner/WSGI. '''
 
@@ -23,9 +25,12 @@ def create_app():
         static_folder='../static', template_folder='../templates' )
 
     # Load our hybrid YAML config.
-    with app.open_instance_resource( 'config.yml', 'r' ) as config_f:
-        cfg = Config( config_f )
-        app.config.from_object( cfg )
+    if config:
+        app.config.from_object( config )
+    else:
+        with app.open_instance_resource( 'config.yml', 'r' ) as config_f:
+            cfg = Config( config_f )
+            app.config.from_object( cfg )
 
     db.init_app( app )
     

@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from cloud import create_app
+from cloud_on_film import create_app
 
 app = create_app()
 

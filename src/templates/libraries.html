@@ -13,7 +13,7 @@
 {% block sidebar %}
 
 <h2>Libraries</h2>
-{% with libraries = enumerate_libs() %}
+{% with libraries = library_enumerate_all() %}
 <ul class="libraries">
 {% for lib in libraries %}
 {% if lib.machine_name == library_name %}
@@ -28,7 +28,7 @@
 {% endwith %} <!-- /libraries -->
 
 <h2>Tags</h2>
-{% with tag_roots = enumerate_tag_roots() %}
+{% with tag_roots = tag_enumerate_roots() %}
 <ul class="tags">
 {% for tag_root in tag_roots %}
 <li class="active">
@@ -68,13 +68,13 @@
 <ul class="libraries-folders-inner">
 {% if this_folder %}
 <li class="libraries-folder libraries-parent-folder">
-<a href="{{ url_for( 'cloud_libraries', machine_name=this_folder.library.machine_name, relative_path=None ) }}/{{ build_folder_path( this_folder.id ) }}">
+<a href="{{ url_for( 'cloud_libraries', machine_name=this_folder.library.machine_name, relative_path=None ) }}/{{ this_folder.path }}">
 ..
 </a></li>
 {% endif %}
 {% for item in folders %}
 <li class="libraries-folder">
-<a href="{{ url_for( 'cloud_libraries', machine_name=item.library.machine_name, relative_path=None ) }}/{{ build_folder_path( item.id ) }}">
+<a href="{{ url_for( 'cloud_libraries', machine_name=item.library.machine_name, relative_path=None ) }}/{{ item.path }}">
 {{ item.display_name }}
 </a></li>
 {% endfor %}
@@ -88,8 +88,7 @@
 
 {% set img_href = url_for(
    'cloud_libraries', machine_name=item.folder.library.machine_name,
-   relative_path=None ) + '/' + build_folder_path( item.folder_id ) + '/' +
-   item.display_name %}
+   relative_path=None ) + '/' + item.path %}
 <div class="px-0 py-0 libraries-thumbnail-wrapper"
    data-src="{{ url_for( 'cloud_plugin_preview', file_id=item.id ) }}">
 <a href="{{ img_href }}" class="thumbnail"

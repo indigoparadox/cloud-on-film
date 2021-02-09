@@ -7,9 +7,8 @@ from PIL import Image
 
 def generate_thumbnail( file_id, size ):
 
-    query = db.session.query( FileItem ) \
-        .filter( FileItem.id == file_id )
-    item = query.first()
+    # TODO: Safety checks.
+    item = FileItem.from_id( file_id )
 
     #width = 0
     #height = 0
@@ -28,10 +27,10 @@ def generate_thumbnail( file_id, size ):
         current_app.config['THUMBNAIL_PATH'],
         '{}_{}x{}.jpg'.format( item.filehash, size[0], size[1] ) )
 
-    file_path = libraries.build_file_path( file_id, absolute_fs=True )
+    #file_path = libraries.build_file_path( file_id, absolute_fs=True )
 
     if not os.path.exists( thumb_path ):
-        im = Image.open( file_path )
+        im = Image.open( item.absolute_path )
         im.thumbnail( size, Image.ANTIALIAS )
         thumb = Image.new( 'RGB', size, (0, 0, 0) )
         thumb.paste( im,

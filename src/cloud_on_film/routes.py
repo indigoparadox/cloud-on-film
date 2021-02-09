@@ -2,10 +2,8 @@
 import logging 
 from flask import Flask, render_template, request, current_app, flash, send_file, abort, redirect, url_for, jsonify
 from sqlalchemy import exc
-from .models import db, Library, FileItem, Folder
+from .models import db, Library, FileItem, Folder, Tag, InvalidFolderException, LibraryRootException
 from .forms import NewLibraryForm, UploadLibraryForm
-from . import libraries
-from . import tags
 from .importing import start_import_thread, threads
 from werkzeug import secure_filename
 import json
@@ -14,6 +12,10 @@ import mimetypes
 import io
 import importlib
 
+current_app.jinja_env.globals.update( folder_from_path=Folder.from_path )
+current_app.jinja_env.globals.update( library_enumerate_all=Library.enumerate_all )
+current_app.jinja_env.globals.update( tag_enumerate_roots=Tag.enumerate_roots )
+
 def url_self( **args ):
     return url_for( request.endpoint, **dict( request.view_args, **args ) )
 
@@ -21,7 +23,10 @@ current_app.jinja_env.globals.update( url_self=url_self )
 
 @current_app.cli.command( "update" )
 def cloud_cli_update():
-    libraries.update()
+    logger = logging.getLogger( 'cloud.update' )
+    for dirpath, dirnames, filenames in os.walk:
+        for dirname in dirnames:
+            logger.info( dirname )
 
 @current_app.route( '/callbacks/edit', methods=['POST'] )
 def cloud_edit_filedata():
@@ -31,18 +36,15 @@ def cloud_edit_filedata():
 @current_app.route( '/preview/<int:file_id>' )
 def cloud_plugin_preview( file_id ):
 
+    '''Generate a preview thumbnail to be called by a tag src attribute on gallery pages.'''
+
     # TODO: Safety checks.
 
-    query = db.session.query( FileItem ) \
-        .filter( FileItem.id == file_id )
-    item = query.first()
+    item = FileItem.from_id( file_id )
 
     p = importlib.import_module(
-        '.plugins.{}.files'.format( item.filetype ), 'cloud' )
+        '.plugins.{}.files'.format( item.filetype ), 'cloud_on_film' )
     file_path = p.generate_thumbnail( file_id, (160, 120) )
-
-    #file_path = os.path.join(
-    #    libraries.build_file_path( file_id, absolute_fs=True ) )
 
     with open( file_path, 'rb' ) as pic_f:
         return send_file( io.BytesIO( pic_f.read() ),
@@ -55,22 +57,18 @@ def cloud_plugin_fullsize( file_id ):
 
     # TODO: Safety checks.
 
-    query = db.session.query( FileItem ) \
-        .filter( FileItem.id == file_id )
-    item = query.first()
+    item = FileItem.from_id( file_id )
 
     # TODO: Figure out display tag (img/audio/video/etc).
     #p = importlib.import_module(
-    #    '.plugins.{}.files'.format( item.filetype ), 'cloud' )
+    #    '.plugins.{}.files'.format( item.filetype ), 'cloud_on_film' )
     #file_path = p.generate_thumbnail( file_id, (160, 120) )
 
-    file_path = os.path.join(
-        libraries.build_file_path( file_id, absolute_fs=True ) )
-    file_type = mimetypes.guess_type( file_path )[0]
+    file_type = mimetypes.guess_type( item.path )[0]
     
-    logger.info( '{} mimetype: {}'.format( file_path, file_type ) )
+    logger.info( '{} mimetype: {}'.format( item.path, file_type ) )
 
-    with open( file_path, 'rb' ) as pic_f:
+    with open( item.absolute_path, 'rb' ) as pic_f:
         return send_file( io.BytesIO( pic_f.read() ), file_type )
 
 @current_app.route( '/libraries/new', methods=['GET', 'POST'] )
@@ -145,23 +143,24 @@ def cloud_libraries( machine_name=None, relative_path=None ):
             if request.args.get( 'categories' ) in ['tags', 'folders']
                 else 'folders' }
 
+    library = Library.from_machine_name( machine_name )
+    if not library:
+        abort( 404 )
+
     try:
         # Show a folder listing.
-        folders = \
-            libraries.enumerate_path_folders( machine_name, relative_path )
-        pictures = \
-            libraries.enumerate_path_pictures( machine_name, relative_path )
-
-        this_folder = libraries.get_path_folder_id( machine_name, relative_path )
-        query = db.session.query( Folder ) \
-            .filter( Folder.children.any( Folder.id == this_folder ) )
-        this_folder = query.first()
-
+        folder = Folder.from_path( library.id, relative_path )
         return render_template(
-            'libraries.html', **l_globals, folders=folders, pictures=pictures,
-            this_folder=this_folder )
+            'libraries.html', **l_globals, folders=folder.children, pictures=folder.files,
+            this_folder=folder )
 
-    except libraries.InvalidFolderException as e:
+    except LibraryRootException as e:
+        # Show the root of the given library ID.
+        return render_template(
+            'libraries.html', **l_globals, folders=library.children, pictures=[],
+            this_folder=None )
+
+    except InvalidFolderException as e:
 
         # Try to see if this is a valid file and display it if so.
         query = db.session.query( FileItem ) \
