@@ -62,7 +62,7 @@ class TestLibrary( TestCase ):
         assert( 'testing_library' == str( libs[0] ) )
 
     def test_folder_from_id( self ):
-        folder_test = Folder.from_id( self.lib.id, 1 )
+        folder_test = Folder.from_id( 1 )
         assert( folder_test.display_name == 'Foo Files 1' )
         assert( str( folder_test ) == 'Foo Files 1' )
 
