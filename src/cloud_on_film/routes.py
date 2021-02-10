@@ -170,8 +170,6 @@ def cloud_libraries_upload( id='' ):
 @current_app.route( '/libraries/<string:machine_name>/<path:relative_path>' )
 def cloud_libraries( machine_name=None, relative_path=None ):
 
-    logger = logging.getLogger( 'cloud.libraries' )
-
     l_globals = {
         'library_name': machine_name,
         'title': os.path.basename(relative_path )
@@ -218,3 +216,9 @@ def cloud_libraries( machine_name=None, relative_path=None ):
 def cloud_root():
     return render_template( 'root.html' )
 
+@current_app.route( '/tags/<path:path>' )
+def cloud_tags( path ):
+    tag = Tag.from_path( path )
+    if not tag:
+        abort( 404 )
+    return render_template( 'libraries.html', pictures=tag.files, tag_roots=[tag.parent], this_tag=tag )

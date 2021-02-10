@@ -6,6 +6,7 @@
 
 #pictures .card {
    max-width: 160px !important;
+   overflow: hidden;
 }
 
 #pictures form {

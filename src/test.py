@@ -5,7 +5,7 @@ import unittest
 from flask import Flask, current_app
 from flask_testing import TestCase
 from cloud_on_film import create_app, db
-from cloud_on_film.models import Library, Folder, FileItem
+from cloud_on_film.models import Library, Folder, FileItem, Tag
 
 class TestLibrary( TestCase ):
 
@@ -56,7 +56,27 @@ class TestLibrary( TestCase ):
         current_app.logger.info( 'created folder {} with ID {}'.format(
             folder2.display_name, folder2.id ) )
 
-        #tag1 = Tag( display_name='Testing Tag', owner_id=
+        tag_root = Tag( display_name='' )
+        db.session.add( tag_root )
+        db.session.commit()
+
+        tag_ifdy = Tag( display_name='IFDY', parent_id = tag_root.id )
+        db.session.add( tag_ifdy )
+        db.session.commit()
+
+        tag_test_1 = Tag( display_name='Test Tag 1', parent_id = tag_ifdy.id )
+        db.session.add( tag_test_1 )
+        tag_test_2 = Tag( display_name='Test Tag 2', parent_id = tag_ifdy.id )
+        db.session.add( tag_test_2 )
+        db.session.commit()
+
+        tag_sub_test_3 = Tag(
+            display_name='Sub Test Tag 3', parent_id = tag_test_1.id )
+        db.session.add( tag_sub_test_3 )
+        tag_test_alt_1 = Tag(
+            display_name='Test Tag 1', parent_id = tag_test_2.id )
+        db.session.add( tag_test_alt_1 )
+        db.session.commit()
 
     def tearDown( self ):
         db.session.remove()
@@ -100,6 +120,9 @@ class TestLibrary( TestCase ):
         assert( file1.display_name == 'test.py' )
         assert( file1.display_name != 'xxx.py' )
         assert( file1.filesize > 0 )
+
+    def test_tag_from_path( self ):
+        tag = Tag.from_path( 'IFDY/Test Tag 1/Sub Test Tag 3' )
 
 if '__main__' == __name__:
     unittest.main()

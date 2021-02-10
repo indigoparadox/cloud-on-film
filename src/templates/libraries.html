@@ -10,41 +10,6 @@
 <script src="{{ url_for( 'static', filename='libraries.js' ) }}"></script>
 {% endblock %}
 
-{% block sidebar %}
-
-<h2>Libraries</h2>
-{% with libraries = library_enumerate_all() %}
-<ul class="libraries">
-{% for lib in libraries %}
-{% if lib.machine_name == library_name %}
-<li class="active">
-{% else %}
-<li>
-{% endif %}
-<a href="{{ url_for( 'cloud_libraries', machine_name='{{ lib.machine_name }}', relative_path=None ) }}">{{ lib.display_name }}</a>
-</li>
-{% endfor %}
-</ul>
-{% endwith %} <!-- /libraries -->
-
-<h2>Tags</h2>
-{% with tag_roots = tag_enumerate_roots() %}
-<ul class="tags">
-{% for tag_root in tag_roots %}
-<li class="active">
-<a href="">{{ tag_root.display_name }}</a>
-<ul>
-   {% for tag_child in tag_root.children %}
-   <li>{{ tag_child.display_name }}</li>
-   {% endfor %}
-</ul>
-</li>
-{% endfor %}
-</ul>
-{% endwith %}
-
-{% endblock %}
-
 {% block content %}
 
 <div id="libraries-folders" class="w-100 py-3 row">

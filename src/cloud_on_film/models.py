@@ -117,6 +117,38 @@ class Tag( db.Model ):
     def __repr__( self ):
         return self.display_name
 
+    @property
+    def path( self ):
+        
+        parent_list = []
+        tag_iter = self
+
+        # Traverse the folder's parents upwards.
+        while isinstance( tag_iter, Tag ) and tag_iter.display_name:
+            parent_list.insert( 0, tag_iter.display_name )
+            tag_iter = tag_iter.parent
+
+        return '/'.join( parent_list )
+
+    @staticmethod
+    def from_path( path ):
+
+        path = [''] + path.split( '/' )
+        tag_iter = None
+        tag_parent = None
+        while 0 < len( path ):
+            tag_parent_id = None
+            if tag_parent:
+                tag_parent_id = tag_parent.id
+            tag_iter = db.session.query( Tag ) \
+                .filter( Tag.display_name == path[0] ) \
+                .filter( Tag.parent_id == tag_parent_id ) \
+                .first()
+            path.pop( 0 )
+            tag_parent = tag_iter
+
+        return tag_iter
+
     @staticmethod
     def enumerate_roots():
 
@@ -333,7 +365,12 @@ class Folder( db.Model ):
         library_absolute_path = library.absolute_path
 
         while( len( path_right ) > 0 ):
+            parent_id = None
+            if folder_iter:
+                parent_id = parent.id
+
             query = db.session.query( Folder ).filter(
+                Folder.parent_id == parent_id,
                 Folder.library_id == library.id,
                 Folder.display_name == path_right[0] )
             folder_iter = query.first()
