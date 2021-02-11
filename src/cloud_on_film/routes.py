@@ -218,25 +218,39 @@ def cloud_libraries( machine_name=None, relative_path=None ):
         return render_template(
             'file_item.html', **l_globals, file_item=file_item, tag_list=json.dumps( tags ) )
 
-@current_app.route( '/ajax/items/<int:item_id>.json')
-def cloud_item_ajax( item_id ):
+@current_app.route( '/ajax/items/<int:item_id>/save', methods=['POST'] )
+def cloud_item_ajax_save( item_id ):
+    new_tags = request.form['tags'].split( ',' )
+
+    #print( new_tags )
+    #print( [Tag.from_path( t ) for t in new_tags] )
+
     item = db.session.query( FileItem ) \
         .filter( FileItem.id == item_id ) \
-        .first() \
-        .to_dict( ignore_keys=['parent', 'folder'] )
-    print( item )
-    return jsonify( item )
+        .first()
+    del item._tags[:]
+    item.tags( append=[Tag.from_path( t ) for t in new_tags] )
+    
+    db.session.commit()
+
+    return jsonify( item.to_dict( ignore_keys=['parent', 'folder'] ) )
+
+@current_app.route( '/ajax/items/<int:item_id>/json', methods=['GET'] )
+def cloud_item_ajax_json( item_id ):
+    item = db.session.query( FileItem ) \
+        .filter( FileItem.id == item_id ) \
+        .first()
+        
+    return jsonify( item.to_dict( ignore_keys=['parent', 'folder'] ) )
 
 @current_app.route( '/ajax/tags.json')
 def cloud_tags_ajax():
     tags = db.session.query( Tag ).filter( Tag.display_name != '' ).all()
-    #tag_list = [{'displayName': t.display_name} for t in tags]
-    tag_list = [t.display_name for t in tags]
+    tag_list = [t.path for t in tags]
     return jsonify( tag_list )
 
 @current_app.route( '/tags/<path:path>' )
 def cloud_tags( path ):
-    #tags = [t.display_name for t in db.session.query( Tag ).filter( Tag.display_name != '' ).all()]
     tag = Tag.from_path( path )
     if not tag:
         abort( 404 )

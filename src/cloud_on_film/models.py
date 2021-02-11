@@ -1,5 +1,5 @@
 
-from operator import sub
+from operator import add, sub
 import os
 import errno
 import stat
@@ -112,32 +112,6 @@ class TagMeta( db.Model ):
     item_id = db.Column( db.Integer, db.ForeignKey( 'tags.id' ) )
     item = db.relationship( 'Tag', back_populates='meta' )
 
-    @staticmethod
-    def store_aspect( item ):
-
-        def calc_gcd( a, b ):
-            if 0 == b:
-                return a
-            return calc_gcd( b, a % b )
-
-        width = int( item.meta( 'width' ) )
-        height = int( item.meta( 'height' ) )
-        aspect_r = calc_gcd( width, height )
-        aspect_w = int( width / aspect_r )
-        aspect_h = int( height / aspect_r )
-
-        if 10 == aspect_h and 16 == aspect_w:
-            item.meta( 'aspect', '16x10' )
-        elif 9 == aspect_h and 16 == aspect_w:
-            item.meta( 'aspect', '16x9' )
-        elif 3 == aspect_h and 4 == aspect_w:
-            item.meta( 'aspect', '4x3' )
-
-    @staticmethod
-    def store_width( item ):
-        # TODO
-        pass
-
 class Tag( db.Model ):
 
     __tablename__ = 'tags'
@@ -153,7 +127,7 @@ class Tag( db.Model ):
     owner_id = db.Column( db.Integer, db.ForeignKey( 'users.id' ) )
     file_id = db.Column( db.Integer, db.ForeignKey( 'files.id' ) )
     files = db.relationship(
-        'FileItem', secondary=files_tags, back_populates='tags' )
+        'FileItem', secondary=files_tags, back_populates='_tags' )
     meta = db.relationship( 'TagMeta', back_populates='item' )
     children = db.relationship( 'Tag', backref=db.backref(
         'tag_parent', remote_side=[id] ) )
@@ -165,7 +139,7 @@ class Tag( db.Model ):
         return self.display_name
 
     def to_dict( self, *args, **kwargs ):
-        return str( self )
+        return self.path
 
     @property
     def path( self ):
@@ -190,13 +164,21 @@ class Tag( db.Model ):
             tag_parent_id = None
             if tag_parent:
                 tag_parent_id = tag_parent.id
+
             tag_iter = db.session.query( Tag ) \
                 .filter( Tag.display_name == path[0] ) \
                 .filter( Tag.parent_id == tag_parent_id ) \
                 .first()
+            if not tag_iter:
+                # Create the missing new tag.
+                tag_iter = Tag( parent_id=tag_parent_id, display_name=path[0] )
+                current_app.logger.info( 'creating new tag: {}'.format( tag_iter.path ) )
+                db.session.add( tag_iter )
+                db.session.commit()
+
             path.pop( 0 )
             tag_parent = tag_iter
-
+        
         return tag_iter
 
     @staticmethod
@@ -219,7 +201,7 @@ class FileItem( db.Model, JSONItemMixin ):
     folder_id = db.Column( db.Integer, db.ForeignKey( 'folders.id' ) )
     folder = db.relationship( 'Folder', back_populates='files' )
     tag_id = db.Column( db.Integer, db.ForeignKey( 'tags.id' ) )
-    tags = db.relationship(
+    _tags = db.relationship(
         'Tag', secondary=files_tags, back_populates='files' )
     display_name = db.Column(
         db.String( 256 ), index=True, unique=False, nullable=False )
@@ -234,7 +216,6 @@ class FileItem( db.Model, JSONItemMixin ):
         db.String( 512 ), index=False, unique=False, nullable=False )
     filehash_algo = db.Column(
         db.Enum( HashEnum ), index=False, unique=False, nullable=False )
-    nsfw = db.Column( db.Boolean, index=True, unique=False, nullable=False )
     status = db.Column( db.Enum( StatusEnum ) )
 
     def __str__( self ):
@@ -242,6 +223,36 @@ class FileItem( db.Model, JSONItemMixin ):
 
     def __repr__( self ):
         return self.display_name
+
+    def to_dict( self, ignore_keys=[] ):
+        dict_out = super().to_dict( ignore_keys )
+        dict_out['tags'] = [t.to_dict() for t in self.tags()]
+        del dict_out['_tags']
+        dict_out['meta'] = dict_out['_meta']
+        del dict_out['_meta']
+        dict_out['nsfw'] = False
+        if self.folder.library.auto_nsfw:
+            dict_out['nsfw'] = True
+        return dict_out
+
+    def _check_tag_heir( self, tag ):
+        if tag.parent and \
+        not '' == tag.parent.display_name and \
+        not self in tag.parent.files:
+            current_app.logger.info( 'adding parent tag {} to {}...'.format( tag.parent.path, self.absolute_path ) )
+            tag.parent.files.append( self )
+        elif tag.parent:
+            self._check_tag_heir( tag.parent )
+    
+    def tags( self, append=[] ):
+
+        for tag in append:
+            self._tags.append( tag )
+
+        for tag in self._tags:
+            self._check_tag_heir( tag )
+            
+        return self._tags
 
     def meta( self, key, value=None, default=None ):
 
@@ -276,6 +287,41 @@ class FileItem( db.Model, JSONItemMixin ):
         if not im:
             raise FileNotFoundError( errno.ENOENT, os.strerror(errno.ENOENT), self.absolute_path )
         return im
+
+    def store_aspect( self, pic=None ):
+
+        if not pic:
+            pic = self.open_image()
+
+        def calc_gcd( a, b ):
+            if 0 == b:
+                return a
+            return calc_gcd( b, a % b )
+
+        width = int( self.meta( 'width' ) )
+        if not width:
+            self.meta( 'width', pic.size[0] )
+            width = pic.size[0]
+        height = int( self.meta( 'height' ) )
+        if not height:
+            self.meta( 'height', pic.size[1] )
+            height = pic.size[1]
+        aspect_r = calc_gcd( width, height )
+        aspect_w = int( width / aspect_r )
+        aspect_h = int( height / aspect_r )
+
+        if 10 == aspect_h and 16 == aspect_w:
+            self.meta( 'aspect', '16x10' )
+        elif 9 == aspect_h and 16 == aspect_w:
+            self.meta( 'aspect', '16x9' )
+        elif 3 == aspect_h and 4 == aspect_w:
+            self.meta( 'aspect', '4x3' )
+
+    @property
+    def nsfw( self ):
+        if self.folder.library.auto_nsfw:
+            return True
+        return False
 
     @property
     def path( self ):
@@ -337,8 +383,7 @@ class FileItem( db.Model, JSONItemMixin ):
                 filehash=FileItem.hash_file( library_id, relative_path, HashEnum.md5 ),
                 filehash_algo=HashEnum.md5,
                 # TODO: Determine the file type dynamically.
-                filetype='picture',
-                nsfw=False )
+                filetype='picture' )
             db.session.add( item )
             db.session.commit()
 

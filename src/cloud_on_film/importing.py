@@ -156,8 +156,7 @@ def picture( picture ):
         added=datetime.fromtimestamp( picture['time_created'] ),
         filehash=FileItem.hash_file( picture['filename'] ),
         filehash_algo=HashEnum.md5,
-        filetype='picture',
-        nsfw=False )
+        filetype='picture' )
     db.session.add( pic )
     #db.session.commit()
     db.session.flush()
@@ -172,9 +171,7 @@ def picture( picture ):
     #    .filter( FileItem.folder_id == folder.id ) \
     #    .filter( FileItem.display_name == display_name )
     #pic = query.first()
-    assert( None != pic )
-    pic.meta( 'width', str( im.size[0] ) )
-    pic.meta( 'height', str( im.size[1] ) )
+    pic.store_aspect( pic=im )
 
     for tag in tags:
         tag.files.append( pic )

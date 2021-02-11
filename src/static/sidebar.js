@@ -17,11 +17,21 @@ $().ready( function() {
    
    $('#sidebar-inner').hide();
    $('#sidebar').css( 'width', '32px' );
+   $('#sidebar-resize').draggable( {
+      axis: 'x',
+      start: function( e ) {
+
+      },
+      stop: function( e ) {
+         //console.log( e );
+         sidebarAbsoluteSize( e.pageX );
+      }
+   } );
    if( localStorage.getItem( 'sidebarStatus' ) ) {
       sidebarOpen();
    }
 
-   var resizeOffHandler = function( e ) {
+   /*var resizeOffHandler = function( e ) {
       //console.log( e );
       $('#sidebar-resize').data( 'dragging', false );
    };
@@ -41,7 +51,7 @@ $().ready( function() {
       $('body').on( 'mouseup', resizeOffHandler );
       $('#sidebar-resize').data( 'dragging', true );
       e.preventDefault();
-   } );
+   } );*/
 } )
 
 function sidebarAbsoluteSize( sidebarWidth ) {
@@ -64,9 +74,6 @@ function sidebarOpen() {
 
    $('#sidebar-toggle').css( 'background-image', 'url( ' + flaskRoot + 'static/arrow-left-32.png )' );
    sidebarAbsoluteSize( sidebarWidth );
-   //$("#sidebar").animate( { 'width': String( sidebarWidth ) + 'px' } );
-   //$('#sidebar-resize').animate( { 'left': String( sidebarWidth ) + 'px' } );
-   //$("#main").animate( { 'margin-left': String( sidebarWidth ) + 'px' } );
    
    sidebarStatus = 1;
    window.localStorage.setItem( 'sidebarStatus', 1 );
@@ -78,9 +85,6 @@ function sidebarClose() {
 
    $('#sidebar-toggle').css( 'background-image', 'url( ' + flaskRoot + 'static/arrow-right-32.png )' );
    sidebarAbsoluteSize( 32 );
-   //$("#sidebar").animate( { 'width': '32px' } );
-   //$('#sidebar-resize').animate( { 'left': '32px' } );
-   //$("#main").animate( { 'margin-left': '0' } );
 
    sidebarStatus = 0;
    window.localStorage.setItem( 'sidebarStatus', 1 );

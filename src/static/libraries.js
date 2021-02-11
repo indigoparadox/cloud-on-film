@@ -1,4 +1,6 @@
 
+var tagnames;
+
 $().ready( function() {
    $('.libraries-thumbnail-wrapper')
       .on( 'loading.unveil', function() {
@@ -24,28 +26,35 @@ $().ready( function() {
          'nextIcon': '<img src="' + flaskRoot + 
             'static/arrow-right-64.png" alt="Next" />',
       } );
- } );
-
-function renameItem( id ) {
-
-   $.getJSON( flaskRoot + 'ajax/items/' + id.toString() + '.json', function( data ) {
-      console.log( data );
 
       // Setup tags autocomplete.
-      var tagnames = new Bloodhound({
-         datumTokenizer: Bloodhound.tokenizers.obj.whitespace( 'name' ),
+      tagnames = new Bloodhound({
+         datumTokenizer: function( d ) {
+            var tokens = d.name.split( /[\s\/]+/ );
+            //console.log( tokens );
+            return tokens;
+         },
          queryTokenizer: Bloodhound.tokenizers.whitespace,
          prefetch: {
             url: flaskRoot + 'ajax/tags.json',
             filter: function( list ) {
                return $.map( list, function( tagname ) {
-                  return { name: tagname }; });
+                  return { name: tagname }; 
+               } );
             }
          }
       });
+
+      tagnames.clearPrefetchCache();
       tagnames.initialize();
+ } );
+
+function renameItem( id ) {
+
+   $.getJSON( flaskRoot + 'ajax/items/' + id.toString() + '/json', function( data ) {
+      console.log( data );
       
-      $('#modal-input-tags > input').tagsinput( {
+      $('#modal-input-tags').tagsinput( {
          tagClass: function( name ) {
             return 'bg-dark';
          },
@@ -57,12 +66,38 @@ function renameItem( id ) {
          }
       } );
 
-      $('#modal-input-tags > input').tagsinput( 'removeAll' );
+      $('#modal-id').val( id );
+      $('#modal-input-tags').tagsinput( 'removeAll' );
       for( const tag_idx in data['tags'] ) {
+         $('#modal-input-tags').tagsinput( 'add', data['tags'][tag_idx] );
+      }
+      $('#modal-input-name').val( data['display_name'] );
+      var img_preview_tag = $('<img src="' + flaskRoot + 'preview/' + data['id'] + '" class="" style="display: none;" />');
+      $('#modal-form-preview').empty();
+      $('#modal-form-preview').append( img_preview_tag );
+      $('#modal-form-preview img').one( 'load', function( e ) {
+         $(this).fadeIn();
+      } );
 
-         $('#modal-input-tags > input').tagsinput( 'add', data['tags'][tag_idx] );
-   
-         $('#editModal').modal( 'show' );
+      $('#editModal').modal( 'show' );
+   } );
+
+   return false;
+}
+
+function saveRename() {
+
+   var id = $('#modal-id').val();
+   $.ajax( {
+      url: flaskRoot + 'ajax/items/' + id.toString() + '/save',
+      /* data: {
+         'tags': $('#modal-input-tags > input').tagsinput( 'items' )
+      }, */
+      data: $('#modal-form-rename').serialize(),
+      type: 'POST',
+      success: function( data ) {
+         console.log( data );
+         $('#editModal').modal( 'hide' );
       }
    } );
 

@@ -13,10 +13,17 @@ module.exports = function( grunt ) {
          jqueryuijs: {
             files: [{
                src: [
-                  'node_modules/jquery-ui/ui/jquery-1-7.js',
-                  'node_modules/jquery-ui/ui/unique-id.js',
-                  'node_modules/jquery-ui/ui/effect.js',
+                  //'node_modules/jquery-ui/ui/jquery-1-7.js',
                   'node_modules/jquery-ui/ui/widget.js',
+                  'node_modules/jquery-ui/ui/widgets/mouse.js',
+                  'node_modules/jquery-ui/ui/unique-id.js',
+                  'node_modules/jquery-ui/ui/data.js',
+                  //'node_modules/jquery-ui/ui/effect.js',
+                  'node_modules/jquery-ui/ui/plugin.js',
+                  'node_modules/jquery-ui/ui/safe-active-element.js',
+                  'node_modules/jquery-ui/ui/safe-blur.js',
+                  'node_modules/jquery-ui/ui/scroll-parent.js',
+                  'node_modules/jquery-ui/ui/version.js',
                   //'node_modules/jquery-ui/ui/keycode.js',
                   //'node_modules/jquery-ui/ui/labels.js',
                   //'node_modules/jquery-ui/ui/position.js',
@@ -24,7 +31,25 @@ module.exports = function( grunt ) {
                   //'node_modules/jquery-ui/ui/tabbable.js',
                   //'node_modules/jquery-ui/ui/form-reset-mixin.js',
                   //'node_modules/jquery-ui/ui/effects/*.js',
-                  //'node_modules/jquery-ui/ui/widgets/*.js'
+                  //'node_modules/jquery-ui/ui/widgets/accordion.js',
+                  //'node_modules/jquery-ui/ui/widgets/autocomplete.js',
+                  //'node_modules/jquery-ui/ui/widgets/button.js',
+                  //'node_modules/jquery-ui/ui/widgets/checkboxradio.js',
+                  //'node_modules/jquery-ui/ui/widgets/controlgroup.js',
+                  //'node_modules/jquery-ui/ui/widgets/datepicker.js',
+                  //'node_modules/jquery-ui/ui/widgets/dialog.js',
+                  'node_modules/jquery-ui/ui/widgets/draggable.js',
+                  //'node_modules/jquery-ui/ui/widgets/droppable.js',
+                  //'node_modules/jquery-ui/ui/widgets/menu.js',
+                  //'node_modules/jquery-ui/ui/widgets/progressbar.js',
+                  //'node_modules/jquery-ui/ui/widgets/resizable.js',
+                  //'node_modules/jquery-ui/ui/widgets/selectable.js',
+                  //'node_modules/jquery-ui/ui/widgets/selectmenu.js',
+                  //'node_modules/jquery-ui/ui/widgets/slider.js',
+                  //'node_modules/jquery-ui/ui/widgets/sortable.js',
+                  //'node_modules/jquery-ui/ui/widgets/spinner.js',
+                  //'node_modules/jquery-ui/ui/widgets/tabs.js',
+                  //'node_modules/jquery-ui/ui/widgets/tooltip.js'
                ],
                dest: 'node_modules/jquery-ui/dist/jquery-ui.js'
             }]
