@@ -1,9 +1,11 @@
 
+from operator import sub
 import os
 import errno
 import stat
 import hashlib
 from sqlalchemy.orm import query
+from sqlalchemy.inspection import inspect
 from . import db
 from enum import Enum
 from flask import current_app
@@ -13,7 +15,10 @@ from datetime import datetime
 class HashEnum( Enum ):
     md5 = 1
     sha128 = 2
-    sha256 = 3
+    sha256 = 3    
+
+class StatusEnum( Enum ):
+    missing = 1
 
 class InvalidFolderException( Exception ):
     def __init__( self, *args, **kwargs ):
@@ -28,7 +33,46 @@ class LibraryRootException( Exception ):
         self.library_id = kwargs['library_id']
         super().__init__( *args )
 
-class User( db.Model ):
+class JSONItemMixin( object ):
+
+    def to_dict( self, ignore_keys=[] ):
+        dict_out = {}
+        for key in inspect( self ).attrs.keys():
+            if key in ignore_keys:
+                continue
+
+            val = getattr( self, key )
+
+            if isinstance( val, list ):
+                if 0 < len( val ) and \
+                hasattr( val[0], 'to_dict' ):
+                    # Found a list of items.
+                    if isinstance( val[0].to_dict(), tuple ) and \
+                    len( val[0].to_dict() ) == 2:
+                        # Translate list of tuples into a dict.
+                        dict_out[key] = {}
+                        for item in val:
+                            tuple_out = item.to_dict()
+                            dict_out[key][tuple_out[0]] = tuple_out[1]
+                    else:
+                        # Just translate the list.
+                        dict_out[key] = []
+                        for item in val:
+                            dict_out[key].append( item.to_dict( ignore_keys=ignore_keys ) )
+                else:
+                    dict_out[key] = None
+
+            elif isinstance( val, Enum ):
+                dict_out[key] = str( val )
+
+            else:
+                dict_out[key] = val
+
+            #print( dict_out )
+
+        return dict_out
+
+class User( db.Model, JSONItemMixin ):
 
     __tablename__ = 'users'
 
@@ -49,6 +93,9 @@ class FileMeta( db.Model ):
         db.Column( db.String( 256 ), index=False, unique=False, nullable=True )
     item_id = db.Column( db.Integer, db.ForeignKey( 'files.id' ) )
     item = db.relationship( 'FileItem', back_populates='_meta' )
+
+    def to_dict( self, *args, **kwargs ):
+        return (self.key, self.value)
 
 files_tags = db.Table( 'files_tags', db.metadata,
     db.Column( 'files_id', db.Integer, db.ForeignKey( 'files.id' ) ),
@@ -117,6 +164,9 @@ class Tag( db.Model ):
     def __repr__( self ):
         return self.display_name
 
+    def to_dict( self, *args, **kwargs ):
+        return str( self )
+
     @property
     def path( self ):
         
@@ -160,7 +210,7 @@ class Tag( db.Model ):
 
         return query.all()
 
-class FileItem( db.Model ):
+class FileItem( db.Model, JSONItemMixin ):
 
     __tablename__ = 'files'
 
@@ -185,6 +235,7 @@ class FileItem( db.Model ):
     filehash_algo = db.Column(
         db.Enum( HashEnum ), index=False, unique=False, nullable=False )
     nsfw = db.Column( db.Boolean, index=True, unique=False, nullable=False )
+    status = db.Column( db.Enum( StatusEnum ) )
 
     def __str__( self ):
         return self.display_name
@@ -291,6 +342,12 @@ class FileItem( db.Model ):
             db.session.add( item )
             db.session.commit()
 
+        elif not os.path.exists( absolute_path ):
+            # Item doesn't exist on FS even though it does on FS, so mark it missing.
+            current_app.logger.warn( 'file missing: {}'.format( absolute_path ) )
+            item.status = StatusEnum.missing
+            db.session.commit()
+
         return item
 
 class FolderMeta( db.Model ):
@@ -304,7 +361,7 @@ class FolderMeta( db.Model ):
     item_id = db.Column( db.Integer, db.ForeignKey( 'folders.id' ) )
     item = db.relationship( 'Folder', back_populates='meta' )
 
-class Folder( db.Model ):
+class Folder( db.Model, JSONItemMixin ):
 
     __tablename__ = 'folders'
 
@@ -321,6 +378,7 @@ class Folder( db.Model ):
     meta = db.relationship( 'FolderMeta', back_populates='item' )
     children = db.relationship( 'Folder', backref=db.backref(
         'folder_parent', remote_side=[id] ) )
+    status = db.Column( db.Enum( StatusEnum ) )
         
     def __str__( self ):
         return self.display_name
@@ -429,7 +487,7 @@ class LibraryMeta( db.Model ):
     item_id = db.Column( db.Integer, db.ForeignKey( 'libraries.id' ) )
     item = db.relationship( 'Library', back_populates='meta' )
 
-class Library( db.Model ):
+class Library( db.Model, JSONItemMixin ):
 
     __tablename__ = 'libraries'
 

@@ -2,17 +2,20 @@
 <html>
 <head>
 <title>{{ title }}</title>
-<link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.3.1/css/bootstrap.css" />
 <script type="text/javascript">var flaskRoot = "{{ url_for( 'cloud_root' ) }}";</script>
-<script src="https://code.jquery.com/jquery-3.3.1.min.js" crossorigin="anonymous"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js" integrity="sha512-uto9mlQzrs59VwILcLiRYeLKPPbS/bT71da/OEBYEwcdNUk8jYIy+D176RYoop1Da+f9mvkYrmj5MCLZWEtQuA==" crossorigin="anonymous"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
-<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
+<script src="{{ url_for( 'static', filename='jquery.min.js' ) }}"></script>
+<script src="{{ url_for( 'static', filename='jquery-ui.js' ) }}"></script>
+<script src="{{ url_for( 'static', filename='popper.min.js' ) }}"></script>
+<script src="{{ url_for( 'static', filename='bootstrap.min.js' ) }}"></script>
 <script src="{{ url_for( 'static', filename='sidebar.js' ) }}"></script>
+<link rel="stylesheet" href="{{ url_for( 'static', filename='base.min.css' ) }}" />
+<link rel="stylesheet" href="{{ url_for( 'static', filename='bootstrap.min.css' ) }}" />
 <link rel="stylesheet" href="{{ url_for( 'static', filename='style.css' ) }}" />
 {% block scripts %}{% endblock %}
 </head>
 <body class="h-100 bg-dark">
+
+{% block modals %}{% endblock %}
 
 {% if not no_sidebar %}
 <div id="sidebar" class="sidebar h-100 bg-secondary">

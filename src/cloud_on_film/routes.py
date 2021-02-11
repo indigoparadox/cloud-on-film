@@ -2,7 +2,7 @@
 import logging 
 from flask import Flask, render_template, request, current_app, flash, send_file, abort, redirect, url_for, jsonify
 from sqlalchemy import exc
-from .models import db, Library, FileItem, Folder, Tag, InvalidFolderException, LibraryRootException
+from .models import StatusEnum, db, Library, FileItem, Folder, Tag, InvalidFolderException, LibraryRootException
 from .forms import NewLibraryForm, UploadLibraryForm
 from .importing import start_import_thread, threads
 from werkzeug import secure_filename
@@ -44,6 +44,10 @@ def cloud_cli_update():
             #    current_app.logger.info( dirname )
 
 def cloud_update_item_meta( item ):
+    if not os.path.exists( item.absolute_path ):
+        current_app.logger.warn( 'file missing: {}'.format( item.absolute_path ) )
+        item.status = StatusEnum.missing
+        return
     img = item.open_image()
     db_width = item.meta( 'width' )
     db_height = item.meta( 'height' )
@@ -182,18 +186,20 @@ def cloud_libraries( machine_name=None, relative_path=None ):
     if not library:
         abort( 404 )
 
+    tags = [t.display_name for t in db.session.query( Tag ).filter( Tag.display_name != '' ).all()]
+    
     try:
         # Show a folder listing.
         folder = Folder.from_path( library.id, relative_path )
         return render_template(
             'libraries.html', **l_globals, folders=folder.children, pictures=folder.files,
-            this_folder=folder )
+            this_folder=folder, tag_list=json.dumps( tags ) )
 
     except LibraryRootException as e:
         # Show the root of the given library ID.
         return render_template(
             'libraries.html', **l_globals, folders=library.children, pictures=[],
-            this_folder=None )
+            this_folder=None, tag_list=json.dumps( tags ) )
 
     except InvalidFolderException as e:
 
@@ -210,15 +216,33 @@ def cloud_libraries( machine_name=None, relative_path=None ):
             abort( 403 )
 
         return render_template(
-            'file_item.html', **l_globals, file_item=file_item )
+            'file_item.html', **l_globals, file_item=file_item, tag_list=json.dumps( tags ) )
+
+@current_app.route( '/ajax/items/<int:item_id>.json')
+def cloud_item_ajax( item_id ):
+    item = db.session.query( FileItem ) \
+        .filter( FileItem.id == item_id ) \
+        .first() \
+        .to_dict( ignore_keys=['parent', 'folder'] )
+    print( item )
+    return jsonify( item )
+
+@current_app.route( '/ajax/tags.json')
+def cloud_tags_ajax():
+    tags = db.session.query( Tag ).filter( Tag.display_name != '' ).all()
+    #tag_list = [{'displayName': t.display_name} for t in tags]
+    tag_list = [t.display_name for t in tags]
+    return jsonify( tag_list )
+
+@current_app.route( '/tags/<path:path>' )
+def cloud_tags( path ):
+    #tags = [t.display_name for t in db.session.query( Tag ).filter( Tag.display_name != '' ).all()]
+    tag = Tag.from_path( path )
+    if not tag:
+        abort( 404 )
+    return render_template( 'libraries.html', pictures=tag.files, tag_roots=[tag.parent], this_tag=tag )
 
 @current_app.route( '/' )
 def cloud_root():
     return render_template( 'root.html' )
 
-@current_app.route( '/tags/<path:path>' )
-def cloud_tags( path ):
-    tag = Tag.from_path( path )
-    if not tag:
-        abort( 404 )
-    return render_template( 'libraries.html', pictures=tag.files, tag_roots=[tag.parent], this_tag=tag )

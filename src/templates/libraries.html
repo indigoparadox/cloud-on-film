@@ -1,13 +1,38 @@
 {% extends 'base.html' %}
 
 {% block scripts %}
+<link rel="stylesheet" href="{{ url_for( 'static', filename='bootstrap-tagsinput.css' ) }}" />
 <link rel="stylesheet" href="{{ url_for( 'static', filename='featherlight.min.css' ) }}" />
 <link rel="stylesheet" href="{{ url_for( 'static', filename='featherlight.gallery.min.css' ) }}" />
 <link rel="stylesheet" href="{{ url_for( 'static', filename='gallery.css' ) }}" />
+<script src="{{ url_for( 'static', filename='typeahead.bundle.min.js' ) }}"></script>
+<script src="{{ url_for( 'static', filename='bootstrap-tagsinput.min.js' ) }}"></script>
 <script src="{{ url_for( 'static', filename='jquery.unveil2.min.js' ) }}"></script>
 <script src="{{ url_for( 'static', filename='featherlight.min.js' ) }}"></script>
 <script src="{{ url_for( 'static', filename='featherlight.gallery.min.js' ) }}"></script>
 <script src="{{ url_for( 'static', filename='libraries.js' ) }}"></script>
+{% endblock %}
+
+{% block modals %}
+<div class="modal fade" id="editModal" role="dialog">
+<div class="modal-dialog modal-dialog-centered">
+   <div class="modal-content bg-dark">
+      <div class="modal-header">
+         <h5 class="modal-title">Edit</h5>
+      </div>
+      <div class="modal-body">
+
+         <div id="modal-input-tags">
+         <input type="text" />
+         </div>
+
+      </div>
+      <div class="modal-footer">
+         <button type="button" class="btn btn-secondary">Save Changes</button>
+      </div>
+   </div>
+</div>
+</div>
 {% endblock %}
 
 {% block content %}
@@ -95,6 +120,8 @@ NSFW
 {{ item.meta( 'aspect' ) }}
 </small>
 {% endif %}
+<!-- <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#editModal" data-file-id="{{ item.id }}">Edit</button> -->
+<a href="#" onclick="return renameItem( {{ item.id }} );">Edit</a>
 <small class="rating">
 {% for i in range( 5 ) %}
 <a href="#" class="star star-{{ i }}"
