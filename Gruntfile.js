@@ -57,8 +57,8 @@ module.exports = function( grunt ) {
       },
       copy: {
          main: {
-            files: [
-               {expand: true, src: [
+            files: [ {
+               expand: true, src: [
                   'node_modules/jquery/dist/jquery.min.js',
                   'node_modules/bootstrap/dist/js/bootstrap.min.js',
                   'node_modules/bootstrap-tagsinput/dist/bootstrap-tagsinput.min.js',
@@ -71,9 +71,12 @@ module.exports = function( grunt ) {
                   'node_modules/featherlight/release/featherlight.min.js',
                   'node_modules/featherlight/release/featherlight.gallery.min.css',
                   'node_modules/featherlight/release/featherlight.gallery.min.js',
-                  'node_modules/jquery-ui/dist/jquery-ui.js'
-               ],
-               dest: static_dir, flatten: true},
+                  'node_modules/jquery-ui/dist/jquery-ui.js',
+                  'node_modules/jstree/dist/jstree.min.js',
+               ], dest: static_dir, flatten: true },
+               {expand: true, src: [
+                  'node_modules/jstree/dist/themes/default-dark/*',
+               ], dest: static_dir + '/default-dark', flatten: true },
             ]
          }
       },

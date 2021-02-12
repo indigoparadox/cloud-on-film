@@ -2,7 +2,7 @@
 import logging 
 from flask import Flask, render_template, request, current_app, flash, send_file, abort, redirect, url_for, jsonify
 from sqlalchemy import exc
-from .models import StatusEnum, db, Library, FileItem, Folder, Tag, InvalidFolderException, LibraryRootException
+from .models import LibraryPermissionsException, StatusEnum, db, Library, FileItem, Folder, Tag, InvalidFolderException, LibraryRootException
 from .forms import NewLibraryForm, UploadLibraryForm
 from .importing import start_import_thread, threads
 from werkzeug import secure_filename
@@ -79,9 +79,11 @@ def cloud_plugin_preview( file_id ):
 
     '''Generate a preview thumbnail to be called by a tag src attribute on gallery pages.'''
 
-    # TODO: Safety checks.
-
     item = FileItem.from_id( file_id )
+
+    # Safety checks.
+    if not item.folder.library.is_accessible():
+        abort( 403 )
 
     p = importlib.import_module(
         '.plugins.{}.files'.format( item.filetype ), 'cloud_on_film' )
@@ -94,11 +96,11 @@ def cloud_plugin_preview( file_id ):
 @current_app.route( '/fullsize/<int:file_id>' )
 def cloud_plugin_fullsize( file_id ):
 
-    logger = logging.getLogger( 'cloud.plugin.fullsize' )
-
-    # TODO: Safety checks.
-
     item = FileItem.from_id( file_id )
+
+    # Safety checks.
+    if not item.folder.library.is_accessible():
+        abort( 403 )
 
     # TODO: Figure out display tag (img/audio/video/etc).
     #p = importlib.import_module(
@@ -107,7 +109,7 @@ def cloud_plugin_fullsize( file_id ):
 
     file_type = mimetypes.guess_type( item.path )[0]
     
-    logger.info( '{} mimetype: {}'.format( item.path, file_type ) )
+    current_app.logger.debug( '{} mimetype: {}'.format( item.path, file_type ) )
 
     with open( item.absolute_path, 'rb' ) as pic_f:
         return send_file( io.BytesIO( pic_f.read() ), file_type )
@@ -115,7 +117,6 @@ def cloud_plugin_fullsize( file_id ):
 @current_app.route( '/libraries/new', methods=['GET', 'POST'] )
 def cloud_libraries_new():
 
-    logger = logging.getLogger( 'cloud.library.new' )
     form = NewLibraryForm( request.form )
 
     if 'POST' == request.method and form.validate():
@@ -131,7 +132,7 @@ def cloud_libraries_new():
             db.session.commit()
             flash( 'Library created.' )
         except exc.IntegrityError as e:
-            logger.error( e )
+            current_app.logger.error( e )
             flash( e )
             db.session.rollback()
 
@@ -146,7 +147,6 @@ def cloud_libraries_new():
 @current_app.route( '/libraries/upload/<id>', methods=['GET', 'POST'] )
 def cloud_libraries_upload( id='' ):
 
-    logger = logging.getLogger( 'cloud.library.upload' )
     form = UploadLibraryForm( request.form )
 
     title = 'Upload Library Data'
@@ -182,7 +182,10 @@ def cloud_libraries( machine_name=None, relative_path=None ):
             if request.args.get( 'categories' ) in ['tags', 'folders']
                 else 'folders' }
 
-    library = Library.from_machine_name( machine_name )
+    try:
+        library = Library.from_machine_name( machine_name )
+    except LibraryPermissionsException as e:
+        abort( 403 )
     if not library:
         abort( 404 )
 
@@ -243,6 +246,19 @@ def cloud_item_ajax_json( item_id ):
         
     return jsonify( item.to_dict( ignore_keys=['parent', 'folder'] ) )
 
+@current_app.route( '/ajax/folders' )
+@current_app.route( '/ajax/folders/<int:folder_id>' )
+def cloud_folders_ajax( folder_id=None ):
+
+    folder = db.session.query( Folder )
+    if folder_id:
+        folder = folder.filter( Folder.id == folder_id )
+    folder = folder.first()
+
+    print( folder.to_dict( ignore_keys=['parent'], max_depth=2 ) )
+
+    return jsonify( folder.to_dict( ignore_keys=['parent', 'folder_parent', 'library'], max_depth=2 ) )
+
 @current_app.route( '/ajax/tags.json')
 def cloud_tags_ajax():
     tags = db.session.query( Tag ).filter( Tag.display_name != '' ).all()
@@ -254,7 +270,7 @@ def cloud_tags( path ):
     tag = Tag.from_path( path )
     if not tag:
         abort( 404 )
-    return render_template( 'libraries.html', pictures=tag.files, tag_roots=[tag.parent], this_tag=tag )
+    return render_template( 'libraries.html', pictures=tag.files(), tag_roots=[tag.parent], this_tag=tag )
 
 @current_app.route( '/' )
 def cloud_root():

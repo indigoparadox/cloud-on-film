@@ -79,6 +79,17 @@ function renameItem( id ) {
          $(this).fadeIn();
       } );
 
+      $('#modal-input-move').jstree( {
+         core: {
+            data: {
+               url: flaskRoot + 'ajax/folders',
+               data: function( node ) {
+                  return {  id: node.id };
+               }
+            }
+         }
+      } );
+
       $('#editModal').modal( 'show' );
    } );
 

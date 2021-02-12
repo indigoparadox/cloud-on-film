@@ -5,9 +5,11 @@
 <link rel="stylesheet" href="{{ url_for( 'static', filename='featherlight.min.css' ) }}" />
 <link rel="stylesheet" href="{{ url_for( 'static', filename='featherlight.gallery.min.css' ) }}" />
 <link rel="stylesheet" href="{{ url_for( 'static', filename='gallery.css' ) }}" />
+<link rel="stylesheet" href="{{ url_for( 'static', filename='default-dark/style.min.css' ) }}" />
 <script src="{{ url_for( 'static', filename='typeahead.bundle.min.js' ) }}"></script>
 <script src="{{ url_for( 'static', filename='bootstrap-tagsinput.min.js' ) }}"></script>
 <script src="{{ url_for( 'static', filename='jquery.unveil2.min.js' ) }}"></script>
+<script src="{{ url_for( 'static', filename='jstree.min.js' ) }}"></script>
 <script src="{{ url_for( 'static', filename='featherlight.min.js' ) }}"></script>
 <script src="{{ url_for( 'static', filename='featherlight.gallery.min.js' ) }}"></script>
 <script src="{{ url_for( 'static', filename='libraries.js' ) }}"></script>
@@ -43,6 +45,7 @@
                   <textarea id="modal-input-comment" name="comment" class="form-control"></textarea>
                   <input type="hidden" id="modal-id" name="id" value="" />
                </div>
+               <div id="modal-input-move"></div>
             </form>
          </div>
          </div>

@@ -121,7 +121,7 @@ def picture( picture ):
 
     # Spelunk into folders starting from the library we found.
     folder_relative_path = os.path.dirname( relative_path )
-    folder = path( folder_relative_path, library_id=lib.id )
+    folder = path( folder_relative_path, library_id=library.id )
 
     #tags = []
     #for tag_path in picture['tags']:
@@ -163,12 +163,6 @@ def picture( picture ):
         db.session.refresh( pic )
 
         pic.tags( append=[Tag.from_path( t ) for t in picture['tags']] )
-
-        print( 'xxx' )
-        print( 'xxx' )
-        print( [t.path for t in pic.tags()] )
-        print( 'xxx' )
-        print( 'xxx' )
 
         if picture['comment']:
             pic.meta( 'comment', picture['comment'] )

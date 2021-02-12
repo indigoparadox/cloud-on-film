@@ -4,6 +4,7 @@ import os
 import errno
 import stat
 import hashlib
+import shutil
 from sqlalchemy.orm import query
 from sqlalchemy.inspection import inspect
 from . import db
@@ -33,10 +34,23 @@ class LibraryRootException( Exception ):
         self.library_id = kwargs['library_id']
         super().__init__( *args )
 
+class LibraryPermissionsException( Exception ):
+    def __init__( self, *args, **kwargs ):
+        self.library_id = kwargs['library_id']
+        super().__init__( *args )
+
+class MaxDepthException( Exception ):
+    def __init__( self, *args, **kwargs ):
+        super().__init__( *args, **kwargs )
+
 class JSONItemMixin( object ):
 
-    def to_dict( self, ignore_keys=[] ):
+    def to_dict( self, ignore_keys=[], max_depth=-1 ):
         dict_out = {}
+
+        if 0 == max_depth:
+            raise MaxDepthException
+
         for key in inspect( self ).attrs.keys():
             if key in ignore_keys:
                 continue
@@ -46,19 +60,24 @@ class JSONItemMixin( object ):
             if isinstance( val, list ):
                 if 0 < len( val ) and \
                 hasattr( val[0], 'to_dict' ):
-                    # Found a list of items.
-                    if isinstance( val[0].to_dict(), tuple ) and \
-                    len( val[0].to_dict() ) == 2:
-                        # Translate list of tuples into a dict.
-                        dict_out[key] = {}
-                        for item in val:
-                            tuple_out = item.to_dict()
-                            dict_out[key][tuple_out[0]] = tuple_out[1]
-                    else:
-                        # Just translate the list.
-                        dict_out[key] = []
-                        for item in val:
-                            dict_out[key].append( item.to_dict( ignore_keys=ignore_keys ) )
+                    try:
+                        # Found a list of items.
+                        if isinstance( val[0].to_dict(), tuple ) and \
+                        len( val[0].to_dict() ) == 2:
+                            # Translate list of tuples into a dict.
+                            dict_out[key] = {}
+                            for item in val:
+                                tuple_out = item.to_dict( ignore_keys=ignore_keys, max_depth=(max_depth - 1) )
+                                dict_out[key][tuple_out[0]] = tuple_out[1]
+
+                        else:
+                            # Just translate the list.
+                            dict_out[key] = []
+                            for item in val:
+                                dict_out[key].append( item.to_dict( ignore_keys=ignore_keys, max_depth=(max_depth - 1) ) )
+
+                    except MaxDepthException:
+                        dict_out[key] = None
                 else:
                     dict_out[key] = None
 
@@ -70,7 +89,13 @@ class JSONItemMixin( object ):
 
             #print( dict_out )
 
+        assert( not 'type' in dict_out )
+        dict_out['type'] = str( type( self ) )
+
         return dict_out
+
+#class UserMeta( db.Model ):
+#    pass
 
 class User( db.Model, JSONItemMixin ):
 
@@ -112,6 +137,9 @@ class TagMeta( db.Model ):
     item_id = db.Column( db.Integer, db.ForeignKey( 'tags.id' ) )
     item = db.relationship( 'Tag', back_populates='meta' )
 
+    def to_dict( self, *args, **kwargs ):
+        return (self.key, self.value)
+
 class Tag( db.Model ):
 
     __tablename__ = 'tags'
@@ -126,7 +154,7 @@ class Tag( db.Model ):
     owner = db.relationship( 'User', back_populates='tags' )
     owner_id = db.Column( db.Integer, db.ForeignKey( 'users.id' ) )
     file_id = db.Column( db.Integer, db.ForeignKey( 'files.id' ) )
-    files = db.relationship(
+    _files = db.relationship(
         'FileItem', secondary=files_tags, back_populates='_tags' )
     meta = db.relationship( 'TagMeta', back_populates='item' )
     children = db.relationship( 'Tag', backref=db.backref(
@@ -140,6 +168,9 @@ class Tag( db.Model ):
 
     def to_dict( self, *args, **kwargs ):
         return self.path
+
+    def files( self ):
+        return [f for f in self._files if f.folder.library.is_accessible()]
 
     @property
     def path( self ):
@@ -202,7 +233,7 @@ class FileItem( db.Model, JSONItemMixin ):
     folder = db.relationship( 'Folder', back_populates='files' )
     tag_id = db.Column( db.Integer, db.ForeignKey( 'tags.id' ) )
     _tags = db.relationship(
-        'Tag', secondary=files_tags, back_populates='files' )
+        'Tag', secondary=files_tags, back_populates='_files' )
     display_name = db.Column(
         db.String( 256 ), index=True, unique=False, nullable=False )
     filetype= db.Column(
@@ -224,9 +255,9 @@ class FileItem( db.Model, JSONItemMixin ):
     def __repr__( self ):
         return self.display_name
 
-    def to_dict( self, ignore_keys=[] ):
-        dict_out = super().to_dict( ignore_keys )
-        dict_out['tags'] = [t.to_dict() for t in self.tags()]
+    def to_dict( self, *args, **kwargs ):
+        dict_out = super().to_dict( *args, **kwargs )
+        dict_out['tags'] = [t.to_dict( *args, **kwargs ) for t in self.tags()]
         del dict_out['_tags']
         dict_out['meta'] = dict_out['_meta']
         del dict_out['_meta']
@@ -238,9 +269,9 @@ class FileItem( db.Model, JSONItemMixin ):
     def _check_tag_heir( self, tag ):
         if tag.parent and \
         not '' == tag.parent.display_name and \
-        not self in tag.parent.files:
+        not self in tag.parent.files():
             current_app.logger.info( 'adding parent tag {} to {}...'.format( tag.parent.path, self.absolute_path ) )
-            tag.parent.files.append( self )
+            tag.parent._files.append( self )
         elif tag.parent:
             self._check_tag_heir( tag.parent )
     
@@ -282,10 +313,27 @@ class FileItem( db.Model, JSONItemMixin ):
     def meta_int( self, key, default=None ):
         return int( self.meta( key, default=default ) )
 
+    def move( self, destination ):
+        
+        if isinstance( destination, int ):
+            destination = Folder.from_id( destination )
+        elif isinstance( destination, str ):
+            destination = Folder.from_path( destination )
+
+        assert( isinstance( destination, Folder ) )
+
+        shutil.move(
+            self.absolute_path,
+            os.path.join( destination.absolute_path, self.display_name ) )
+
+        self.folder_id = destination.id
+        db.session.commit()
+
     def open_image( self ):
         im = Image.open( self.absolute_path )
         if not im:
-            raise FileNotFoundError( errno.ENOENT, os.strerror(errno.ENOENT), self.absolute_path )
+            raise FileNotFoundError(
+                errno.ENOENT, os.strerror(errno.ENOENT), self.absolute_path )
         return im
 
     def store_aspect( self, pic=None ):
@@ -404,6 +452,9 @@ class FolderMeta( db.Model ):
         db.Column( db.String( 256 ), index=False, unique=False, nullable=True )
     item_id = db.Column( db.Integer, db.ForeignKey( 'folders.id' ) )
     item = db.relationship( 'Folder', back_populates='meta' )
+
+    def to_dict( self, *args, **kwargs ):
+        return (self.key, self.value)
 
 class Folder( db.Model, JSONItemMixin ):
 
@@ -531,6 +582,9 @@ class LibraryMeta( db.Model ):
     item_id = db.Column( db.Integer, db.ForeignKey( 'libraries.id' ) )
     item = db.relationship( 'Library', back_populates='meta' )
 
+    def to_dict( self, *args, **kwargs ):
+        return (self.key, self.value)
+
 class Library( db.Model, JSONItemMixin ):
 
     __tablename__ = 'libraries'
@@ -554,25 +608,47 @@ class Library( db.Model, JSONItemMixin ):
     def __repr__( self ):
         return self.machine_name
 
+    def is_accessible( self ):
+        # TODO
+        #print( self.machine_name )
+        if self.machine_name == 'nosync':
+            return False
+        return True
+
     @staticmethod
     def from_machine_name( machine_name ):
-        query = db.session.query( Library ) \
-            .filter( Library.machine_name == machine_name )
-        return query.first()
+        library = db.session.query( Library ) \
+            .filter( Library.machine_name == machine_name ) \
+            .first()
+
+        if not library.is_accessible():
+            raise LibraryPermissionsException( library_id=library.id )
+
+        return library
 
     @staticmethod
     def from_id( id ):
-        query = db.session.query( Library ) \
-            .filter( Library.id == id )
-        return query.first()
+        library = db.session.query( Library ) \
+            .filter( Library.id == id ) \
+            .first()
+
+        if not library.is_accessible():
+            raise LibraryPermissionsException( library_id=library.id )
+
+        return library
 
     @staticmethod
     def enumerate_all():
 
         '''Return a list of all libraries (as defined by SQLA Library model.'''
 
-        query = db.session.query( Library )
-        return query.all()
+        libraries = db.session.query( Library ).all()
+
+        for library in libraries:
+            if not library.is_accessible():
+                libraries.remove( library )
+
+        return libraries
 
 class WorkerSemaphore( db.Model ):
 
