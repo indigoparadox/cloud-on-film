@@ -2,10 +2,12 @@
 
 import os
 import unittest
+import json
 from flask import Flask, current_app
 from flask_testing import TestCase
 from cloud_on_film import create_app, db
 from cloud_on_film.models import Library, Folder, FileItem, Tag
+from cloud_on_film.importing import picture
 
 class TestLibrary( TestCase ):
 
@@ -123,6 +125,24 @@ class TestLibrary( TestCase ):
 
     def test_tag_from_path( self ):
         tag = Tag.from_path( 'IFDY/Test Tag 1/Sub Test Tag 3' )
+
+    def test_import( self ):
+        # Perform the import.
+        pics_json = None
+        with open( '../testing/test_import.json', 'r' ) as import_file:
+            pics_json = json.loads( import_file.read() )
+        for pic_json in pics_json:
+            pic_json['filename'] = os.path.join(
+                self.lib_path, pic_json['filename'] )
+            picture( pic_json )
+
+        # Test the results.
+        file_test = FileItem.from_path( self.lib, 'testing/random100x100.png' )
+        tag_testing_img = Tag.from_path( 'Testing Imports/Testing Image' )
+        assert( tag_testing_img in file_test.tags() )
+        assert( None != file_test )
+        assert( 100 == int( file_test.meta( 'width' ) ) )
+        assert( 100 == int( file_test.meta( 'height' ) ) )
 
 if '__main__' == __name__:
     unittest.main()

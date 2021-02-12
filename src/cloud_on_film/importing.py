@@ -123,9 +123,9 @@ def picture( picture ):
     folder_relative_path = os.path.dirname( relative_path )
     folder = path( folder_relative_path, library_id=lib.id )
 
-    tags = []
-    for tag_path in picture['tags']:
-        tags.append( path( tag_path, path_type=Tag ) )
+    #tags = []
+    #for tag_path in picture['tags']:
+    #    tags.append( path( tag_path, path_type=Tag ) )
 
     # See if the picture already exists.
     display_name = os.path.basename( picture['filename'] )
@@ -141,40 +141,45 @@ def picture( picture ):
         raise FileItemImportException( 'FileItem file does not exist: {}'.format(
             picture['filename'] ) )
 
-    im = Image.open( picture['filename'] )
-    if not im:
-        raise FileItemImportException( 'Unable to read picture: {}'.format(
-            picture['filename'] ) )
+    with Image.open( picture['filename'] ) as im:
+        if not im:
+            raise FileItemImportException( 'Unable to read picture: {}'.format(
+                picture['filename'] ) )
 
-    st = os.stat( picture['filename'] )
+        st = os.stat( picture['filename'] )
 
-    pic = FileItem(
-        display_name=display_name,
-        folder_id=folder.id,
-        timestamp=datetime.fromtimestamp( st[stat.ST_MTIME] ),
-        filesize=st[stat.ST_SIZE],
-        added=datetime.fromtimestamp( picture['time_created'] ),
-        filehash=FileItem.hash_file( picture['filename'] ),
-        filehash_algo=HashEnum.md5,
-        filetype='picture' )
-    db.session.add( pic )
-    #db.session.commit()
-    db.session.flush()
-    db.session.refresh( pic )
+        pic = FileItem(
+            display_name=display_name,
+            folder_id=folder.id,
+            timestamp=datetime.fromtimestamp( st[stat.ST_MTIME] ),
+            filesize=st[stat.ST_SIZE],
+            added=datetime.fromtimestamp( picture['time_created'] ),
+            filehash=FileItem.hash_file( picture['filename'] ),
+            filehash_algo=HashEnum.md5,
+            filetype='picture' )
+        db.session.add( pic )
+        #db.session.commit()
+        db.session.flush()
+        db.session.refresh( pic )
 
-    if picture['comment']:
-        pic.meta( 'comment', picture['comment'] )
+        pic.tags( append=[Tag.from_path( t ) for t in picture['tags']] )
 
-    pic.meta( 'rating', picture['rating'] )
+        print( 'xxx' )
+        print( 'xxx' )
+        print( [t.path for t in pic.tags()] )
+        print( 'xxx' )
+        print( 'xxx' )
 
-    #query = db.session.query( FileItem ) \
-    #    .filter( FileItem.folder_id == folder.id ) \
-    #    .filter( FileItem.display_name == display_name )
-    #pic = query.first()
-    pic.store_aspect( pic=im )
+        if picture['comment']:
+            pic.meta( 'comment', picture['comment'] )
 
-    for tag in tags:
-        tag.files.append( pic )
+        pic.meta( 'rating', picture['rating'] )
+
+        #query = db.session.query( FileItem ) \
+        #    .filter( FileItem.folder_id == folder.id ) \
+        #    .filter( FileItem.display_name == display_name )
+        #pic = query.first()
+        pic.store_aspect( pic=im )
     
     db.session.commit()
 

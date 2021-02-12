@@ -298,14 +298,16 @@ class FileItem( db.Model, JSONItemMixin ):
                 return a
             return calc_gcd( b, a % b )
 
-        width = int( self.meta( 'width' ) )
+        width = self.meta( 'width' )
         if not width:
             self.meta( 'width', pic.size[0] )
             width = pic.size[0]
-        height = int( self.meta( 'height' ) )
+        width = int( width )
+        height = self.meta( 'height' )
         if not height:
             self.meta( 'height', pic.size[1] )
             height = pic.size[1]
+        height = int( height )
         aspect_r = calc_gcd( width, height )
         aspect_w = int( width / aspect_r )
         aspect_h = int( height / aspect_r )
@@ -332,12 +334,9 @@ class FileItem( db.Model, JSONItemMixin ):
         return '/'.join( [self.folder.absolute_path, self.display_name] )
     
     @staticmethod
-    def hash_file( library_id, relative_path, hash_algo=HashEnum.md5 ):
-        if not isinstance( library_id, Library ):
-            library_id = Library.from_id( library_id )
-
+    def hash_file( absolute_path, hash_algo=HashEnum.md5 ):
         # We don't need to bother with the folder, since this can just fail if the file doesn't really exist.
-        absolute_path = os.path.join( library_id.absolute_path, relative_path )
+        absolute_path = os.path.join( absolute_path )
         ha = hashlib.md5()
         with open( absolute_path, 'rb' ) as file_f:
             buf = file_f.read( 4096 )
@@ -380,7 +379,7 @@ class FileItem( db.Model, JSONItemMixin ):
                 timestamp=datetime.fromtimestamp( st[stat.ST_MTIME] ),
                 filesize=st[stat.ST_SIZE],
                 added=datetime.now(),
-                filehash=FileItem.hash_file( library_id, relative_path, HashEnum.md5 ),
+                filehash=FileItem.hash_file( absolute_path, HashEnum.md5 ),
                 filehash_algo=HashEnum.md5,
                 # TODO: Determine the file type dynamically.
                 filetype='picture' )
