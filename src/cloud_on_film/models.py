@@ -5,8 +5,13 @@ import errno
 import stat
 import hashlib
 import shutil
+from sqlalchemy import event
 from sqlalchemy.orm import query
 from sqlalchemy.inspection import inspect
+from sqlalchemy.ext.hybrid import hybrid_property, Comparator
+from sqlalchemy.orm.collections import attribute_mapped_collection
+from sqlalchemy.ext.associationproxy import association_proxy
+from sqlalchemy.sql.sqltypes import Integer
 from . import db
 from enum import Enum
 from flask import current_app
@@ -20,6 +25,10 @@ class HashEnum( Enum ):
 
 class StatusEnum( Enum ):
     missing = 1
+
+class MetaTypeEnum( Enum ):
+    text = 0
+    integer = 1
 
 class InvalidFolderException( Exception ):
     def __init__( self, *args, **kwargs ):
@@ -42,6 +51,33 @@ class LibraryPermissionsException( Exception ):
 class MaxDepthException( Exception ):
     def __init__( self, *args, **kwargs ):
         super().__init__( *args, **kwargs )
+
+class MetaTransformer( Comparator ):
+    def operate( self, op, other ):
+        def transform( q ):
+            cls = self.__clause_element__()
+            print( 'qqq' )
+            print( 'qqq' )
+            print( cls )
+            print( 'qqq' )
+            print( 'qqq' )
+            return q.join( FileMeta.item_id, cls.id )
+        return transform
+
+class MetaProperty( object ):
+
+    def __init__( self, key, value=None ):
+        self.key = key
+        self.value = value
+    
+    @hybrid_property
+    def value( self ):
+        #return getattr( self, fieldname )
+        return None
+
+@event.listens_for( MetaProperty, 'mapper_configured', propagate=True )
+def on_new_meta_property( mapper, cls ):
+    pass
 
 class JSONItemMixin( object ):
 
@@ -117,7 +153,18 @@ class FileMeta( db.Model ):
     value = \
         db.Column( db.String( 256 ), index=False, unique=False, nullable=True )
     item_id = db.Column( db.Integer, db.ForeignKey( 'files.id' ) )
-    item = db.relationship( 'FileItem', back_populates='_meta' )
+
+    item = db.relationship( 'FileItem',
+        backref=db.backref(
+            '_meta',
+            collection_class=attribute_mapped_collection( 'key' ),
+            cascade="all, delete-orphan" ) )
+
+    def __str__( self ):
+        return self.value
+
+    def __repr__( self ):
+        return self.value
 
     def to_dict( self, *args, **kwargs ):
         return (self.key, self.value)
@@ -228,7 +275,11 @@ class FileItem( db.Model, JSONItemMixin ):
     __tablename__ = 'files'
 
     id = db.Column( db.Integer, primary_key=True )
-    _meta = db.relationship( 'FileMeta', back_populates='item' )
+    #meta = db.relationship( 'FileMeta',
+    #    collection_class=attribute_mapped_collection( 'key' ),
+    #    cascade="all, delete-orphan" )
+    meta = association_proxy( '_meta', 'value',
+        creator=lambda k, v: FileMeta( key=k, value=v ) )
     folder_id = db.Column( db.Integer, db.ForeignKey( 'folders.id' ) )
     folder = db.relationship( 'Folder', back_populates='files' )
     tag_id = db.Column( db.Integer, db.ForeignKey( 'tags.id' ) )
@@ -248,6 +299,41 @@ class FileItem( db.Model, JSONItemMixin ):
     filehash_algo = db.Column(
         db.Enum( HashEnum ), index=False, unique=False, nullable=False )
     status = db.Column( db.Enum( StatusEnum ) )
+
+    '''width = db.column_property(
+        db.select( [
+            db.select( [db.cast( FileMeta.value, db.Integer )] ) \
+                .where( db.and_(
+                    FileMeta.item_id == id,
+                    FileMeta.key == 'width' ) ) /
+            db.select( [db.cast( FileMeta.value, db.Integer )] ) \
+                .where( db.and_(
+                    FileMeta.item_id == id,
+                    FileMeta.key == 'height' ) ) 
+        ] )
+    )'''
+
+    width = db.column_property(
+        db.select( [db.cast( FileMeta.value, db.Integer )] ) \
+                .where( db.and_(
+                    FileMeta.item_id == id,
+                    FileMeta.key == 'width' ) )
+    )
+
+    height = db.column_property(
+        db.select( [db.cast( FileMeta.value, db.Integer )] ) \
+                .where( db.and_(
+                    FileMeta.item_id == id,
+                    FileMeta.key == 'height' ) )
+    )
+
+    @hybrid_property
+    def aspect( self ):
+        return 16 * self.height / self.width
+
+    @aspect.expression
+    def aspect( self ):
+        pass
 
     def __str__( self ):
         return self.display_name
@@ -285,33 +371,62 @@ class FileItem( db.Model, JSONItemMixin ):
             
         return self._tags
 
-    def meta( self, key, value=None, default=None ):
+    @hybrid_property
+    def aspect_square( self ):
+        return int( self.meta['width'] ) == int( self.meta['height'] )
 
-        ''' Get a piece of FileItem metadata, or set it if value != None. '''
+    @hybrid_property
+    def aspect_16x10( self ):
+        return 10 * int( self.meta['width'] ) / int( self.meta['height'] )
 
-        query = db.session.query( FileMeta ) \
-            .filter( FileMeta.item_id == self.id ) \
-            .filter( FileMeta.key == key )
-        all = query.all()
-        if value and 0 < len( all ):
-            # Create a new metadata item.
-            all[0].value = value
-            db.session.commit()
+    #@aspect_16x10.comparator
+    #def aspect_16x10( cls ):
+    #    return MetaTransformer( cls )
 
-        elif value and 0 >= len( query.all() ):
-            # Create a new metadata item.
-            meta = FileMeta( key=key, value=value, item_id=self.id )
-            db.session.add( meta )
-            db.session.commit()
+    @aspect_16x10.expression
+    def aspect_16x10( cls ):
+        '''return (
+            10 *
+                db.cast( db.select( [FileMeta.value] ) \
+                    .where( FileMeta.item_id == cls.id ) \
+                    .where( FileMeta.key == 'width' ), db.Integer )
+            /
+                db.cast( db.select( [FileMeta.value] ) \
+                    .where( FileMeta.item_id == cls.id ) \
+                    .where( FileMeta.key == 'height' ), db.Integer )
+        )'''
+        #return(
+        #    db.select( [
+        #        db.case( [
+        #            (db.exists().where( db.and_(
+        #                FileMeta.item_id == cls.id,
+        #                FileMeta.key == "width"
+        #            ) ).correlate( cls ), True)
+        #        ], else_=False ).label( "width" )
+        #    ] ).label( "width_ct" )
+        #)
+        #print( dir( db ) )
+        '''return (
+            db.select( [
+                db.case( [
+                    (db.select( [FileMeta.value] ).where( db.and_(
+                        FileMeta.item_id == cls.id,
+                        FileMeta.key == "width"
+                    ) ).correlate( cls ), db.cast( FileMeta.value, Integer ) )
+                ], else_=0 ).label( "width" )
+            ] ).label( "width_ct" )
+        )'''
 
-        elif 0 < len( all ) and not value:
-            return all[0].value
+    #@hybrid_property
+    #def meta( self ):
+    #    return db.session.query( FileMeta ).filter( FileMeta.item_id == self.id )
 
-        else:
-            return default
+    #@meta.setter
+    #def meta( value ):
+    #    pass
 
-    def meta_int( self, key, default=None ):
-        return int( self.meta( key, default=default ) )
+    #def meta_int( self, key, default=None ):
+    #    return int( self.meta( key, default=default ) )
 
     def move( self, destination ):
         
@@ -346,16 +461,20 @@ class FileItem( db.Model, JSONItemMixin ):
                 return a
             return calc_gcd( b, a % b )
 
-        width = self.meta( 'width' )
-        if not width:
-            self.meta( 'width', pic.size[0] )
+        width = 0
+        try:
+            width = int( self.meta['width'] )
+        except KeyError:
+            self.meta['width'] = pic.size[0]
             width = pic.size[0]
-        width = int( width )
-        height = self.meta( 'height' )
-        if not height:
-            self.meta( 'height', pic.size[1] )
+
+        height = 0
+        try:
+            height = int( self.meta['height'] )
+        except KeyError:
+            self.meta['height'] = pic.size[1]
             height = pic.size[1]
-        height = int( height )
+            
         aspect_r = calc_gcd( width, height )
         aspect_w = int( width / aspect_r )
         aspect_h = int( height / aspect_r )

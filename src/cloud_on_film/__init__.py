@@ -19,6 +19,8 @@ def create_app( config=None ):
     log_werkzeug = logging.getLogger( 'werkzeug' )
     log_werkzeug.setLevel( logging.ERROR )
 
+    #logging.getLogger( 'sqlalchemy.engine' ).setLevel( logging.DEBUG )
+
     ''' App factory function. Call this from the runner/WSGI. '''
 
     app = Flask( __name__, instance_relative_config=False,

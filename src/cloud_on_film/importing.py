@@ -165,15 +165,21 @@ def picture( picture ):
         pic.tags( append=[Tag.from_path( t ) for t in picture['tags']] )
 
         if picture['comment']:
-            pic.meta( 'comment', picture['comment'] )
+            pic.meta['comment'] = picture['comment']
 
-        pic.meta( 'rating', picture['rating'] )
+        pic.meta['rating'] = picture['rating']
 
         #query = db.session.query( FileItem ) \
         #    .filter( FileItem.folder_id == folder.id ) \
         #    .filter( FileItem.display_name == display_name )
         #pic = query.first()
         pic.store_aspect( pic=im )
+
+        print( 'yyy' )
+        print( 'yyy' )
+        print( pic.meta )
+        print( 'yyy' )
+        print( 'yyy' )
     
     db.session.commit()
 
