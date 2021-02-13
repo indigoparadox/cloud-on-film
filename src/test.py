@@ -173,6 +173,8 @@ class TestLibrary( TestCase ):
         assert( file_test.aspect == 10 )
         assert( not file_test.nsfw )
 
+    def test_nsfw( self ):
+
         file_test = FileItem.from_path( self.lib, 'testing/random500x500.png' )
 
         file_test = FileItem.from_path(
