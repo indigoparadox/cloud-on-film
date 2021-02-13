@@ -510,23 +510,23 @@ class FileItem( db.Model, JSONItemMixin ):
     width = db.column_property(
         db.select(
             [db.cast( FileMeta.value, db.Integer )],
-            FileMeta.key == 'width' ).label( 'width' ) )
+            db.and_(
+                FileMeta.key == 'width',
+                FileMeta.item_id == id ) ).label( 'width' ) )
 
     height = db.column_property(
         db.select(
             [db.cast( FileMeta.value, db.Integer )],
-            FileMeta.key == 'height' ).label( 'height' ) )
+            db.and_(
+                FileMeta.key == 'height',
+                FileMeta.item_id == id ) ).label( 'height' ) )
 
     rating = db.column_property(
         db.select( 
             [db.cast( FileMeta.value, db.Integer )],
-            FileMeta.key == 'rating' ).label( 'rating' ) )
-        #db.case( [
-        #    (db.exists().where( db.and_(
-        #        FileMeta.id == id,
-        #        FileMeta.key == 'rating' ) ),
-        #        db.select( [db.cast( FileMeta.value, db.Integer )] ).as_scalar())
-        #], else_=0 ).label( 'rating' ) )
+            db.and_(
+                FileMeta.key == 'rating',
+                FileMeta.item_id == id ) ).label( 'rating' ) )
 
     aspect = db.column_property(
         db.case( [

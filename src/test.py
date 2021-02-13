@@ -145,6 +145,19 @@ class TestLibrary( TestCase ):
     def test_tag_from_path( self ):
         tag = Tag.from_path( 'IFDY/Test Tag 1/Sub Test Tag 3' )
 
+    def test_query_width( self ):
+        
+        file_test = FileItem.from_path( self.lib, 'testing/random500x500.png' )
+        file_test = FileItem.from_path( self.lib, 'testing/random100x100.png' )
+        
+        files_test = db.session.query( FileItem ) \
+            .filter( FileItem.width == 100 ) \
+            .all()
+
+        assert( 1 == len( files_test ) )
+        assert( 'random100x100.png' == files_test[0].display_name )
+        assert( 100 == files_test[0].width )
+
     def test_import( self ):
         # Perform the import.
         pics_json = None
@@ -160,21 +173,27 @@ class TestLibrary( TestCase ):
         tag_testing_img = Tag.from_path( 'Testing Imports/Testing Image' )
 
         assert( tag_testing_img in file_test.tags() )
-        assert( None != file_test )
         assert( 100 == file_test.width )
         assert( 100 == file_test.height )
-        assert( file_test.aspect == 1 )
+        assert( 1 == file_test.aspect )
         assert( not file_test.nsfw )
+        assert( 0 == file_test.rating )
 
         file_test = FileItem.from_path( self.lib, 'testing/random500x500.png' )
+        assert( tag_testing_img in file_test.tags() )
+        assert( 500 == file_test.width )
+        assert( 500 == file_test.height )
+        assert( 1 == file_test.aspect )
+        assert( not file_test.nsfw )
         assert( 3 == file_test.rating )
 
         file_test = FileItem.from_path( self.lib, 'testing/random640x400.png' )
-
+        assert( not tag_testing_img in file_test.tags() )
         assert( 640 == file_test.width )
         assert( 400 == file_test.height )
-        assert( file_test.aspect == 10 )
+        assert( 10 == file_test.aspect )
         assert( not file_test.nsfw )
+        assert( 0 == file_test.rating )
 
     def test_nsfw( self ):
 
@@ -183,26 +202,49 @@ class TestLibrary( TestCase ):
         file_test = FileItem.from_path(
             self.nsfw_lib, 'foo_folder/random640x480.png' )
         assert( file_test.nsfw )
-        assert( 640 == file_test.width )
-        assert( 480 == file_test.height )
-        assert( file_test.aspect == 4 )
+
+    def test_aspect( self ):
+
+        file_test = FileItem.from_path(
+            self.nsfw_lib, 'foo_folder/random640x480.png' )
+        assert( 4 == file_test.aspect )
+
+        file_test = FileItem.from_path(
+            self.lib, 'testing/random500x500.png' )
+        assert( 1 == file_test.aspect )
+
+        file_test = FileItem.from_path(
+            self.lib, 'testing/random640x400.png' )
+        assert( 10 == file_test.aspect )
 
     def test_rating( self ):
 
-        print( db.session.query( FileItem ) \
-            .filter( FileItem.aspect == 1 ) )
+        file_test = FileItem.from_path( self.lib, 'testing/random500x500.png' )
+        file_test.meta['rating'] = 1
+        db.session.commit()
+        file_test = FileItem.from_path( self.lib, 'testing/random100x100.png' )
+        file_test.meta['rating'] = 4
+        db.session.commit()
+
+        assert( '4' == file_test.meta['rating'] )
+        assert( 4 == file_test.rating )
 
         files_test = db.session.query( FileItem ) \
             .filter( FileItem.rating > 1 ) \
             .all()
 
-        print( 'xxx' )
-        print( 'xxx' )
-        print( 'len: {}'.format( len( files_test ) ) )
-        print( 'xxx' )
-        print( 'xxx' )
         assert( 1 == len( files_test ) )
-        assert( 3 == files_test[0].rating )
+        assert( 4 == files_test[0].rating )
+        assert( 'random100x100.png' == files_test[0].display_name )
+
+        files_test = db.session.query( FileItem ) \
+            .filter( FileItem.rating == 1 ) \
+            .all()
+
+        assert( 1 == len( files_test ) )
+        assert( 1 == files_test[0].rating )
+        assert( 'random500x500.png' == files_test[0].display_name )
+
 
 if '__main__' == __name__:
     unittest.main()
