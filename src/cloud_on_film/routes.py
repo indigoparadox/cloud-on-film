@@ -49,15 +49,13 @@ def cloud_update_item_meta( item ):
         item.status = StatusEnum.missing
         return
     img = item.open_image()
-    db_width = item.meta( 'width' )
-    db_height = item.meta( 'height' )
     if img and \
-    (int( db_width ) != int( img.size[0]  ) or \
-    int( db_height ) != int( img.size[1] )):
+    (item.width != int( img.size[0]  ) or \
+    item.height != int( img.size[1] )):
         current_app.logger.info( 'updating metadata for {}, width={}, height={} (from {}, {})'.format(
             item.absolute_path, img.size[0], img.size[1], db_width, db_height ) )
-        item.meta( 'width', str( img.size[0] ) )
-        item.meta( 'height', str( img.size[1] ) )
+        item.meta['width'] = img.size[0]
+        item.meta['height'] = img.size[1]
 
 @current_app.cli.command( "refresh" )
 def cloud_cli_refresh():

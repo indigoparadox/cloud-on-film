@@ -163,7 +163,6 @@ def picture( picture ):
             pic.meta['comment'] = picture['comment']
 
         pic.meta['rating'] = picture['rating']
-
         pic.meta['width'] = picture['width']
         pic.meta['height'] = picture['height']
 

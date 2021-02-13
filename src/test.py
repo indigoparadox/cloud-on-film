@@ -166,6 +166,9 @@ class TestLibrary( TestCase ):
         assert( file_test.aspect == 1 )
         assert( not file_test.nsfw )
 
+        file_test = FileItem.from_path( self.lib, 'testing/random500x500.png' )
+        assert( 3 == file_test.rating )
+
         file_test = FileItem.from_path( self.lib, 'testing/random640x400.png' )
 
         assert( 640 == file_test.width )
@@ -183,6 +186,23 @@ class TestLibrary( TestCase ):
         assert( 640 == file_test.width )
         assert( 480 == file_test.height )
         assert( file_test.aspect == 4 )
+
+    def test_rating( self ):
+
+        print( db.session.query( FileItem ) \
+            .filter( FileItem.aspect == 1 ) )
+
+        files_test = db.session.query( FileItem ) \
+            .filter( FileItem.rating > 1 ) \
+            .all()
+
+        print( 'xxx' )
+        print( 'xxx' )
+        print( 'len: {}'.format( len( files_test ) ) )
+        print( 'xxx' )
+        print( 'xxx' )
+        assert( 1 == len( files_test ) )
+        assert( 3 == files_test[0].rating )
 
 if '__main__' == __name__:
     unittest.main()

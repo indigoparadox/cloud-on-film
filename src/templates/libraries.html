@@ -33,10 +33,6 @@
                   <input type="text" id="modal-input-name" name="name" class="form-control" />
                </div>
                <div class="form-group">
-                  <label for="modal-input-nsfw">NSFW</label>
-                  <input type="checkbox" id="modal-input-nsfw" name="nsfw" class="" />
-               </div>
-               <div class="form-group">
                   <label for="modal-input-tags">Tags</label>
                   <input type="text" id="modal-input-tags" name="tags" class="form-control" />
                </div>
@@ -133,14 +129,14 @@
 
 <!-- button bar -->
 <div class="d-flex flex-column">
-{% if item.meta( 'nsfw' ) == '1' %}
+{% if item.nsfw %}
 <small class="text-bright nsfw">
 NSFW
 </small>
 {% endif %}
-{% if item.meta( 'aspect' ) %}
+{% if 0 != item.aspect %}
 <small class="text-bright aspect-ratio">
-{{ item.meta( 'aspect' ) }}
+{{ item.aspect }}
 </small>
 {% endif %}
 <!-- <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#editModal" data-file-id="{{ item.id }}">Edit</button> -->
@@ -148,7 +144,7 @@ NSFW
 <small class="rating">
 {% for i in range( 5 ) %}
 <a href="#" class="star star-{{ i }}"
-{% if i < item.meta_int( 'rating', default=0 ) %}
+{% if i < item.rating %}
    style="background-image: url( {{ url_for( 'static', filename='star-gold-32.png' ) }} )"
 {% else %}
    style="background-image: url( {{ url_for( 'static', filename='star-gray-32.png' ) }} )"

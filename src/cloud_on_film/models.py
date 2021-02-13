@@ -223,31 +223,6 @@ class Library( db.Model, JSONItemMixin ):
 
         return libraries
 
-class FileMeta( db.Model ):
-
-    __tablename__ = 'file_meta'
-
-    id = db.Column( db.Integer, primary_key=True )
-    key = db.Column( db.String( 12 ), index=True, unique=False, nullable=False )
-    value = \
-        db.Column( db.String( 256 ), index=False, unique=False, nullable=True )
-    item_id = db.Column( db.Integer, db.ForeignKey( 'files.id' ) )
-
-    item = db.relationship( 'FileItem',
-        backref=db.backref(
-            '_meta',
-            collection_class=attribute_mapped_collection( 'key' ),
-            cascade="all, delete-orphan" ) )
-
-    def __str__( self ):
-        return self.value
-
-    def __repr__( self ):
-        return self.value
-
-    def to_dict( self, *args, **kwargs ):
-        return (self.key, self.value)
-
 files_tags = db.Table( 'files_tags', db.metadata,
     db.Column( 'files_id', db.Integer, db.ForeignKey( 'files.id' ) ),
     db.Column( 'tags_id', db.Integer, db.ForeignKey( 'tags.id' ) ) )
@@ -472,6 +447,32 @@ class Folder( db.Model, JSONItemMixin ):
             .filter( Folder.id == folder_id )
         return query.first()
 
+class FileMeta( db.Model ):
+
+    __tablename__ = 'file_meta'
+
+    id = db.Column( db.Integer, primary_key=True )
+    key = db.Column( db.String( 12 ), index=True, unique=False, nullable=False )
+    value = \
+        db.Column( db.String( 256 ), index=False, unique=False, nullable=True )
+    item_id = db.Column( db.Integer, db.ForeignKey( 'files.id' ) )
+
+    item = db.relationship( 'FileItem',
+        backref=db.backref(
+            '_meta',
+            collection_class=attribute_mapped_collection( 'key' ),
+            lazy="joined",
+            cascade="all, delete-orphan" ) )
+
+    def __str__( self ):
+        return self.value
+
+    def __repr__( self ):
+        return self.value
+
+    def to_dict( self, *args, **kwargs ):
+        return (self.key, self.value)
+
 class FileItem( db.Model, JSONItemMixin ):
 
     __tablename__ = 'files'
@@ -509,16 +510,23 @@ class FileItem( db.Model, JSONItemMixin ):
     width = db.column_property(
         db.select(
             [db.cast( FileMeta.value, db.Integer )],
-            db.and_(
-                FileMeta.item_id == id,
-                FileMeta.key == 'width' ) ).label( 'width' ) )
+            FileMeta.key == 'width' ).label( 'width' ) )
 
     height = db.column_property(
         db.select(
             [db.cast( FileMeta.value, db.Integer )],
-            db.and_(
-                FileMeta.item_id == id,
-                FileMeta.key == 'height' ) ).label( 'height' ) )
+            FileMeta.key == 'height' ).label( 'height' ) )
+
+    rating = db.column_property(
+        db.select( 
+            [db.cast( FileMeta.value, db.Integer )],
+            FileMeta.key == 'rating' ).label( 'rating' ) )
+        #db.case( [
+        #    (db.exists().where( db.and_(
+        #        FileMeta.id == id,
+        #        FileMeta.key == 'rating' ) ),
+        #        db.select( [db.cast( FileMeta.value, db.Integer )] ).as_scalar())
+        #], else_=0 ).label( 'rating' ) )
 
     aspect = db.column_property(
         db.case( [
