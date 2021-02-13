@@ -452,6 +452,15 @@ class FileItem( db.Model, JSONItemMixin ):
             db.session.add( item )
             db.session.commit()
 
+            with item.open_image() as im:
+                item.meta['width'] = im.size[0]
+                item.meta['height'] = im.size[1]
+            db.session.commit()
+
+            current_app.logger.info( 'found new image with size: {}x{}'.format(
+                item.width, item.height
+            ) )
+
         elif not os.path.exists( absolute_path ):
             # Item doesn't exist on FS even though it does on FS, so mark it missing.
             current_app.logger.warn( 'file missing: {}'.format( absolute_path ) )

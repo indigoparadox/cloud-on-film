@@ -4,6 +4,7 @@ import os
 import unittest
 import json
 import logging
+import shutil
 from flask import Flask, current_app
 from flask_testing import TestCase
 from cloud_on_film import create_app, db
@@ -24,8 +25,11 @@ class TestLibrary( TestCase ):
 
         self.file_path = os.path.realpath( __file__ )
         self.lib_path = os.path.dirname( os.path.dirname( self.file_path ) )
+        self.nsfw_lib_path = '/tmp/testing_nsfw_lib'
         os.makedirs( os.path.join( self.lib_path, 'Foo Files 1/Foo Files 2/Foo Files 3/Foo Files 4' ),
             exist_ok=True )
+        os.makedirs( self.nsfw_lib_path + '/foo_folder', exist_ok=True )
+        shutil.copy2( '../testing/random640x480.png', self.nsfw_lib_path + '/foo_folder/' )
         self.rel_path = os.path.join(
             os.path.basename( os.path.dirname( self.file_path ) ),
             os.path.basename( self.file_path ) )
@@ -38,11 +42,21 @@ class TestLibrary( TestCase ):
             display_name='Testing Library',
             machine_name='testing_library',
             absolute_path=self.lib_path,
-            auto_nsfw=True )
+            auto_nsfw=False )
         db.session.add( self.lib )
         db.session.commit() # Commit to get library ID.
         current_app.logger.debug( 'created library {} with ID {}'.format(
             self.lib.machine_name, self.lib.id ) )
+
+        self.nsfw_lib = Library(
+            display_name='NSFW Library',
+            machine_name='nsfw_library',
+            absolute_path=self.nsfw_lib_path,
+            auto_nsfw=True )
+        db.session.add( self.nsfw_lib )
+        db.session.commit() # Commit to get library ID.
+        current_app.logger.debug( 'created library {} with ID {}'.format(
+            self.nsfw_lib.machine_name, self.nsfw_lib.id ) )
 
         folder1 = Folder( library_id=self.lib.id, display_name='Foo Files 1' )
         db.session.add( folder1 )
@@ -71,6 +85,9 @@ class TestLibrary( TestCase ):
         db.session.add( tag_test_1 )
         tag_test_2 = Tag( display_name='Test Tag 2', parent_id = tag_ifdy.id )
         db.session.add( tag_test_2 )
+        tag_nsfw_test_1 = Tag( display_name='NSFW Test Tag 1',
+            parent_id = tag_root.id )
+        db.session.add( tag_nsfw_test_1 )
         db.session.commit()
 
         tag_sub_test_3 = Tag(
@@ -93,7 +110,7 @@ class TestLibrary( TestCase ):
     def test_library_enumerate_all( self ):
         current_app.logger.debug( 'testing library_enumerate_all...' )
         libs = Library.enumerate_all()
-        assert( 1 == len( libs ) )
+        assert( 2 == len( libs ) )
         assert( 'testing_library' == libs[0].machine_name )
         assert( 'testing_library' == str( libs[0] ) )
 
@@ -119,10 +136,11 @@ class TestLibrary( TestCase ):
         assert( folder_test.display_name == 'Foo Files 4' )
 
     def test_file_from_path( self ):
-        file1 = FileItem.from_path( self.lib.id, self.rel_path )
-        assert( file1.display_name == 'test.py' )
+        file1 = FileItem.from_path( self.lib.id, 'testing/random320x240.png' )
+        assert( file1.display_name == 'random320x240.png' )
         assert( file1.display_name != 'xxx.py' )
-        assert( file1.filesize > 0 )
+        assert( file1.display_name != 'xxx.png' )
+        assert( file1.filesize == 461998 )
 
     def test_tag_from_path( self ):
         tag = Tag.from_path( 'IFDY/Test Tag 1/Sub Test Tag 3' )
@@ -146,16 +164,23 @@ class TestLibrary( TestCase ):
         assert( 100 == file_test.width )
         assert( 100 == file_test.height )
         assert( file_test.aspect == 1 )
-        assert( file_test.nsfw )
+        assert( not file_test.nsfw )
 
         file_test = FileItem.from_path( self.lib, 'testing/random640x400.png' )
 
         assert( 640 == file_test.width )
         assert( 400 == file_test.height )
         assert( file_test.aspect == 10 )
-        assert( file_test.nsfw )
+        assert( not file_test.nsfw )
 
         file_test = FileItem.from_path( self.lib, 'testing/random500x500.png' )
+
+        file_test = FileItem.from_path(
+            self.nsfw_lib, 'foo_folder/random640x480.png' )
+        assert( file_test.nsfw )
+        assert( 640 == file_test.width )
+        assert( 480 == file_test.height )
+        assert( file_test.aspect == 4 )
 
 if '__main__' == __name__:
     unittest.main()
