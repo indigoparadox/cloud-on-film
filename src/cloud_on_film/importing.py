@@ -123,10 +123,6 @@ def picture( picture ):
     folder_relative_path = os.path.dirname( relative_path )
     folder = path( folder_relative_path, library_id=library.id )
 
-    #tags = []
-    #for tag_path in picture['tags']:
-    #    tags.append( path( tag_path, path_type=Tag ) )
-
     # See if the picture already exists.
     display_name = os.path.basename( picture['filename'] )
     query = db.session.query( FileItem ) \
@@ -158,7 +154,6 @@ def picture( picture ):
             filehash_algo=HashEnum.md5,
             filetype='picture' )
         db.session.add( pic )
-        #db.session.commit()
         db.session.flush()
         db.session.refresh( pic )
 
@@ -169,18 +164,9 @@ def picture( picture ):
 
         pic.meta['rating'] = picture['rating']
 
-        #query = db.session.query( FileItem ) \
-        #    .filter( FileItem.folder_id == folder.id ) \
-        #    .filter( FileItem.display_name == display_name )
-        #pic = query.first()
-        pic.store_aspect( pic=im )
+        pic.meta['width'] = picture['width']
+        pic.meta['height'] = picture['height']
 
-        print( 'yyy' )
-        print( 'yyy' )
-        print( pic.meta )
-        print( 'yyy' )
-        print( 'yyy' )
-    
     db.session.commit()
 
     logger.debug( 'Imported picture {} under {}'.format(

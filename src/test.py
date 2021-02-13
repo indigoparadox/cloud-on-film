@@ -141,72 +141,21 @@ class TestLibrary( TestCase ):
         file_test = FileItem.from_path( self.lib, 'testing/random100x100.png' )
         tag_testing_img = Tag.from_path( 'Testing Imports/Testing Image' )
 
-        #stmt = db.select( [FileMeta.key, FileMeta.value] ).select_from( FileItem.__table__.outerjoin( FileMeta.__table__ ) )
-        #print( str( stmt ) )
-        #for res in db.engine.execute( stmt ):
-        #    print( res )
-
-        #logging.getLogger( 'sqlalchemy.engine' ).setLevel( logging.DEBUG )
-
-        #logging.getLogger( 'sqlalchemy.engine' ).setLevel( logging.ERROR )
-
         assert( tag_testing_img in file_test.tags() )
         assert( None != file_test )
-        assert( 100 == int( file_test.meta['width'] ) )
-        assert( 100 == int( file_test.meta['height'] ) )
-        #assert( not file_test.aspect_16x10 )
-        #print( 'aspect: {}'.format( file_test.aspect_16x10 ) )
+        assert( 100 == file_test.width )
+        assert( 100 == file_test.height )
+        assert( file_test.aspect == 1 )
+        assert( file_test.nsfw )
 
         file_test = FileItem.from_path( self.lib, 'testing/random640x400.png' )
 
-        assert( 640 == int( file_test.meta['width'] ) )
-        assert( 400 == int( file_test.meta['height'] ) )
-        #assert( file_test.aspect_16x10 )
-        #print( 'aspect: {}'.format( file_test.aspect_16x10 ) )
+        assert( 640 == file_test.width )
+        assert( 400 == file_test.height )
+        assert( file_test.aspect == 10 )
+        assert( file_test.nsfw )
 
-        #print( 'width_col: {}'.format( file_test.width ) )
-
-        '''print( 'zzz' )
-        print( 'zzz' )
-        print( db.session.query( FileItem ) \
-            .filter( FileItem.aspect_16x10 == 10 ) )
-        print( 'zzz' )
-        print( 'zzz' )'''
-
-        '''print( 'qzqzqz' )
-        print( 'qzqzqz' )
-        print( db.session.query( FileItem ) \
-            .filter( FileItem.aspect_16x10 == 10 ) \
-            .all() )
-        print( 'qzqzqz' )
-        print( 'qzqzqz' )'''
-        
-        print( 'zzz' )
-        print( 'zzz' )
-        print( db.session.query( FileItem ) \
-            .filter( FileItem.width == 640 ) )
-        print( 'zzz' )
-        print( 'zzz' )
-
-        print( 'qzqzqz' )
-        print( 'qzqzqz' )
-        print( db.session.query( FileItem ) \
-            .filter( FileItem.width == 640 ) \
-            .all() )
-        print( 'qzqzqz' )
-        print( 'qzqzqz' )
-
-        print( 'width: {}'.format( db.session.query( FileItem ) \
-            .filter( FileItem.width == 640 ).first().width ) )
-        print( 'aspect: {}'.format( db.session.query( FileItem ) \
-            .filter( FileItem.width == 640 ).first().aspect ) )
-
-        print( 'found_by_aspect: {}'.format( db.session.query( FileItem ) \
-            .filter( FileItem.aspect == 10.0 ) \
-            .all() ) )
-        print( 'found_by_aspect query: {}'.format( db.session.query( FileItem ) \
-            .filter( FileItem.aspect == 10.0 ) \
-             ) )
+        file_test = FileItem.from_path( self.lib, 'testing/random500x500.png' )
 
 if '__main__' == __name__:
     unittest.main()

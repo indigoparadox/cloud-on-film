@@ -5,7 +5,7 @@ import errno
 import stat
 import hashlib
 import shutil
-from sqlalchemy import event
+from sqlalchemy import event, func
 from sqlalchemy.orm import query
 from sqlalchemy.inspection import inspect
 from sqlalchemy.ext.hybrid import hybrid_property, Comparator
@@ -275,9 +275,6 @@ class FileItem( db.Model, JSONItemMixin ):
     __tablename__ = 'files'
 
     id = db.Column( db.Integer, primary_key=True )
-    #meta = db.relationship( 'FileMeta',
-    #    collection_class=attribute_mapped_collection( 'key' ),
-    #    cascade="all, delete-orphan" )
     meta = association_proxy( '_meta', 'value',
         creator=lambda k, v: FileMeta( key=k, value=v ) )
     folder_id = db.Column( db.Integer, db.ForeignKey( 'folders.id' ) )
@@ -300,40 +297,34 @@ class FileItem( db.Model, JSONItemMixin ):
         db.Enum( HashEnum ), index=False, unique=False, nullable=False )
     status = db.Column( db.Enum( StatusEnum ) )
 
-    '''width = db.column_property(
-        db.select( [
-            db.select( [db.cast( FileMeta.value, db.Integer )] ) \
-                .where( db.and_(
-                    FileMeta.item_id == id,
-                    FileMeta.key == 'width' ) ) /
-            db.select( [db.cast( FileMeta.value, db.Integer )] ) \
-                .where( db.and_(
-                    FileMeta.item_id == id,
-                    FileMeta.key == 'height' ) ) 
-        ] )
-    )'''
+    nsfw = db.column_property(
+        db.select(
+            [db.text( 'Library.auto_nsfw' )],
+            db.and_(
+                'Library.id' == 'Folder.library_id',
+                'Folder.id' == folder_id ) ).label( 'nsfw' ) )
 
     width = db.column_property(
-        db.select( [db.cast( FileMeta.value, db.Integer )] ) \
-                .where( db.and_(
-                    FileMeta.item_id == id,
-                    FileMeta.key == 'width' ) )
-    )
+        db.select(
+            [db.cast( FileMeta.value, db.Integer )],
+            db.and_(
+                FileMeta.item_id == id,
+                FileMeta.key == 'width' ) ).label( 'width' ) )
 
     height = db.column_property(
-        db.select( [db.cast( FileMeta.value, db.Integer )] ) \
-                .where( db.and_(
-                    FileMeta.item_id == id,
-                    FileMeta.key == 'height' ) )
-    )
+        db.select(
+            [db.cast( FileMeta.value, db.Integer )],
+            db.and_(
+                FileMeta.item_id == id,
+                FileMeta.key == 'height' ) ).label( 'height' ) )
 
-    @hybrid_property
-    def aspect( self ):
-        return 16 * self.height / self.width
-
-    @aspect.expression
-    def aspect( self ):
-        pass
+    aspect = db.column_property(
+        db.case( [
+            (16 * height.expression / width == 10, 10),
+            (16 * height.expression / width == 9, 9),
+            (4 * height.expression / width == 3, 4),
+            (1 * height.expression / width == 1, 1)
+        ], else_=0 ).label( 'aspect' ) )
 
     def __str__( self ):
         return self.display_name
@@ -371,63 +362,6 @@ class FileItem( db.Model, JSONItemMixin ):
             
         return self._tags
 
-    @hybrid_property
-    def aspect_square( self ):
-        return int( self.meta['width'] ) == int( self.meta['height'] )
-
-    @hybrid_property
-    def aspect_16x10( self ):
-        return 10 * int( self.meta['width'] ) / int( self.meta['height'] )
-
-    #@aspect_16x10.comparator
-    #def aspect_16x10( cls ):
-    #    return MetaTransformer( cls )
-
-    @aspect_16x10.expression
-    def aspect_16x10( cls ):
-        '''return (
-            10 *
-                db.cast( db.select( [FileMeta.value] ) \
-                    .where( FileMeta.item_id == cls.id ) \
-                    .where( FileMeta.key == 'width' ), db.Integer )
-            /
-                db.cast( db.select( [FileMeta.value] ) \
-                    .where( FileMeta.item_id == cls.id ) \
-                    .where( FileMeta.key == 'height' ), db.Integer )
-        )'''
-        #return(
-        #    db.select( [
-        #        db.case( [
-        #            (db.exists().where( db.and_(
-        #                FileMeta.item_id == cls.id,
-        #                FileMeta.key == "width"
-        #            ) ).correlate( cls ), True)
-        #        ], else_=False ).label( "width" )
-        #    ] ).label( "width_ct" )
-        #)
-        #print( dir( db ) )
-        '''return (
-            db.select( [
-                db.case( [
-                    (db.select( [FileMeta.value] ).where( db.and_(
-                        FileMeta.item_id == cls.id,
-                        FileMeta.key == "width"
-                    ) ).correlate( cls ), db.cast( FileMeta.value, Integer ) )
-                ], else_=0 ).label( "width" )
-            ] ).label( "width_ct" )
-        )'''
-
-    #@hybrid_property
-    #def meta( self ):
-    #    return db.session.query( FileMeta ).filter( FileMeta.item_id == self.id )
-
-    #@meta.setter
-    #def meta( value ):
-    #    pass
-
-    #def meta_int( self, key, default=None ):
-    #    return int( self.meta( key, default=default ) )
-
     def move( self, destination ):
         
         if isinstance( destination, int ):
@@ -450,41 +384,6 @@ class FileItem( db.Model, JSONItemMixin ):
             raise FileNotFoundError(
                 errno.ENOENT, os.strerror(errno.ENOENT), self.absolute_path )
         return im
-
-    def store_aspect( self, pic=None ):
-
-        if not pic:
-            pic = self.open_image()
-
-        def calc_gcd( a, b ):
-            if 0 == b:
-                return a
-            return calc_gcd( b, a % b )
-
-        width = 0
-        try:
-            width = int( self.meta['width'] )
-        except KeyError:
-            self.meta['width'] = pic.size[0]
-            width = pic.size[0]
-
-        height = 0
-        try:
-            height = int( self.meta['height'] )
-        except KeyError:
-            self.meta['height'] = pic.size[1]
-            height = pic.size[1]
-            
-        aspect_r = calc_gcd( width, height )
-        aspect_w = int( width / aspect_r )
-        aspect_h = int( height / aspect_r )
-
-        if 10 == aspect_h and 16 == aspect_w:
-            self.meta( 'aspect', '16x10' )
-        elif 9 == aspect_h and 16 == aspect_w:
-            self.meta( 'aspect', '16x9' )
-        elif 3 == aspect_h and 4 == aspect_w:
-            self.meta( 'aspect', '4x3' )
 
     @property
     def nsfw( self ):
