@@ -2,7 +2,7 @@
 import logging 
 from flask import Flask, render_template, request, current_app, flash, send_file, abort, redirect, url_for, jsonify
 from sqlalchemy import exc
-from .models import LibraryPermissionsException, StatusEnum, db, Library, FileItem, Folder, Tag, InvalidFolderException, LibraryRootException
+from .models import LibraryPermissionsException, StatusEnum, db, Library, Item, Folder, Tag, InvalidFolderException, LibraryRootException
 from .forms import NewLibraryForm, UploadLibraryForm
 from .importing import start_import_thread, threads
 from werkzeug import secure_filename
@@ -60,10 +60,10 @@ def cloud_update_item_meta( item ):
 @current_app.cli.command( "refresh" )
 def cloud_cli_refresh():
     #with Pool( 5 ) as p:
-    #    res = p.map( cloud_update_item_meta, db.session.query( FileItem ) )
+    #    res = p.map( cloud_update_item_meta, db.session.query( Item ) )
     #    #db.session.commit()
     #    print( res )
-    for item in db.session.query( FileItem ):
+    for item in db.session.query( Item ):
         cloud_update_item_meta( item )
     db.session.commit()
 
@@ -77,7 +77,7 @@ def cloud_plugin_preview( file_id ):
 
     '''Generate a preview thumbnail to be called by a tag src attribute on gallery pages.'''
 
-    item = FileItem.from_id( file_id )
+    item = Item.from_id( file_id )
 
     # Safety checks.
     if not item.folder.library.is_accessible():
@@ -94,7 +94,7 @@ def cloud_plugin_preview( file_id ):
 @current_app.route( '/fullsize/<int:file_id>' )
 def cloud_plugin_fullsize( file_id ):
 
-    item = FileItem.from_id( file_id )
+    item = Item.from_id( file_id )
 
     # Safety checks.
     if not item.folder.library.is_accessible():
@@ -205,9 +205,9 @@ def cloud_libraries( machine_name=None, relative_path=None ):
     except InvalidFolderException as e:
 
         # Try to see if this is a valid file and display it if so.
-        query = db.session.query( FileItem ) \
-            .filter( FileItem.folder_id == e.parent_id ) \
-            .filter( FileItem.display_name == e.display_name )
+        query = db.session.query( Item ) \
+            .filter( Item.folder_id == e.parent_id ) \
+            .filter( Item.display_name == e.display_name )
         file_item = query.first()
         if not file_item:
             # File not found.
@@ -226,8 +226,8 @@ def cloud_item_ajax_save( item_id ):
     #print( new_tags )
     #print( [Tag.from_path( t ) for t in new_tags] )
 
-    item = db.session.query( FileItem ) \
-        .filter( FileItem.id == item_id ) \
+    item = db.session.query( Item ) \
+        .filter( Item.id == item_id ) \
         .first()
     del item._tags[:]
     item.tags( append=[Tag.from_path( t ) for t in new_tags] )
@@ -238,8 +238,8 @@ def cloud_item_ajax_save( item_id ):
 
 @current_app.route( '/ajax/items/<int:item_id>/json', methods=['GET'] )
 def cloud_item_ajax_json( item_id ):
-    item = db.session.query( FileItem ) \
-        .filter( FileItem.id == item_id ) \
+    item = db.session.query( Item ) \
+        .filter( Item.id == item_id ) \
         .first()
         
     return jsonify( item.to_dict( ignore_keys=['parent', 'folder'] ) )

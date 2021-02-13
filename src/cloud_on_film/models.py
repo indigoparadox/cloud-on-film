@@ -26,13 +26,9 @@ class HashEnum( Enum ):
 class StatusEnum( Enum ):
     missing = 1
 
-class MetaTypeEnum( Enum ):
-    text = 0
-    integer = 1
-
 class InvalidFolderException( Exception ):
     def __init__( self, *args, **kwargs ):
-        self.display_name = kwargs['display_name'] if 'display_name' in kwargs else None
+        self.name = kwargs['name'] if 'name' in kwargs else None
         self.absolute_path = kwargs['absolute_path'] if 'absolute_path' in kwargs else None
         self.parent_id = kwargs['parent_id'] if 'parent_id' in kwargs else None
         self.library_id = kwargs['library_id']
@@ -51,33 +47,6 @@ class LibraryPermissionsException( Exception ):
 class MaxDepthException( Exception ):
     def __init__( self, *args, **kwargs ):
         super().__init__( *args, **kwargs )
-
-class MetaTransformer( Comparator ):
-    def operate( self, op, other ):
-        def transform( q ):
-            cls = self.__clause_element__()
-            print( 'qqq' )
-            print( 'qqq' )
-            print( cls )
-            print( 'qqq' )
-            print( 'qqq' )
-            return q.join( FileMeta.item_id, cls.id )
-        return transform
-
-class MetaProperty( object ):
-
-    def __init__( self, key, value=None ):
-        self.key = key
-        self.value = value
-    
-    @hybrid_property
-    def value( self ):
-        #return getattr( self, fieldname )
-        return None
-
-@event.listens_for( MetaProperty, 'mapper_configured', propagate=True )
-def on_new_meta_property( mapper, cls ):
-    pass
 
 class JSONItemMixin( object ):
 
@@ -133,6 +102,20 @@ class JSONItemMixin( object ):
 #class UserMeta( db.Model ):
 #    pass
 
+class UserMeta( db.Model ):
+
+    __tablename__ = 'user_meta'
+
+    id = db.Column( db.Integer, primary_key=True )
+    key = db.Column( db.String( 12 ), index=True, unique=False, nullable=False )
+    value = \
+        db.Column( db.String( 256 ), index=False, unique=False, nullable=True )
+    user_id = db.Column( db.Integer, db.ForeignKey( 'users.id' ) )
+    user = db.relationship( 'User', back_populates='meta' )
+
+    def to_dict( self, *args, **kwargs ):
+        return (self.key, self.value)
+
 class User( db.Model, JSONItemMixin ):
 
     __tablename__ = 'users'
@@ -142,7 +125,8 @@ class User( db.Model, JSONItemMixin ):
         db.String( 128 ), index=True, unique=True, nullable=False )
     created = db.Column(
         db.DateTime, index=False, unique=False, nullable=False )
-    tags = db.relationship( 'Tag', back_populates='owner' )
+    libraries = db.relationship( 'Library', back_populates='owner' )
+    meta = db.relationship( 'UserMeta', back_populates='user' )
 
 class LibraryMeta( db.Model ):
 
@@ -152,8 +136,8 @@ class LibraryMeta( db.Model ):
     key = db.Column( db.String( 12 ), index=True, unique=False, nullable=False )
     value = \
         db.Column( db.String( 256 ), index=False, unique=False, nullable=True )
-    item_id = db.Column( db.Integer, db.ForeignKey( 'libraries.id' ) )
-    item = db.relationship( 'Library', back_populates='meta' )
+    library_id = db.Column( db.Integer, db.ForeignKey( 'libraries.id' ) )
+    library = db.relationship( 'Library', back_populates='meta' )
 
     def to_dict( self, *args, **kwargs ):
         return (self.key, self.value)
@@ -171,9 +155,11 @@ class Library( db.Model, JSONItemMixin ):
         db.String( 64 ), index=True, unique=True, nullable=False )
     absolute_path = db.Column(
         db.String( 256 ), index=True, unique=True, nullable=False )
-    auto_nsfw = db.Column(
+    nsfw = db.Column(
         db.Boolean, index=False, unique=False, nullable=False )
-    meta = db.relationship( 'LibraryMeta', back_populates='item' )
+    owner = db.relationship( 'User', back_populates='libraries' )
+    owner_id = db.Column( db.Integer, db.ForeignKey( 'users.id' ) )
+    meta = db.relationship( 'LibraryMeta', back_populates='library' )
 
     def __str__( self ):
         return self.machine_name
@@ -223,8 +209,8 @@ class Library( db.Model, JSONItemMixin ):
 
         return libraries
 
-files_tags = db.Table( 'files_tags', db.metadata,
-    db.Column( 'files_id', db.Integer, db.ForeignKey( 'files.id' ) ),
+items_tags = db.Table( 'items_tags', db.metadata,
+    db.Column( 'items_id', db.Integer, db.ForeignKey( 'items.id' ) ),
     db.Column( 'tags_id', db.Integer, db.ForeignKey( 'tags.id' ) ) )
 
 class TagMeta( db.Model ):
@@ -235,8 +221,8 @@ class TagMeta( db.Model ):
     key = db.Column( db.String( 12 ), index=True, unique=False, nullable=False )
     value = \
         db.Column( db.String( 256 ), index=False, unique=False, nullable=True )
-    item_id = db.Column( db.Integer, db.ForeignKey( 'tags.id' ) )
-    item = db.relationship( 'Tag', back_populates='meta' )
+    tag_id = db.Column( db.Integer, db.ForeignKey( 'tags.id' ) )
+    tag = db.relationship( 'Tag', back_populates='meta' )
 
     def to_dict( self, *args, **kwargs ):
         return (self.key, self.value)
@@ -250,28 +236,25 @@ class Tag( db.Model ):
         db.Integer, db.ForeignKey( 'tags.id' ), nullable=True )
     parent = db.relationship( 'Tag', remote_side=[id] )
     #tag_parent = db.relationship( 'Tag', remote_side=[id] )
-    display_name = db.Column(
+    name = db.Column(
         db.String( 64 ), index=True, unique=False, nullable=False )
-    owner = db.relationship( 'User', back_populates='tags' )
-    owner_id = db.Column( db.Integer, db.ForeignKey( 'users.id' ) )
-    file_id = db.Column( db.Integer, db.ForeignKey( 'files.id' ) )
-    _files = db.relationship(
-        'FileItem', secondary=files_tags, back_populates='_tags' )
-    meta = db.relationship( 'TagMeta', back_populates='item' )
+    item_id = db.Column( db.Integer, db.ForeignKey( 'items.id' ) )
+    _items = db.relationship( 'Item', secondary=items_tags, back_populates='_tags' )
+    meta = db.relationship( 'TagMeta', back_populates='tag' )
     children = db.relationship( 'Tag', backref=db.backref(
         'tag_parent', remote_side=[id] ) )
 
     def __str__( self ):
-        return self.display_name
+        return self.name
 
     def __repr__( self ):
-        return self.display_name
+        return self.name
 
     def to_dict( self, *args, **kwargs ):
         return self.path
 
     def files( self ):
-        return [f for f in self._files if f.folder.library.is_accessible()]
+        return [f for f in self._items if f.folder.library.is_accessible()]
 
     @property
     def path( self ):
@@ -280,8 +263,8 @@ class Tag( db.Model ):
         tag_iter = self
 
         # Traverse the folder's parents upwards.
-        while isinstance( tag_iter, Tag ) and tag_iter.display_name:
-            parent_list.insert( 0, tag_iter.display_name )
+        while isinstance( tag_iter, Tag ) and tag_iter.name:
+            parent_list.insert( 0, tag_iter.name )
             tag_iter = tag_iter.parent
 
         return '/'.join( parent_list )
@@ -298,12 +281,12 @@ class Tag( db.Model ):
                 tag_parent_id = tag_parent.id
 
             tag_iter = db.session.query( Tag ) \
-                .filter( Tag.display_name == path[0] ) \
+                .filter( Tag.name == path[0] ) \
                 .filter( Tag.parent_id == tag_parent_id ) \
                 .first()
             if not tag_iter:
                 # Create the missing new tag.
-                tag_iter = Tag( parent_id=tag_parent_id, display_name=path[0] )
+                tag_iter = Tag( parent_id=tag_parent_id, name=path[0] )
                 current_app.logger.info( 'creating new tag: {}'.format( tag_iter.path ) )
                 db.session.add( tag_iter )
                 db.session.commit()
@@ -320,7 +303,7 @@ class Tag( db.Model ):
         query = db.session.query( Tag ) \
             .join( tagalias, Tag.parent ) \
             .filter( db.or_( Tag.parent_id == None,
-                tagalias.display_name == '' ) )
+                tagalias.name == '' ) )
 
         return query.all()
 
@@ -332,8 +315,8 @@ class FolderMeta( db.Model ):
     key = db.Column( db.String( 12 ), index=True, unique=False, nullable=False )
     value = \
         db.Column( db.String( 256 ), index=False, unique=False, nullable=True )
-    item_id = db.Column( db.Integer, db.ForeignKey( 'folders.id' ) )
-    item = db.relationship( 'Folder', back_populates='meta' )
+    folder_id = db.Column( db.Integer, db.ForeignKey( 'folders.id' ) )
+    folder = db.relationship( 'Folder', back_populates='meta' )
 
     def to_dict( self, *args, **kwargs ):
         return (self.key, self.value)
@@ -343,25 +326,25 @@ class Folder( db.Model, JSONItemMixin ):
     __tablename__ = 'folders'
 
     id = db.Column( db.Integer, primary_key=True )
-    files = db.relationship( 'FileItem', back_populates='folder' )
+    items = db.relationship( 'Item', back_populates='folder' )
     parent_id = db.Column(
         db.Integer, db.ForeignKey( 'folders.id' ), nullable=True )
     parent = db.relationship( 'Folder', remote_side=[id] )
     #folder_parent = db.relationship( 'Folder', remote_side=[id] )
     library_id = db.Column( db.Integer, db.ForeignKey( 'libraries.id' ) )
     library = db.relationship( 'Library', back_populates='folders' )
-    display_name = db.Column(
+    name = db.Column(
         db.String( 256 ), index=True, unique=False, nullable=False )
-    meta = db.relationship( 'FolderMeta', back_populates='item' )
+    meta = db.relationship( 'FolderMeta', back_populates='folder' )
     children = db.relationship( 'Folder', backref=db.backref(
         'folder_parent', remote_side=[id] ) )
     status = db.Column( db.Enum( StatusEnum ) )
         
     def __str__( self ):
-        return self.display_name
+        return self.name
 
     def __repr__( self ):
-        return self.display_name
+        return self.name
 
     @property
     def path( self, include_lib=False ):
@@ -371,7 +354,7 @@ class Folder( db.Model, JSONItemMixin ):
 
         # Traverse the folder's parents upwards.
         while isinstance( folder_iter, Folder ):
-            parent_list.insert( 0, folder_iter.display_name )
+            parent_list.insert( 0, folder_iter.name )
             folder_iter = Folder.from_id( folder_iter.parent_id )
 
         if include_lib:
@@ -407,7 +390,7 @@ class Folder( db.Model, JSONItemMixin ):
             query = db.session.query( Folder ).filter(
                 Folder.parent_id == parent_id,
                 Folder.library_id == library.id,
-                Folder.display_name == path_right[0] )
+                Folder.name == path_right[0] )
             folder_iter = query.first()
             
             #print( 'path_right[0]: ' + path_right[0] )
@@ -422,7 +405,7 @@ class Folder( db.Model, JSONItemMixin ):
             #print( 'abs_path: ' + absolute_path )
             if not os.path.exists( absolute_path ) and not folder_iter:
                 # Folder does not exist on FS or in DB.
-                raise InvalidFolderException( display_name=path[0], library_id=library.id, absolute_path=absolute_path )
+                raise InvalidFolderException( name=path[0], library_id=library.id, absolute_path=absolute_path )
             elif os.path.exists( absolute_path ) and not folder_iter:
                 # Add folder to DB if it does exist.
                 current_app.logger.info( 'creating missing DB entry for {} under {}...'.format( absolute_path, parent ) )
@@ -433,7 +416,7 @@ class Folder( db.Model, JSONItemMixin ):
                     parent_id = parent.id
 
                 assert( library )
-                folder_iter = Folder( parent_id=parent_id, library_id=library.id, display_name=path_right[0] )
+                folder_iter = Folder( parent_id=parent_id, library_id=library.id, name=path_right[0] )
                 db.session.add( folder_iter )
                 db.session.commit()
             path_left.append( path_right.pop( 0 ) )
@@ -447,17 +430,17 @@ class Folder( db.Model, JSONItemMixin ):
             .filter( Folder.id == folder_id )
         return query.first()
 
-class FileMeta( db.Model ):
+class ItemMeta( db.Model ):
 
-    __tablename__ = 'file_meta'
+    __tablename__ = 'item_meta'
 
     id = db.Column( db.Integer, primary_key=True )
     key = db.Column( db.String( 12 ), index=True, unique=False, nullable=False )
     value = \
         db.Column( db.String( 256 ), index=False, unique=False, nullable=True )
-    item_id = db.Column( db.Integer, db.ForeignKey( 'files.id' ) )
+    item_id = db.Column( db.Integer, db.ForeignKey( 'items.id' ) )
 
-    item = db.relationship( 'FileItem',
+    item = db.relationship( 'Item',
         backref=db.backref(
             '_meta',
             collection_class=attribute_mapped_collection( 'key' ),
@@ -473,19 +456,19 @@ class FileMeta( db.Model ):
     def to_dict( self, *args, **kwargs ):
         return (self.key, self.value)
 
-class FileItem( db.Model, JSONItemMixin ):
+class Item( db.Model, JSONItemMixin ):
 
-    __tablename__ = 'files'
+    __tablename__ = 'items'
 
     id = db.Column( db.Integer, primary_key=True )
     meta = association_proxy( '_meta', 'value',
-        creator=lambda k, v: FileMeta( key=k, value=v ) )
+        creator=lambda k, v: ItemMeta( key=k, value=v ) )
     folder_id = db.Column( db.Integer, db.ForeignKey( 'folders.id' ) )
-    folder = db.relationship( 'Folder', back_populates='files' )
+    folder = db.relationship( 'Folder', back_populates='items' )
     tag_id = db.Column( db.Integer, db.ForeignKey( 'tags.id' ) )
     _tags = db.relationship(
-        'Tag', secondary=files_tags, back_populates='_files' )
-    display_name = db.Column(
+        'Tag', secondary=items_tags, back_populates='_items' )
+    name = db.Column(
         db.String( 256 ), index=True, unique=False, nullable=False )
     filetype= db.Column(
         db.String( 12 ), index=True, unique=False, nullable=True )
@@ -502,31 +485,31 @@ class FileItem( db.Model, JSONItemMixin ):
 
     nsfw = db.column_property(
         db.select(
-            [Library.auto_nsfw],
+            [Library.nsfw],
             db.and_(
                 Library.id == Folder.library_id,
                 Folder.id == folder_id ) ).label( 'nsfw' ) )
 
     width = db.column_property(
         db.select(
-            [db.cast( FileMeta.value, db.Integer )],
+            [db.cast( ItemMeta.value, db.Integer )],
             db.and_(
-                FileMeta.key == 'width',
-                FileMeta.item_id == id ) ).label( 'width' ) )
+                ItemMeta.key == 'width',
+                ItemMeta.item_id == id ) ).label( 'width' ) )
 
     height = db.column_property(
         db.select(
-            [db.cast( FileMeta.value, db.Integer )],
+            [db.cast( ItemMeta.value, db.Integer )],
             db.and_(
-                FileMeta.key == 'height',
-                FileMeta.item_id == id ) ).label( 'height' ) )
+                ItemMeta.key == 'height',
+                ItemMeta.item_id == id ) ).label( 'height' ) )
 
     rating = db.column_property(
         db.select( 
-            [db.cast( FileMeta.value, db.Integer )],
+            [db.cast( ItemMeta.value, db.Integer )],
             db.and_(
-                FileMeta.key == 'rating',
-                FileMeta.item_id == id ) ).label( 'rating' ) )
+                ItemMeta.key == 'rating',
+                ItemMeta.item_id == id ) ).label( 'rating' ) )
 
     aspect = db.column_property(
         db.case( [
@@ -537,10 +520,10 @@ class FileItem( db.Model, JSONItemMixin ):
         ], else_=0 ).label( 'aspect' ) )
 
     def __str__( self ):
-        return self.display_name
+        return self.name
 
     def __repr__( self ):
-        return self.display_name
+        return self.name
 
     def to_dict( self, *args, **kwargs ):
         dict_out = super().to_dict( *args, **kwargs )
@@ -549,16 +532,16 @@ class FileItem( db.Model, JSONItemMixin ):
         dict_out['meta'] = dict_out['_meta']
         del dict_out['_meta']
         dict_out['nsfw'] = False
-        if self.folder.library.auto_nsfw:
+        if self.folder.library.nsfw:
             dict_out['nsfw'] = True
         return dict_out
 
     def _check_tag_heir( self, tag ):
         if tag.parent and \
-        not '' == tag.parent.display_name and \
+        not '' == tag.parent.name and \
         not self in tag.parent.files():
             current_app.logger.info( 'adding parent tag {} to {}...'.format( tag.parent.path, self.absolute_path ) )
-            tag.parent._files.append( self )
+            tag.parent._items.append( self )
         elif tag.parent:
             self._check_tag_heir( tag.parent )
     
@@ -583,7 +566,7 @@ class FileItem( db.Model, JSONItemMixin ):
 
         shutil.move(
             self.absolute_path,
-            os.path.join( destination.absolute_path, self.display_name ) )
+            os.path.join( destination.absolute_path, self.name ) )
 
         self.folder_id = destination.id
         db.session.commit()
@@ -597,11 +580,11 @@ class FileItem( db.Model, JSONItemMixin ):
 
     @property
     def path( self ):
-        return '/'.join( [self.folder.path, self.display_name] )
+        return '/'.join( [self.folder.path, self.name] )
 
     @property
     def absolute_path( self ):
-        return '/'.join( [self.folder.absolute_path, self.display_name] )
+        return '/'.join( [self.folder.absolute_path, self.name] )
     
     @staticmethod
     def hash_file( absolute_path, hash_algo=HashEnum.md5 ):
@@ -617,21 +600,21 @@ class FileItem( db.Model, JSONItemMixin ):
 
     @staticmethod
     def from_id( file_id ):
-        query = db.session.query( FileItem ) \
-            .filter( FileItem.id == file_id )
+        query = db.session.query( Item ) \
+            .filter( Item.id == file_id )
         return query.first()
 
     @staticmethod
     def from_path( library_id, relative_path ):
-        # TODO: Check if exists on FS and create FileItem if so but not in DB.
+        # TODO: Check if exists on FS and create Item if so but not in DB.
 
         filename = os.path.basename( relative_path )
         
         # Get the folder from path so we're sure the folder is added to the DB before the file is.
         folder = Folder.from_path( library_id, os.path.dirname( relative_path ) )
-        item = db.session.query( FileItem ) \
-            .filter( FileItem.folder_id == folder.id ) \
-            .filter( FileItem.display_name == os.path.basename( relative_path ) ) \
+        item = db.session.query( Item ) \
+            .filter( Item.folder_id == folder.id ) \
+            .filter( Item.name == os.path.basename( relative_path ) ) \
             .first()
 
         absolute_path = os.path.join( folder.absolute_path, filename )
@@ -643,13 +626,13 @@ class FileItem( db.Model, JSONItemMixin ):
             # Item doesn't exist in DB, but it does on FS, so add it to the DB.
             st = os.stat( absolute_path )
             current_app.logger.info( 'creating entry for file: {}'.format( absolute_path ) )
-            item = FileItem(
-                display_name=filename,
+            item = Item(
+                name=filename,
                 folder_id=folder.id,
                 timestamp=datetime.fromtimestamp( st[stat.ST_MTIME] ),
                 filesize=st[stat.ST_SIZE],
                 added=datetime.now(),
-                filehash=FileItem.hash_file( absolute_path, HashEnum.md5 ),
+                filehash=Item.hash_file( absolute_path, HashEnum.md5 ),
                 filehash_algo=HashEnum.md5,
                 # TODO: Determine the file type dynamically.
                 filetype='picture' )
