@@ -10,7 +10,7 @@ class NewLibraryForm( FlaskForm ):
     display_name = StringField( 'Display Name', validators=[DataRequired()] )
     machine_name = StringField( 'Machine Name', validators=[DataRequired()] )
     absolute_path = StringField( 'Absolute Path', validators=[DataRequired()] )
-    auto_nsfw = BooleanField( 'Automatic NSFW' )
+    nsfw = BooleanField( 'NSFW' )
 
 class UploadLibraryForm( FlaskForm ):
 

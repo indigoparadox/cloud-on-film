@@ -1,20 +1,20 @@
 
-#pictures .card-title {
+.pictures .card-title {
    font-size: 0.8em !important;
    font-weight: bold;
 }
 
-#pictures .card {
+.pictures .card {
    max-width: 160px !important;
    min-width: 160px;
    overflow: hidden;
 }
 
-#pictures form {
+.pictures form {
    /* max-width: 120px !important; */
 }
 
-#pictures .rating {
+.pictures .rating {
    white-space: nowrap;
 }
 
@@ -47,6 +47,14 @@
    display: inline-block;
    width: 16px;
    height: 16px;
+}
+
+.star-on {
+   background-image: url( star-gold-32.png );
+}
+
+.star-off {
+   background-image: url( star-gray-32.png );
 }
 
 .bootstrap-tagsinput {

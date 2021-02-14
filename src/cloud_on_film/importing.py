@@ -9,6 +9,7 @@ from flask import current_app
 from datetime import datetime
 from PIL import Image
 from .models import db, HashEnum, Folder, Item, Tag, Library
+from .files.picture import Picture
 from threading import Thread
 
 class ItemImportException( Exception ):
@@ -94,15 +95,14 @@ def picture( picture ):
 
         st = os.stat( picture['filename'] )
 
-        pic = Item(
+        pic = Picture(
             name=name,
             folder_id=folder.id,
             timestamp=datetime.fromtimestamp( st[stat.ST_MTIME] ),
-            filesize=st[stat.ST_SIZE],
+            size=st[stat.ST_SIZE],
             added=datetime.fromtimestamp( picture['time_created'] ),
-            filehash=Item.hash_file( picture['filename'] ),
-            filehash_algo=HashEnum.md5,
-            filetype='picture' )
+            hash=Item.hash_file( picture['filename'] ),
+            hash_algo=1 )
         db.session.add( pic )
         db.session.flush()
         db.session.refresh( pic )

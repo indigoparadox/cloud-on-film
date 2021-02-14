@@ -44,19 +44,19 @@
 <ul class="tags">
 {% for tag_root_iter in tag_roots %}
     <li>
-    <a href="">{{ tag_root_iter.display_name }}</a>
+    <a href="">{{ tag_root_iter.name }}</a>
     <ul>
     {% for tag_child in tag_root_iter.children %}
     <li>
         {% if tag_child == this_tag %}
-        <p class="strong">{{ tag_child.display_name }}</p>
+        <p class="strong">{{ tag_child.name }}</p>
         <ul class="tags">
         {% for tag_grandchild in tag_child.children %}
-        <li class="active"><a href="">{{ tag_grandchild.display_name }}</li>
+        <li class="active"><a href="">{{ tag_grandchild.name }}</li>
         {% endfor %}
         </ul>
         {% else %}
-        <a href="{{ url_for( 'cloud_tags', path=tag_child.path ) }}"">{{ tag_child.display_name }}</a>
+        <a href="{{ url_for( 'cloud_tags', path=tag_child.path ) }}"">{{ tag_child.name }}</a>
         {% endif %}
         </li>
     {% endfor %}

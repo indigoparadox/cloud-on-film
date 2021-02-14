@@ -89,77 +89,15 @@
 {% for item in folders %}
 <li class="libraries-folder">
 <a href="{{ url_for( 'cloud_libraries', machine_name=item.library.machine_name, relative_path=None ) }}/{{ item.path }}">
-{{ item.display_name }}
+{{ item.name }}
 </a></li>
 {% endfor %}
 </ul>
 </div> <!-- /row -->
 
-<div id="pictures" class="row">
-{% for item in pictures %}
-{% if item.filetype == 'picture' %}
-<div class="col-md-2 col-sm-4 coll-xs-6 px-0 card bg-secondary">
-
-{% set img_href = url_for(
-   'cloud_libraries', machine_name=item.folder.library.machine_name,
-   relative_path=None ) + '/' + item.path %}
-<div class="px-0 py-0 libraries-thumbnail-wrapper"
-   data-src="{{ url_for( 'cloud_plugin_preview', file_id=item.id ) }}">
-<a href="{{ img_href }}" class="thumbnail"
-   data-fullsize="{{ url_for( 'cloud_plugin_fullsize', file_id=item.id ) }}">
-<noscript>
-<img
-   class="img-responsive libraries-thumbnail"
-   src="{{ url_for( 'cloud_plugin_preview', file_id=item.id ) }}"
-   alt="{{ item.display_name }}" />
-</noscript>
-</a>
-</div> <!-- /libraries-thumbnail-wrapper -->
-
-<form action="{{ url_for( 'cloud_edit_filedata' ) }}" method="POST"
-   class="container-fluid d-flex flex-column flex-grow-1">
-
-<div class="card-body container-fluid d-flex flex-column flex-grow-1 w-100 px-0">
-
-<!-- body text -->
-<h3 class="card-title d-flex flex-column">{{ item.display_name }}</h3>
-<p class="card-text d-flex flex-column flex-grow-1">
-{{ item.comment }}
-</p>
-
-<!-- button bar -->
-<div class="d-flex flex-column">
-{% if item.nsfw %}
-<small class="text-bright nsfw">
-NSFW
-</small>
-{% endif %}
-{% if 0 != item.aspect %}
-<small class="text-bright aspect-ratio">
-{{ item.aspect }}
-</small>
-{% endif %}
-<!-- <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#editModal" data-file-id="{{ item.id }}">Edit</button> -->
-<a href="#" onclick="return renameItem( {{ item.id }} );">Edit</a>
-<small class="rating">
-{% for i in range( 5 ) %}
-<a href="#" class="star star-{{ i }}"
-{% if i < item.rating %}
-   style="background-image: url( {{ url_for( 'static', filename='star-gold-32.png' ) }} )"
-{% else %}
-   style="background-image: url( {{ url_for( 'static', filename='star-gray-32.png' ) }} )"
-{% endif %}
->
-</a>
-{% endfor %}
-</small>
-</div>
-
-</div> <!-- /card-body -->
-
-</form>
-</div> <!-- /card -->
-{% endif %}
+<div id="folder-items" class="row folder-{{ this_folder.id }}{{ items_classes }}">
+{% for item in items %}
+{{ item.library_html()|safe }}
 {% endfor %}
 </div> <!-- /row -->
 

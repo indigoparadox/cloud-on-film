@@ -10,6 +10,9 @@ from flask_testing import TestCase
 from cloud_on_film import create_app, db
 from cloud_on_film.models import Library, Folder, Item, Tag
 from cloud_on_film.importing import picture
+from cloud_on_film.plugins import extension_model, item_from_path
+
+from cloud_on_film.files.picture import Picture
 
 class TestLibrary( TestCase ):
 
@@ -102,6 +105,9 @@ class TestLibrary( TestCase ):
         db.session.remove()
         db.drop_all()
 
+    #def test_plugin_interface( self ):
+        
+
     def test_library_create( self ):
         current_app.logger.debug( 'testing library creation...' )
         lib_test = Library.from_machine_name( 'testing_library' )
@@ -136,22 +142,35 @@ class TestLibrary( TestCase ):
         assert( folder_test.name == 'Foo Files 4' )
 
     def test_file_from_path( self ):
-        file1 = Item.from_path( self.lib.id, 'testing/random320x240.png' )
+        file1 = item_from_path( self.lib.id, 'testing/random320x240.png' )
         assert( file1.name == 'random320x240.png' )
         assert( file1.name != 'xxx.py' )
         assert( file1.name != 'xxx.png' )
-        assert( file1.filesize == 461998 )
+        assert( file1.size == 461998 )
 
     def test_tag_from_path( self ):
         tag = Tag.from_path( 'IFDY/Test Tag 1/Sub Test Tag 3' )
 
     def test_query_width( self ):
+
+        file_test = item_from_path( self.lib, 'testing/random500x500.png' )
+        file_test = item_from_path( self.lib, 'testing/random100x100.png' )
+
+        poly = db.with_polymorphic( Item, [Picture] )
         
-        file_test = Item.from_path( self.lib, 'testing/random500x500.png' )
-        file_test = Item.from_path( self.lib, 'testing/random100x100.png' )
+        print( 'picall' )
+        print( 'picall' )
+        print( 'picall' )
+        print( [type( p ) for p in db.session.query( poly ).all()] )
+        print( [p.plugin for p in db.session.query( poly ).all()] )
+        print( [p.width for p in db.session.query( poly ).all()] )
+        print( 'picall' )
+        print( 'picall' )
+        print( 'picall' )
         
-        files_test = db.session.query( Item ) \
-            .filter( Item.width == 100 ) \
+        files_test = db.session.query( Picture ) \
+            .with_polymorphic( Picture ) \
+            .filter( Picture.width == 100 ) \
             .all()
 
         assert( 1 == len( files_test ) )
@@ -169,7 +188,7 @@ class TestLibrary( TestCase ):
             picture( pic_json )
 
         # Test the results.
-        file_test = Item.from_path( self.lib, 'testing/random100x100.png' )
+        file_test = item_from_path( self.lib, 'testing/random100x100.png' )
         tag_testing_img = Tag.from_path( 'Testing Imports/Testing Image' )
 
         assert( tag_testing_img in file_test.tags() )
@@ -179,7 +198,7 @@ class TestLibrary( TestCase ):
         assert( not file_test.nsfw )
         assert( 0 == file_test.rating )
 
-        file_test = Item.from_path( self.lib, 'testing/random500x500.png' )
+        file_test = item_from_path( self.lib, 'testing/random500x500.png' )
         assert( tag_testing_img in file_test.tags() )
         assert( 500 == file_test.width )
         assert( 500 == file_test.height )
@@ -187,7 +206,7 @@ class TestLibrary( TestCase ):
         assert( not file_test.nsfw )
         assert( 3 == file_test.rating )
 
-        file_test = Item.from_path( self.lib, 'testing/random640x400.png' )
+        file_test = item_from_path( self.lib, 'testing/random640x400.png' )
         assert( not tag_testing_img in file_test.tags() )
         assert( 640 == file_test.width )
         assert( 400 == file_test.height )
@@ -197,32 +216,32 @@ class TestLibrary( TestCase ):
 
     def test_nsfw( self ):
 
-        file_test = Item.from_path( self.lib, 'testing/random500x500.png' )
+        file_test = item_from_path( self.lib, 'testing/random500x500.png' )
 
-        file_test = Item.from_path(
+        file_test = item_from_path(
             self.nsfw_lib, 'foo_folder/random640x480.png' )
         assert( file_test.nsfw )
 
     def test_aspect( self ):
 
-        file_test = Item.from_path(
+        file_test = item_from_path(
             self.nsfw_lib, 'foo_folder/random640x480.png' )
         assert( 4 == file_test.aspect )
 
-        file_test = Item.from_path(
+        file_test = item_from_path(
             self.lib, 'testing/random500x500.png' )
         assert( 1 == file_test.aspect )
 
-        file_test = Item.from_path(
+        file_test = item_from_path(
             self.lib, 'testing/random640x400.png' )
         assert( 10 == file_test.aspect )
 
     def test_rating( self ):
 
-        file_test = Item.from_path( self.lib, 'testing/random500x500.png' )
+        file_test = item_from_path( self.lib, 'testing/random500x500.png' )
         file_test.meta['rating'] = 1
         db.session.commit()
-        file_test = Item.from_path( self.lib, 'testing/random100x100.png' )
+        file_test = item_from_path( self.lib, 'testing/random100x100.png' )
         file_test.meta['rating'] = 4
         db.session.commit()
 
@@ -230,7 +249,7 @@ class TestLibrary( TestCase ):
         assert( 4 == file_test.rating )
 
         files_test = db.session.query( Item ) \
-            .filter( Item.rating > 1 ) \
+            .filter( Picture.rating > 1 ) \
             .all()
 
         assert( 1 == len( files_test ) )
@@ -238,7 +257,7 @@ class TestLibrary( TestCase ):
         assert( 'random100x100.png' == files_test[0].name )
 
         files_test = db.session.query( Item ) \
-            .filter( Item.rating == 1 ) \
+            .filter( Picture.rating == 1 ) \
             .all()
 
         assert( 1 == len( files_test ) )

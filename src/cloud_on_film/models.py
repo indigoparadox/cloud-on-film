@@ -5,6 +5,7 @@ import errno
 import stat
 import hashlib
 import shutil
+import importlib
 from sqlalchemy import event, func
 from sqlalchemy.orm import query
 from sqlalchemy.inspection import inspect
@@ -15,8 +16,8 @@ from sqlalchemy.sql.sqltypes import Integer
 from . import db
 from enum import Enum
 from flask import current_app
-from PIL import Image
 from datetime import datetime
+from collections import defaultdict
 
 class HashEnum( Enum ):
     md5 = 1
@@ -47,6 +48,13 @@ class LibraryPermissionsException( Exception ):
 class MaxDepthException( Exception ):
     def __init__( self, *args, **kwargs ):
         super().__init__( *args, **kwargs )
+
+class DBItemNotFoundException( Exception ):
+    def __init__( self, *args, **kwargs ):
+        #super().__init__( *args, **kwargs )
+        self.absolute_path = kwargs['absolute_path'] if 'absolute_path' in kwargs else None
+        self.folder = kwargs['folder'] if 'folder' in kwargs else None
+        self.filename = kwargs['filename'] if 'filename' in kwargs else None
 
 class JSONItemMixin( object ):
 
@@ -86,6 +94,21 @@ class JSONItemMixin( object ):
                 else:
                     dict_out[key] = None
 
+            elif isinstance( val, dict ):
+                dict_out[key] = {}
+                for dict_key in val:
+                    if hasattr( val[dict_key], 'to_dict' ):
+                        dict_out[key][dict_key] = val[dict_key].to_dict()
+
+                        # Meta properties are a tuple with a redundant "key" and "val".
+                        # Just keep the "val" if this arrangement is detected.
+                        if isinstance( dict_out[key][dict_key], tuple ) and \
+                        2 == len( dict_out[key][dict_key] ) and \
+                        dict_key == dict_out[key][dict_key][0]:
+                            dict_out[key][dict_key] = dict_out[key][dict_key][1]
+                    else:
+                        dict_out[key][dict_key] = val[dict_key]
+
             elif isinstance( val, Enum ):
                 dict_out[key] = str( val )
 
@@ -94,15 +117,20 @@ class JSONItemMixin( object ):
 
             #print( dict_out )
 
-        assert( not 'type' in dict_out )
-        dict_out['type'] = str( type( self ) )
-
         return dict_out
 
-#class UserMeta( db.Model ):
-#    pass
+class MetaPropertyMixin( object ):
 
-class UserMeta( db.Model ):
+    def __str__( self ):
+        return self.value
+
+    def __repr__( self ):
+        return self.value
+
+    def to_dict( self, *args, **kwargs ):
+        return (self.key, self.value)
+
+class UserMeta( db.Model, MetaPropertyMixin ):
 
     __tablename__ = 'user_meta'
 
@@ -112,9 +140,6 @@ class UserMeta( db.Model ):
         db.Column( db.String( 256 ), index=False, unique=False, nullable=True )
     user_id = db.Column( db.Integer, db.ForeignKey( 'users.id' ) )
     user = db.relationship( 'User', back_populates='meta' )
-
-    def to_dict( self, *args, **kwargs ):
-        return (self.key, self.value)
 
 class User( db.Model, JSONItemMixin ):
 
@@ -128,7 +153,7 @@ class User( db.Model, JSONItemMixin ):
     libraries = db.relationship( 'Library', back_populates='owner' )
     meta = db.relationship( 'UserMeta', back_populates='user' )
 
-class LibraryMeta( db.Model ):
+class LibraryMeta( db.Model, MetaPropertyMixin ):
 
     __tablename__ = 'library_meta'
 
@@ -137,10 +162,12 @@ class LibraryMeta( db.Model ):
     value = \
         db.Column( db.String( 256 ), index=False, unique=False, nullable=True )
     library_id = db.Column( db.Integer, db.ForeignKey( 'libraries.id' ) )
-    library = db.relationship( 'Library', back_populates='meta' )
-
-    def to_dict( self, *args, **kwargs ):
-        return (self.key, self.value)
+    library = db.relationship( 'Library',
+        backref=db.backref(
+            '_meta',
+            collection_class=attribute_mapped_collection( 'key' ),
+            lazy="joined",
+            cascade="all, delete-orphan" ) )
 
 class Library( db.Model, JSONItemMixin ):
 
@@ -213,7 +240,7 @@ items_tags = db.Table( 'items_tags', db.metadata,
     db.Column( 'items_id', db.Integer, db.ForeignKey( 'items.id' ) ),
     db.Column( 'tags_id', db.Integer, db.ForeignKey( 'tags.id' ) ) )
 
-class TagMeta( db.Model ):
+class TagMeta( db.Model, MetaPropertyMixin ):
 
     __tablename__ = 'tag_meta'
 
@@ -222,10 +249,12 @@ class TagMeta( db.Model ):
     value = \
         db.Column( db.String( 256 ), index=False, unique=False, nullable=True )
     tag_id = db.Column( db.Integer, db.ForeignKey( 'tags.id' ) )
-    tag = db.relationship( 'Tag', back_populates='meta' )
-
-    def to_dict( self, *args, **kwargs ):
-        return (self.key, self.value)
+    tag = db.relationship( 'Tag',
+        backref=db.backref(
+            '_meta',
+            collection_class=attribute_mapped_collection( 'key' ),
+            lazy="joined",
+            cascade="all, delete-orphan" ) )
 
 class Tag( db.Model ):
 
@@ -235,14 +264,14 @@ class Tag( db.Model ):
     parent_id = db.Column( 
         db.Integer, db.ForeignKey( 'tags.id' ), nullable=True )
     parent = db.relationship( 'Tag', remote_side=[id] )
-    #tag_parent = db.relationship( 'Tag', remote_side=[id] )
     name = db.Column(
         db.String( 64 ), index=True, unique=False, nullable=False )
-    item_id = db.Column( db.Integer, db.ForeignKey( 'items.id' ) )
-    _items = db.relationship( 'Item', secondary=items_tags, back_populates='_tags' )
     meta = db.relationship( 'TagMeta', back_populates='tag' )
     children = db.relationship( 'Tag', backref=db.backref(
         'tag_parent', remote_side=[id] ) )
+
+    # Tags are a bit different than meta relationships at they're many-to-many.
+    _items = db.relationship( 'Item', secondary=items_tags, back_populates='_tags' )
 
     def __str__( self ):
         return self.name
@@ -298,14 +327,8 @@ class Tag( db.Model ):
 
     @staticmethod
     def enumerate_roots():
-
-        tagalias = db.aliased( Tag )
-        query = db.session.query( Tag ) \
-            .join( tagalias, Tag.parent ) \
-            .filter( db.or_( Tag.parent_id == None,
-                tagalias.name == '' ) )
-
-        return query.all()
+        return db.session.query( Tag ) \
+            .filter( Tag.parent_id == None )
 
 class FolderMeta( db.Model ):
 
@@ -316,10 +339,12 @@ class FolderMeta( db.Model ):
     value = \
         db.Column( db.String( 256 ), index=False, unique=False, nullable=True )
     folder_id = db.Column( db.Integer, db.ForeignKey( 'folders.id' ) )
-    folder = db.relationship( 'Folder', back_populates='meta' )
-
-    def to_dict( self, *args, **kwargs ):
-        return (self.key, self.value)
+    folder = db.relationship( 'Folder',
+        backref=db.backref(
+            '_meta',
+            collection_class=attribute_mapped_collection( 'key' ),
+            lazy="joined",
+            cascade="all, delete-orphan" ) )
 
 class Folder( db.Model, JSONItemMixin ):
 
@@ -392,20 +417,16 @@ class Folder( db.Model, JSONItemMixin ):
                 Folder.library_id == library.id,
                 Folder.name == path_right[0] )
             folder_iter = query.first()
-            
-            #print( 'path_right[0]: ' + path_right[0] )
-            #print( 'folder_iter: ' + str( folder_iter ) )
-            #print( 'parent: ' + str( parent ) )
 
             # Use the parent's absolute path if available, otherwise use the library's.
             absolute_path = os.path.join( library.absolute_path, path_right[0] )
             if parent:
                 absolute_path = os.path.join( parent.absolute_path, path_right[0] )
             
-            #print( 'abs_path: ' + absolute_path )
             if not os.path.exists( absolute_path ) and not folder_iter:
                 # Folder does not exist on FS or in DB.
                 raise InvalidFolderException( name=path[0], library_id=library.id, absolute_path=absolute_path )
+
             elif os.path.exists( absolute_path ) and not folder_iter:
                 # Add folder to DB if it does exist.
                 current_app.logger.info( 'creating missing DB entry for {} under {}...'.format( absolute_path, parent ) )
@@ -430,7 +451,7 @@ class Folder( db.Model, JSONItemMixin ):
             .filter( Folder.id == folder_id )
         return query.first()
 
-class ItemMeta( db.Model ):
+class ItemMeta( db.Model, MetaPropertyMixin ):
 
     __tablename__ = 'item_meta'
 
@@ -439,22 +460,12 @@ class ItemMeta( db.Model ):
     value = \
         db.Column( db.String( 256 ), index=False, unique=False, nullable=True )
     item_id = db.Column( db.Integer, db.ForeignKey( 'items.id' ) )
-
     item = db.relationship( 'Item',
         backref=db.backref(
             '_meta',
             collection_class=attribute_mapped_collection( 'key' ),
             lazy="joined",
             cascade="all, delete-orphan" ) )
-
-    def __str__( self ):
-        return self.value
-
-    def __repr__( self ):
-        return self.value
-
-    def to_dict( self, *args, **kwargs ):
-        return (self.key, self.value)
 
 class Item( db.Model, JSONItemMixin ):
 
@@ -465,76 +476,47 @@ class Item( db.Model, JSONItemMixin ):
         creator=lambda k, v: ItemMeta( key=k, value=v ) )
     folder_id = db.Column( db.Integer, db.ForeignKey( 'folders.id' ) )
     folder = db.relationship( 'Folder', back_populates='items' )
-    tag_id = db.Column( db.Integer, db.ForeignKey( 'tags.id' ) )
     _tags = db.relationship(
         'Tag', secondary=items_tags, back_populates='_items' )
     name = db.Column(
         db.String( 256 ), index=True, unique=False, nullable=False )
-    filetype= db.Column(
-        db.String( 12 ), index=True, unique=False, nullable=True )
     timestamp = db.Column(
         db.DateTime, index=False, unique=False, nullable=False )
-    filesize = db.Column(
+    size = db.Column(
         db.Integer, index=False, unique=False, nullable=False )
     added = db.Column( db.DateTime, index=False, unique=False, nullable=False )
-    filehash = db.Column(
+    hash = db.Column(
         db.String( 512 ), index=False, unique=False, nullable=False )
-    filehash_algo = db.Column(
-        db.Enum( HashEnum ), index=False, unique=False, nullable=False )
+    hash_algo = db.Column( db.Integer, index=False, unique=False, nullable=False )
     status = db.Column( db.Enum( StatusEnum ) )
+
+    owner_id = db.column_property(
+        db.select(
+            [Library.owner_id],
+            db.and_(
+                Library.id == Folder.library_id,
+                Folder.id == folder_id ) ).label( 'owner_id' ) )
 
     nsfw = db.column_property(
         db.select(
-            [Library.nsfw],
+            [func.cast( Library.nsfw, db.Integer )],
             db.and_(
                 Library.id == Folder.library_id,
                 Folder.id == folder_id ) ).label( 'nsfw' ) )
 
-    width = db.column_property(
-        db.select(
-            [db.cast( ItemMeta.value, db.Integer )],
-            db.and_(
-                ItemMeta.key == 'width',
-                ItemMeta.item_id == id ) ).label( 'width' ) )
-
-    height = db.column_property(
-        db.select(
-            [db.cast( ItemMeta.value, db.Integer )],
-            db.and_(
-                ItemMeta.key == 'height',
-                ItemMeta.item_id == id ) ).label( 'height' ) )
-
-    rating = db.column_property(
-        db.select( 
-            [db.cast( ItemMeta.value, db.Integer )],
-            db.and_(
-                ItemMeta.key == 'rating',
-                ItemMeta.item_id == id ) ).label( 'rating' ) )
-
-    aspect = db.column_property(
-        db.case( [
-            (16 * height.expression / width == 10, 10),
-            (16 * height.expression / width == 9, 9),
-            (4 * height.expression / width == 3, 4),
-            (1 * height.expression / width == 1, 1)
-        ], else_=0 ).label( 'aspect' ) )
+    # The plugin column should be allowed to be set by the subclass.
+    # Items should be created as the subclass they are detected as.
+    plugin= db.Column( db.String( 12 ), nullable=False )
+    __mapper_args__ = {
+        'polymorphic_identity': 'item',
+        'polymorphic_on': plugin
+    }
 
     def __str__( self ):
         return self.name
 
     def __repr__( self ):
         return self.name
-
-    def to_dict( self, *args, **kwargs ):
-        dict_out = super().to_dict( *args, **kwargs )
-        dict_out['tags'] = [t.to_dict( *args, **kwargs ) for t in self.tags()]
-        del dict_out['_tags']
-        dict_out['meta'] = dict_out['_meta']
-        del dict_out['_meta']
-        dict_out['nsfw'] = False
-        if self.folder.library.nsfw:
-            dict_out['nsfw'] = True
-        return dict_out
 
     def _check_tag_heir( self, tag ):
         if tag.parent and \
@@ -571,13 +553,6 @@ class Item( db.Model, JSONItemMixin ):
         self.folder_id = destination.id
         db.session.commit()
 
-    def open_image( self ):
-        im = Image.open( self.absolute_path )
-        if not im:
-            raise FileNotFoundError(
-                errno.ENOENT, os.strerror(errno.ENOENT), self.absolute_path )
-        return im
-
     @property
     def path( self ):
         return '/'.join( [self.folder.path, self.name] )
@@ -599,12 +574,6 @@ class Item( db.Model, JSONItemMixin ):
         return ha.hexdigest()
 
     @staticmethod
-    def from_id( file_id ):
-        query = db.session.query( Item ) \
-            .filter( Item.id == file_id )
-        return query.first()
-
-    @staticmethod
     def from_path( library_id, relative_path ):
         # TODO: Check if exists on FS and create Item if so but not in DB.
 
@@ -623,30 +592,9 @@ class Item( db.Model, JSONItemMixin ):
             raise FileNotFoundError( errno.ENOENT, os.strerror(errno.ENOENT), absolute_path )
         
         elif not item:
-            # Item doesn't exist in DB, but it does on FS, so add it to the DB.
-            st = os.stat( absolute_path )
-            current_app.logger.info( 'creating entry for file: {}'.format( absolute_path ) )
-            item = Item(
-                name=filename,
-                folder_id=folder.id,
-                timestamp=datetime.fromtimestamp( st[stat.ST_MTIME] ),
-                filesize=st[stat.ST_SIZE],
-                added=datetime.now(),
-                filehash=Item.hash_file( absolute_path, HashEnum.md5 ),
-                filehash_algo=HashEnum.md5,
-                # TODO: Determine the file type dynamically.
-                filetype='picture' )
-            db.session.add( item )
-            db.session.commit()
-
-            with item.open_image() as im:
-                item.meta['width'] = im.size[0]
-                item.meta['height'] = im.size[1]
-            db.session.commit()
-
-            current_app.logger.info( 'found new image with size: {}x{}'.format(
-                item.width, item.height
-            ) )
+            # Toss it up to the plugin or situation to create an entry.
+            raise DBItemNotFoundException(
+                absolute_path=absolute_path, folder=folder, filename=filename )
 
         elif not os.path.exists( absolute_path ):
             # Item doesn't exist on FS even though it does on FS, so mark it missing.
