@@ -194,47 +194,15 @@ class Library( db.Model, JSONItemMixin ):
     def __repr__( self ):
         return self.machine_name
 
-    def is_accessible( self ):
-        # TODO
-        #print( self.machine_name )
-        if self.machine_name == 'nosync':
-            return False
-        return True
-
     @staticmethod
-    def from_machine_name( machine_name ):
-        library = db.session.query( Library ) \
-            .filter( Library.machine_name == machine_name ) \
-            .first()
-
-        if not library.is_accessible():
-            raise LibraryPermissionsException( library_id=library.id )
-
-        return library
-
-    @staticmethod
-    def from_id( id ):
-        library = db.session.query( Library ) \
-            .filter( Library.id == id ) \
-            .first()
-
-        if not library.is_accessible():
-            raise LibraryPermissionsException( library_id=library.id )
-
-        return library
-
-    @staticmethod
-    def enumerate_all():
+    def enumerate_all( user_id ):
 
         '''Return a list of all libraries (as defined by SQLA Library model.'''
 
-        libraries = db.session.query( Library ).all()
-
-        for library in libraries:
-            if not library.is_accessible():
-                libraries.remove( library )
-
-        return libraries
+        return db.session.query( Library ) \
+            .filter( db.or_(
+                Library.owner_id == user_id, Library.owner_id == None ) ) \
+            .all()
 
 items_tags = db.Table( 'items_tags', db.metadata,
     db.Column( 'items_id', db.Integer, db.ForeignKey( 'items.id' ) ),
@@ -281,9 +249,6 @@ class Tag( db.Model ):
 
     def to_dict( self, *args, **kwargs ):
         return self.path
-
-    def files( self ):
-        return [f for f in self._items if f.folder.library.is_accessible()]
 
     @property
     def path( self ):
@@ -390,7 +355,9 @@ class Folder( db.Model, JSONItemMixin ):
         # Traverse the folder's parents upwards.
         while isinstance( folder_iter, Folder ):
             parent_list.insert( 0, folder_iter.name )
-            folder_iter = Folder.from_id( folder_iter.parent_id )
+            folder_iter = db.session.query( Folder ) \
+                .filter( Folder.id == folder_iter.parent_id ) \
+                .first()
 
         if include_lib:
             parent_list.insert( 0, self.library.machine_name )
@@ -402,9 +369,15 @@ class Folder( db.Model, JSONItemMixin ):
         return '/'.join( [self.library.absolute_path, self.path] )
 
     @staticmethod
-    def from_path( library, path ):
+    def from_path( library, path, user_id ):
         if not isinstance( library, Library ):
-            library = Library.from_id( library )
+            library = db.session.query( Library ) \
+                .filter( Library.id == library ) \
+                .filter( db.or_( Library.owner_id == user_id, Library.owner_id == None ) ) \
+                .first()
+
+        if not library:
+            raise LibraryPermissionsException()
 
         if not path:
             raise LibraryRootException( library_id=library.id )
@@ -454,12 +427,6 @@ class Folder( db.Model, JSONItemMixin ):
             parent = folder_iter
 
         return folder_iter
-
-    @staticmethod
-    def from_id( folder_id ):
-        query = db.session.query( Folder ) \
-            .filter( Folder.id == folder_id )
-        return query.first()
 
 class ItemMeta( db.Model, MetaPropertyMixin ):
 
@@ -554,12 +521,15 @@ class Item( db.Model, JSONItemMixin ):
             
         return self._tags
 
-    def move( self, destination ):
+    def move( self, library, destination, user_id ):
         
         if isinstance( destination, int ):
-            destination = Folder.from_id( destination )
+            destination = db.session.query( Folder ) \
+                .filter( Folder.id == destination ) \
+                .filter( Folder.owner_id == user_id ) \
+                .first()
         elif isinstance( destination, str ):
-            destination = Folder.from_path( destination )
+            destination = Folder.from_path( library, destination, user_id )
 
         assert( isinstance( destination, Folder ) )
 
@@ -591,16 +561,17 @@ class Item( db.Model, JSONItemMixin ):
         return ha.hexdigest()
 
     @staticmethod
-    def from_path( library_id, relative_path ):
+    def from_path( library_id, relative_path, user_id ):
         # TODO: Check if exists on FS and create Item if so but not in DB.
 
         filename = os.path.basename( relative_path )
         
         # Get the folder from path so we're sure the folder is added to the DB before the file is.
-        folder = Folder.from_path( library_id, os.path.dirname( relative_path ) )
+        folder = Folder.from_path( library_id, os.path.dirname( relative_path ), user_id )
         item = db.session.query( Item ) \
             .filter( Item.folder_id == folder.id ) \
             .filter( Item.name == os.path.basename( relative_path ) ) \
+            .filter( Item.owner_id == user_id ) \
             .first()
 
         absolute_path = os.path.join( folder.absolute_path, filename )

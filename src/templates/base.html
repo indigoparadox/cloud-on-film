@@ -2,7 +2,10 @@
 <html>
 <head>
 <title>{{ title }}</title>
-<script type="text/javascript">var flaskRoot = "{{ url_for( 'cloud_root' ) }}";</script>
+<script type="text/javascript">
+var flaskRoot = "{{ url_for( 'cloud_root' ) }}";
+var currentUID = {{ current_uid }};
+</script>
 <script src="{{ url_for( 'static', filename='jquery.min.js' ) }}"></script>
 <script src="{{ url_for( 'static', filename='jquery-ui.js' ) }}"></script>
 <script src="{{ url_for( 'static', filename='popper.min.js' ) }}"></script>
@@ -23,7 +26,7 @@
 <div id="sidebar-inner">
 {% block sidebar %}
 <h2>Libraries</h2>
-{% with libraries = library_enumerate_all() %}
+{% with libraries = library_enumerate_all( current_uid ) %}
 <ul class="libraries">
 {% for lib in libraries %}
 {% if lib.machine_name == library_name %}

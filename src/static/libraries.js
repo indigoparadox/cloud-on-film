@@ -77,8 +77,7 @@ $(window).on( 'scroll', function( e ) {
    } */
 
    page += 1;
-   nsfw = '/nsfw'; // TODO: nsfw
-   let loadURL = flaskRoot + 'ajax/html/items' + nsfw + '/' + folderID.toString() + '/' + page.toString();
+   let loadURL = flaskRoot + 'ajax/html/items/' + folderID.toString() + '/' + page.toString();
    // Grab the next [loadIncrement] columns and append them to the table.
    $.get( loadURL, function( data ) {
       for( var i = 0 ; data.length > i ; i++ ) {
@@ -120,8 +119,10 @@ function renameItem( id ) {
       }
       $('#modal-input-name').val( item_data['name'] );
       $('#modal-input-comment').val( item_data['comment'] );
-      //var img_preview_tag = $('<img src="' + flaskRoot + 'preview/' + data['id'] + '/360/270" class="" style="display: none;" />');
-      var img_preview_tag = $('<img src="' + flaskRoot + 'preview/' + item_data['id'] + '/230/172" class="" style="display: none;" />');
+      //var img_preview_tag = $('<img src="' + flaskRoot + 'preview/' + 
+      //   data['id'] + '/360/270" class="" style="display: none;" />');
+      var img_preview_tag = $('<img src="' + flaskRoot + 'preview/' +
+         item_data['id'] + '/230/172" class="" style="display: none;" />');
       $('#modal-form-preview').empty();
       $('#modal-form-preview').append( img_preview_tag );
       $('#modal-form-preview img').one( 'load', function( e ) {
@@ -154,7 +155,7 @@ function renameItem( id ) {
                }
             } );
 
-            tree_data.instance.select_node( tree_data.instance.element.find( '#' + item_data['folder_id'].toString() ) );
+            //tree_data.instance.select_node( tree_data.instance.element.find( '#' + item_data['folder_id'].toString() ) );
          }
       } );
 

@@ -113,11 +113,11 @@ class Picture( Item ):
         return thumb_path
 
     @staticmethod
-    def from_path( lib, path ):
+    def from_path( lib, path, user_id ):
 
         picture = None
         try:
-            picture = Item.from_path( lib, path )
+            picture = Item.from_path( lib, path, user_id )
         except DBItemNotFoundException as e:
             # Item doesn't exist in DB, but it does on FS, so add it to the DB.
             st = os.stat( e.absolute_path )
@@ -154,6 +154,7 @@ class Picture( Item ):
 
         self_dict = self.to_dict( ignore_keys=['folder', '_meta', '_tags'] )
 
+        self_dict['classes'] = ''
         self_dict['comment'] = self.comment if self.comment else ''
         self_dict['preview'] = url_for( 'cloud_plugin_preview', file_id=self.id )
         self_dict['fullsize_page'] = url_for( 'cloud_libraries',
@@ -161,15 +162,18 @@ class Picture( Item ):
             relative_path=None ) + '/' + self.path
         self_dict['fullsize'] = url_for( 'cloud_plugin_fullsize', file_id=self.id )
         self_dict['nsfw'] = '<small class="text-bright nsfw">NSFW</small>' if self.nsfw else ''
+        self_dict['classes'] += ' nsfw' if self.nsfw else ''
         self_dict['dimensions'] = '<small class="text-bright dimensions">{}x{}</small>'.format( self.width, self.height )
         self_dict['aspect'] = '<small class="text-bright aspect-ratio">{}</small>'.format( ASPECT_RATIO_FMT[self.aspect] ) if self.aspect else ''
+        self_dict['classes'] += ' wp-{}'.format( ASPECT_RATIO_FMT[self.aspect].replace( ':', 'x' ) ) if self.aspect else ''
         self_dict['rating'] = '<small class="rating">' + \
             ''.join( ['<a href="#" class="star-on star-{}"></a>'.format( i ) for i in range( self.rating )] ) + \
             ''.join( ['<a href="#" class="star-off star-{}"></a>'.format( i ) for i in range( 5 - self.rating )] ) + \
             '</small>'
+        self_dict['classes'] += ' rating-{}'.format( self.rating )
 
         html_out = '''
-<div class="col-md-2 col-sm-4 coll-xs-6 px-0 card bg-secondary">
+<div class="col-md-2 col-sm-4 coll-xs-6 px-0 card bg-secondary{classes}">
 
     <div class="px-0 py-0 libraries-thumbnail-wrapper" data-src="{preview}">
         <a href="{fullsize_page}" class="thumbnail"

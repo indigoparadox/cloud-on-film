@@ -15,15 +15,16 @@ def extension_model( extension ):
             return PLUGIN_INFO[p]['model']
     return Item
 
-def item_from_id( file_id ):
+def item_from_id( file_id, user_id ):
     poly = plugin_polymorph()
     return db.session.query( poly ) \
         .filter( Item.id == file_id ) \
+        .filter( db.or_( Item.owner_id == user_id, Item.owner_id == None ) ) \
         .first()
 
-def item_from_path( library, path ):
+def item_from_path( library, path, user_id ):
     extension = path.split( '.' )[-1]
-    return extension_model( extension ).from_path( library, path )
+    return extension_model( extension ).from_path( library, path, user_id )
 
 def plugin_polymorph():
     models = []

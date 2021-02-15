@@ -71,8 +71,9 @@ def picture( picture ):
     # See if this picture's folder exists already.
 
     # Spelunk into folders starting from the library we found.
+    # Circumvent user checking.
     folder_relative_path = os.path.dirname( relative_path )
-    folder = Folder.from_path( library.id, folder_relative_path )
+    folder = Folder.from_path( library.id, folder_relative_path, library.owner_id )
 
     # See if the picture already exists.
     name = os.path.basename( picture['filename'] )

@@ -33,7 +33,7 @@ def cloud_cli_update():
             try:
                 assert( None != library )
                 #print( 'lib_abs: ' + library.absolute_path )
-                folder = Folder().from_path( library, relative_path )
+                folder = Folder.from_path( library, relative_path )
                 #print( folder )
             except InvalidFolderException as e:
                 print( dirpath )
@@ -79,6 +79,8 @@ def cloud_plugin_preview( file_id, width=160, height=120 ):
 
     '''Generate a preview thumbnail to be called by a tag src attribute on gallery pages.'''
 
+    current_uid = 0 # TODO: current_uid
+
     allowed_resolutions = [
         tuple( [int( i ) for i in r.split( ',' )] )
             for r in current_app.config['ALLOWED_PREVIEWS']]
@@ -86,10 +88,10 @@ def cloud_plugin_preview( file_id, width=160, height=120 ):
     if not (width, height) in allowed_resolutions:
         abort( 404 )
 
-    item = item_from_id( file_id )
+    item = item_from_id( file_id, current_uid )
 
     # Safety checks.
-    if not item.folder.library.is_accessible():
+    if not item:
         abort( 403 )
 
     #p = importlib.import_module(
@@ -104,11 +106,13 @@ def cloud_plugin_preview( file_id, width=160, height=120 ):
 
 @current_app.route( '/fullsize/<int:file_id>' )
 def cloud_plugin_fullsize( file_id ):
+
+    current_uid = 0 # TODO: current_uid
     
-    item = item_from_id( file_id )
+    item = item_from_id( file_id, current_uid )
 
     # Safety checks.
-    if not item.folder.library.is_accessible():
+    if not item:
         abort( 403 )
 
     # TODO: Figure out display tag (img/audio/video/etc).
@@ -125,6 +129,8 @@ def cloud_plugin_fullsize( file_id ):
 
 @current_app.route( '/libraries/new', methods=['GET', 'POST'] )
 def cloud_libraries_new():
+
+    current_uid = 0 # TODO: current_uid
 
     form = NewLibraryForm( request.form )
 
@@ -145,16 +151,18 @@ def cloud_libraries_new():
             flash( e )
             db.session.rollback()
 
-    return render_template( 'form_libraries_new.html', form=form )
+    return render_template( 'form_libraries_new.html', form=form, current_uid=current_uid )
 
     if 'GET' == request.method:
-        return render_template( 'form_libraries_uploading.html', id=id )
+        return render_template( 'form_libraries_uploading.html', id=id, uid=current_uid )
     elif 'POST' == request.method:
         return threads[id].progress
 
 @current_app.route( '/libraries/upload', methods=['GET', 'POST'] )
 @current_app.route( '/libraries/upload/<id>', methods=['GET', 'POST'] )
 def cloud_libraries_upload( id='' ):
+
+    current_uid = 0 # TODO: current_uid
 
     form = UploadLibraryForm( request.form )
 
@@ -177,7 +185,7 @@ def cloud_libraries_upload( id='' ):
             return redirect( url_for( 'cloud_libraries_upload' ) )
 
     return render_template( 'form_libraries_upload.html',
-        title=title, form=form, id=id, progress=progress )
+        title=title, form=form, id=id, progress=progress, current_uid=current_uid )
 
 @current_app.route( '/libraries/<string:machine_name>' )
 @current_app.route( '/libraries/<string:machine_name>/<path:relative_path>' )
@@ -192,29 +200,27 @@ def cloud_libraries( machine_name=None, relative_path=None, page=0 ):
             if request.args.get( 'categories' ) in ['tags', 'folders']
                 else 'folders' }
 
-    try:
-        library = Library.from_machine_name( machine_name )
-    except LibraryPermissionsException as e:
-        abort( 403 )
+    current_uid = 0; # TODO: current_uid
+
+    library = db.session.query( Library ) \
+        .filter( db.or_(
+            Library.owner_id == current_uid,
+            Library.owner_id == None ) ) \
+        .filter( Library.machine_name == machine_name ) \
+        .first()
+
     if not library:
         abort( 404 )
 
     poly = plugin_polymorph()
-
-    # TODO: Current user UID.
-    current_uid = 0
-
-    # TODO: Determine if showing NSFW.
-    nsfw = 1
     
     try:
         # Show a folder listing.
-        folder = Folder.from_path( library.id, relative_path )
+        folder = Folder.from_path( library.id, relative_path, current_uid )
         offset = page * current_app.config['ITEMS_PER_PAGE']
         items = db.session.query( poly ) \
             .filter( Item.folder_id == folder.id ) \
             .filter( db.or_( None == Item.owner_id, current_uid == Item.owner_id ) ) \
-            .filter( db.or_( 0 == Item.nsfw, (1 if nsfw else 0) == Item.nsfw ) ) \
             .order_by( Item.name ) \
             .offset( offset ) \
             .limit( current_app.config['ITEMS_PER_PAGE'] ) \
@@ -222,34 +228,33 @@ def cloud_libraries( machine_name=None, relative_path=None, page=0 ):
             
         return render_template(
             'libraries.html', **l_globals, folders=folder.children,
-            items=items, items_classes=' pictures', page=page,
+            items=items, items_classes=' pictures', page=page, current_uid=current_uid,
             this_folder=folder )
 
     except LibraryRootException as e:
         # Show the root of the given library ID.
         return render_template(
             'libraries.html', **l_globals, folders=library.children, pictures=[],
-            this_folder=None )
+            this_folder=None, current_uid=current_uid )
 
     except InvalidFolderException as e:
 
         # Try to see if this is a valid file and display it if so.
         query = db.session.query( Item ) \
             .filter( Item.folder_id == e.parent_id ) \
+            .filter( db.or_( Item.owner_id == current_uid, Item.owner_id == None ) ) \
             .filter( Item.name == e.name )
         file_item = query.first()
-        if not file_item:
-            # File not found.
-            abort( 404 )
-        elif file_item.folder.library.machine_name != machine_name:
-            # Wrong library.
-            abort( 403 )
 
         return render_template(
-            'file_item.html', **l_globals, file_item=file_item, tag_list=json.dumps( tags ) )
+            'file_item.html', **l_globals, file_item=file_item, tag_list=json.dumps( tags ),
+            current_uid=current_uid )
 
 @current_app.route( '/ajax/item/<int:item_id>/save', methods=['POST'] )
 def cloud_item_ajax_save( item_id ):
+
+    current_uid = 0 # TODO: current_uid
+
     new_tags = request.form['tags'].split( ',' )
 
     #print( new_tags )
@@ -257,7 +262,12 @@ def cloud_item_ajax_save( item_id ):
 
     item = db.session.query( Item ) \
         .filter( Item.id == item_id ) \
+        .filter( db.or_( Item.owner_id == current_uid, Item.owner_id == None ) ) \
         .first()
+    
+    if not item:
+        abort( 403 )
+
     del item._tags[:]
     item.tags( append=[Tag.from_path( t ) for t in new_tags] )
     
@@ -267,9 +277,16 @@ def cloud_item_ajax_save( item_id ):
 
 @current_app.route( '/ajax/item/<int:item_id>/json', methods=['GET'] )
 def cloud_item_ajax_json( item_id ):
+
+    current_uid = 0 # TODO: current_uid
+
     item = db.session.query( Item ) \
         .filter( Item.id == item_id ) \
+        .filter( db.or_( Item.owner_id == current_uid, Item.owner_id == None ) ) \
         .first()
+
+    if not item:
+        abort( 403 )
 
     item_dict = item.to_dict( ignore_keys=['parent', 'folder'] )
 
@@ -285,8 +302,7 @@ def cloud_item_ajax_json( item_id ):
     return jsonify( item_dict )
 
 @current_app.route( '/ajax/html/items/<int:folder_id>/<int:page>', methods=['GET'] )
-@current_app.route( '/ajax/html/items/<string:nsfw>/<int:folder_id>/<int:page>', methods=['GET'] )
-def cloud_items_ajax_json( folder_id, page, nsfw=None ):
+def cloud_items_ajax_json( folder_id, page ):
 
     # TODO: Determine current UID.
     current_uid = 0
@@ -297,7 +313,6 @@ def cloud_items_ajax_json( folder_id, page, nsfw=None ):
     items = db.session.query( poly ) \
         .filter( Item.folder_id == folder_id ) \
         .filter( db.or_( None == Item.owner_id, current_uid == Item.owner_id ) ) \
-        .filter( db.or_( 0 == Item.nsfw, (1 if nsfw else 0) == Item.nsfw ) ) \
         .order_by( Item.name ) \
         .offset( offset ) \
         .limit( current_app.config['ITEMS_PER_PAGE'] ) \
@@ -309,6 +324,8 @@ def cloud_items_ajax_json( folder_id, page, nsfw=None ):
 @current_app.route( '/ajax/folders' )
 def cloud_folders_ajax():
 
+    current_uid = 0 # TODO: current_uid
+
     folder_id = request.args.get( 'id' )
     if None != folder_id:
         try:
@@ -318,14 +335,14 @@ def cloud_folders_ajax():
 
     json_out = []
     folders = []
-    nsfw = 1 # TODO: nsfw
-    current_uid = 0 # TODO: current_uid
     query = db.session.query( Folder ) \
-        .filter( db.or_( None == Folder.owner_id, current_uid == Folder.owner_id ) ) \
-        .filter( db.or_( 0 == Folder.nsfw, (1 if nsfw else 0) == Folder.nsfw ) )
+        .filter( db.or_( None == Folder.owner_id, current_uid == Folder.owner_id ) )
     if folder_id:
         # The tree already has this folder, so iterate through its children.
-        folders = query.filter( Folder.id == folder_id ).first().children
+        folder_parent = query.filter( Folder.id == folder_id ).first()
+        if not folder_parent:
+            abort( 403 )
+        folders = folder_parent.children
     else:
         # Get the tree started and iterate through the library's root folders.
         json_out += [{
@@ -335,8 +352,9 @@ def cloud_folders_ajax():
         }]
         libraries = db.session.query( Library ) \
             .filter( db.or_( None == Library.owner_id, current_uid == Library.owner_id ) ) \
-            .filter( db.or_( 0 == Library.nsfw, (1 if nsfw else 0) == Library.nsfw ) ) \
             .all()
+        if 0 == len( libraries ):
+            abort( 403 )
         for library in libraries:
             json_out.append(
                 {
@@ -362,18 +380,22 @@ def cloud_folders_ajax():
 
 @current_app.route( '/ajax/tags.json')
 def cloud_tags_ajax():
+    # TODO: Omit empty tags.
     tags = db.session.query( Tag ).filter( Tag.name != '' ).all()
     tag_list = [t.path for t in tags]
     return jsonify( tag_list )
 
 @current_app.route( '/tags/<path:path>' )
 def cloud_tags( path ):
+    current_uid = 0 # TODO: current_uid
+    # TODO: Omit empty tags.
     tag = Tag.from_path( path )
     if not tag:
         abort( 404 )
-    return render_template( 'libraries.html', pictures=tag.items(), tag_roots=[tag.parent], this_tag=tag )
+    return render_template( 'libraries.html', pictures=tag.items(), 
+        tag_roots=[tag.parent], this_tag=tag, current_uid=current_uid )
 
 @current_app.route( '/' )
 def cloud_root():
-    return render_template( 'root.html' )
-
+    current_uid = 0 # TODO: current_uid
+    return render_template( 'root.html', current_uid=current_uid )
