@@ -364,6 +364,16 @@ class Folder( db.Model, JSONItemMixin ):
     children = db.relationship( 'Folder', backref=db.backref(
         'folder_parent', remote_side=[id] ) )
     status = db.Column( db.Enum( StatusEnum ) )
+
+    owner_id = db.column_property(
+        db.select(
+            [Library.owner_id],
+            Library.id == library_id ).label( 'owner_id' ) )
+
+    nsfw = db.column_property(
+        db.select(
+            [func.cast( Library.nsfw, db.Integer )],
+            Library.id == library_id ).label( 'nsfw' ) )
         
     def __str__( self ):
         return self.name
@@ -503,6 +513,13 @@ class Item( db.Model, JSONItemMixin ):
             db.and_(
                 Library.id == Folder.library_id,
                 Folder.id == folder_id ) ).label( 'nsfw' ) )
+
+    library_id = db.column_property(
+        db.select(
+            [Library.id],
+            db.and_(
+                Library.id == Folder.library_id,
+                Folder.id == folder_id ) ).label( 'library_id' ) )
 
     # The plugin column should be allowed to be set by the subclass.
     # Items should be created as the subclass they are detected as.

@@ -74,9 +74,17 @@ def cloud_edit_filedata():
     pass
 
 @current_app.route( '/preview/<int:file_id>' )
-def cloud_plugin_preview( file_id ):
+@current_app.route( '/preview/<int:file_id>/<int:width>/<int:height>' )
+def cloud_plugin_preview( file_id, width=160, height=120 ):
 
     '''Generate a preview thumbnail to be called by a tag src attribute on gallery pages.'''
+
+    allowed_resolutions = [
+        tuple( [int( i ) for i in r.split( ',' )] )
+            for r in current_app.config['ALLOWED_PREVIEWS']]
+
+    if not (width, height) in allowed_resolutions:
+        abort( 404 )
 
     item = item_from_id( file_id )
 
@@ -88,7 +96,7 @@ def cloud_plugin_preview( file_id ):
     #    '.plugins.{}.files'.format( item.filetype ), 'cloud_on_film' )
     #file_path = p.generate_thumbnail( file_id, (160, 120) )
 
-    file_path = item.thumbnail_path( (160, 120) )
+    file_path = item.thumbnail_path( (width, height) )
 
     with open( file_path, 'rb' ) as pic_f:
         return send_file( io.BytesIO( pic_f.read() ),
@@ -96,7 +104,7 @@ def cloud_plugin_preview( file_id ):
 
 @current_app.route( '/fullsize/<int:file_id>' )
 def cloud_plugin_fullsize( file_id ):
-
+    
     item = item_from_id( file_id )
 
     # Safety checks.
@@ -214,18 +222,16 @@ def cloud_libraries( machine_name=None, relative_path=None, page=0 ):
             
         return render_template(
             'libraries.html', **l_globals, folders=folder.children,
-            items=items, items_classes=' pictures',
+            items=items, items_classes=' pictures', page=page,
             this_folder=folder )
 
     except LibraryRootException as e:
         # Show the root of the given library ID.
-        print( 'root' )
         return render_template(
             'libraries.html', **l_globals, folders=library.children, pictures=[],
             this_folder=None )
 
     except InvalidFolderException as e:
-        print( 'folex' )
 
         # Try to see if this is a valid file and display it if so.
         query = db.session.query( Item ) \
@@ -242,8 +248,44 @@ def cloud_libraries( machine_name=None, relative_path=None, page=0 ):
         return render_template(
             'file_item.html', **l_globals, file_item=file_item, tag_list=json.dumps( tags ) )
 
-@current_app.route( '/ajax/items/<int:folder_id>/<int:page>', methods=['GET'] )
-@current_app.route( '/ajax/items/<string:nsfw>/<int:folder_id>/<int:page>', methods=['GET'] )
+@current_app.route( '/ajax/item/<int:item_id>/save', methods=['POST'] )
+def cloud_item_ajax_save( item_id ):
+    new_tags = request.form['tags'].split( ',' )
+
+    #print( new_tags )
+    #print( [Tag.from_path( t ) for t in new_tags] )
+
+    item = db.session.query( Item ) \
+        .filter( Item.id == item_id ) \
+        .first()
+    del item._tags[:]
+    item.tags( append=[Tag.from_path( t ) for t in new_tags] )
+    
+    db.session.commit()
+
+    return jsonify( item.to_dict( ignore_keys=['parent', 'folder'] ) )
+
+@current_app.route( '/ajax/item/<int:item_id>/json', methods=['GET'] )
+def cloud_item_ajax_json( item_id ):
+    item = db.session.query( Item ) \
+        .filter( Item.id == item_id ) \
+        .first()
+
+    item_dict = item.to_dict( ignore_keys=['parent', 'folder'] )
+
+    parents = []
+    parent_iter = item.folder
+    while parent_iter:
+        parents.append( str( parent_iter.id ) )
+        parent_iter = parent_iter.parent
+    parents.reverse()
+    parents.insert( 0, 'library-{}'.format( item.library_id ) )
+    item_dict['parents'] = parents
+        
+    return jsonify( item_dict )
+
+@current_app.route( '/ajax/html/items/<int:folder_id>/<int:page>', methods=['GET'] )
+@current_app.route( '/ajax/html/items/<string:nsfw>/<int:folder_id>/<int:page>', methods=['GET'] )
 def cloud_items_ajax_json( folder_id, page, nsfw=None ):
 
     # TODO: Determine current UID.
@@ -261,45 +303,62 @@ def cloud_items_ajax_json( folder_id, page, nsfw=None ):
         .limit( current_app.config['ITEMS_PER_PAGE'] ) \
         .all()
         
-    return jsonify( [i.to_dict( ignore_keys=['parent', 'folder'] ) for i in items] )
-
-@current_app.route( '/ajax/items/<int:item_id>/save', methods=['POST'] )
-def cloud_item_ajax_save( item_id ):
-    new_tags = request.form['tags'].split( ',' )
-
-    #print( new_tags )
-    #print( [Tag.from_path( t ) for t in new_tags] )
-
-    item = db.session.query( Item ) \
-        .filter( Item.id == item_id ) \
-        .first()
-    del item._tags[:]
-    item.tags( append=[Tag.from_path( t ) for t in new_tags] )
-    
-    db.session.commit()
-
-    return jsonify( item.to_dict( ignore_keys=['parent', 'folder'] ) )
-
-@current_app.route( '/ajax/items/<int:item_id>/json', methods=['GET'] )
-def cloud_item_ajax_json( item_id ):
-    item = db.session.query( Item ) \
-        .filter( Item.id == item_id ) \
-        .first()
-        
-    return jsonify( item.to_dict( ignore_keys=['parent', 'folder'] ) )
+    #return jsonify( [i.to_dict( ignore_keys=['parent', 'folder'] ) for i in items] )
+    return jsonify( [m.library_html() for m in items] )
 
 @current_app.route( '/ajax/folders' )
-@current_app.route( '/ajax/folders/<int:folder_id>' )
-def cloud_folders_ajax( folder_id=None ):
+def cloud_folders_ajax():
 
-    folder = db.session.query( Folder )
+    folder_id = request.args.get( 'id' )
+    if None != folder_id:
+        try:
+            folder_id = None if '#' == folder_id else int( folder_id )
+        except ValueError as e:
+            abort( 404 )
+
+    json_out = []
+    folders = []
+    nsfw = 1 # TODO: nsfw
+    current_uid = 0 # TODO: current_uid
+    query = db.session.query( Folder ) \
+        .filter( db.or_( None == Folder.owner_id, current_uid == Folder.owner_id ) ) \
+        .filter( db.or_( 0 == Folder.nsfw, (1 if nsfw else 0) == Folder.nsfw ) )
     if folder_id:
-        folder = folder.filter( Folder.id == folder_id )
-    folder = folder.first()
+        # The tree already has this folder, so iterate through its children.
+        folders = query.filter( Folder.id == folder_id ).first().children
+    else:
+        # Get the tree started and iterate through the library's root folders.
+        json_out += [{
+            'id': 'root',
+            'parent': '#',
+            'text': 'root' # TODO: All libraries.
+        }]
+        libraries = db.session.query( Library ) \
+            .filter( db.or_( None == Library.owner_id, current_uid == Library.owner_id ) ) \
+            .filter( db.or_( 0 == Library.nsfw, (1 if nsfw else 0) == Library.nsfw ) ) \
+            .all()
+        for library in libraries:
+            json_out.append(
+                {
+                    'id': 'library-{}'.format( library.id ),
+                    'parent': 'root',
+                    'text': library.display_name
+                }
+            )
+            folders += query.filter( Folder.parent_id == None ) \
+                .filter( Folder.library_id == library.id ) \
+                .all()
 
-    print( folder.to_dict( ignore_keys=['parent'], max_depth=2 ) )
+    json_out += [{
+        'id': f.id,
+        'parent': folder_id if folder_id else 'library-{}'.format( f.library_id ),
+        'text': f.name,
+        'children': True if 0 < len( f.children ) else False
+    } for f in folders]
 
-    return jsonify( folder.to_dict( ignore_keys=['parent', 'folder_parent', 'library'], max_depth=2 ) )
+    #print( folder.to_dict( ignore_keys=['parent'], max_depth=2 ) )
+ 
+    return jsonify( json_out )
 
 @current_app.route( '/ajax/tags.json')
 def cloud_tags_ajax():

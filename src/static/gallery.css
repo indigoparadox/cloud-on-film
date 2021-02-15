@@ -100,3 +100,8 @@
  outline: 0;
  background-color: #428bca;
 }
+
+#modal-input-move {
+   height: 390px;
+   overflow: scroll;
+}

@@ -1,11 +1,15 @@
 {% extends 'base.html' %}
 
 {% block scripts %}
+<script type="text/javascript">
+var page = {{ page }};
+var folderID = {{ this_folder.id }};
+</script>
 <link rel="stylesheet" href="{{ url_for( 'static', filename='bootstrap-tagsinput.css' ) }}" />
 <link rel="stylesheet" href="{{ url_for( 'static', filename='featherlight.min.css' ) }}" />
 <link rel="stylesheet" href="{{ url_for( 'static', filename='featherlight.gallery.min.css' ) }}" />
 <link rel="stylesheet" href="{{ url_for( 'static', filename='gallery.css' ) }}" />
-<link rel="stylesheet" href="{{ url_for( 'static', filename='default-dark/style.min.css' ) }}" />
+<link rel="stylesheet" href="{{ url_for( 'static', filename='jstree/style.min.css' ) }}" />
 <script src="{{ url_for( 'static', filename='typeahead.bundle.min.js' ) }}"></script>
 <script src="{{ url_for( 'static', filename='bootstrap-tagsinput.min.js' ) }}"></script>
 <script src="{{ url_for( 'static', filename='jquery.unveil2.min.js' ) }}"></script>
@@ -25,9 +29,9 @@
       <div class="modal-body">
          <div class="container">
          <div class="row">
-            <div id="modal-form-preview" class="col-md-6">
+            <div id="modal-form-preview" class="col-md-4">
             </div>
-            <form id="modal-form-rename" class="col-md-6">
+            <form id="modal-form-rename" class="col-md-4">
                <div class="form-group">
                   <label for="modal-input-name">Name</label>
                   <input type="text" id="modal-input-name" name="name" class="form-control" />
@@ -41,8 +45,10 @@
                   <textarea id="modal-input-comment" name="comment" class="form-control"></textarea>
                   <input type="hidden" id="modal-id" name="id" value="" />
                </div>
-               <div id="modal-input-move"></div>
             </form>
+            <div id="modal-form-tree" class="col-md-4">
+               <div id="modal-input-move"></div>
+            </div>
          </div>
          </div>
       </div>
@@ -82,9 +88,16 @@
 <ul class="libraries-folders-inner">
 {% if this_folder %}
 <li class="libraries-folder libraries-parent-folder">
-<a href="{{ url_for( 'cloud_libraries', machine_name=this_folder.library.machine_name, relative_path=None ) }}/{{ this_folder.path }}">
+{% if this_folder.parent %}
+<a href="{{ url_for( 'cloud_libraries', machine_name=this_folder.library.machine_name, relative_path=None ) }}/{{ this_folder.parent.path }}">
 ..
-</a></li>
+</a>
+{% else %}
+<a href="{{ url_for( 'cloud_libraries', machine_name=this_folder.library.machine_name, relative_path=None ) }}">
+..
+</a>
+{% endif %}
+</li>
 {% endif %}
 {% for item in folders %}
 <li class="libraries-folder">

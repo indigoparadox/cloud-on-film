@@ -75,8 +75,8 @@ module.exports = function( grunt ) {
                   'node_modules/jstree/dist/jstree.min.js',
                ], dest: static_dir, flatten: true },
                {expand: true, src: [
-                  'node_modules/jstree/dist/themes/default-dark/*',
-               ], dest: static_dir + '/default-dark', flatten: true },
+                  'node_modules/jstree/dist/themes/default/*',
+               ], dest: static_dir + '/jstree', flatten: true },
             ]
          }
       },

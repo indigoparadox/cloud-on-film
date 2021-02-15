@@ -74,10 +74,10 @@ class Picture( Item ):
     def aspect( cls ):
         return db.column_property(
             db.case( [
-                (16 * cls.height.expression / cls.width == 10, 10),
-                (16 * cls.height.expression / cls.width == 9, 9),
-                (4 * cls.height.expression / cls.width == 3, 4),
-                (1 * cls.height.expression / cls.width == 1, 1)
+                (16.0 * cls.height.expression / cls.width == 10.0, 10),
+                (16.0 * cls.height.expression / cls.width == 9.0, 9),
+                (4.0 * cls.height.expression / cls.width == 3.0, 4),
+                (cls.height.expression == cls.width, 1),
             ], else_=0 ).label( 'aspect' ) )
 
     def open_image( self ):
@@ -93,13 +93,17 @@ class Picture( Item ):
         if not os.path.exists( current_app.config['THUMBNAIL_PATH'] ):
             os.makedirs( current_app.config['THUMBNAIL_PATH'] )
 
-        thumb_path = os.path.join(
+        thumb_path = os.path.join( 
             current_app.config['THUMBNAIL_PATH'],
             '{}_{}x{}.jpg'.format( self.hash, size[0], size[1] ) )
 
         if not os.path.exists( thumb_path ):
             with Image.open( self.absolute_path ) as im:
-                im.thumbnail( size, Image.ANTIALIAS )
+                try:
+                    im.thumbnail( size, Image.ANTIALIAS )
+                except OSError as e:
+                    current_app.logger.warn( 'while generating thumbnail for {}: {}'.format(
+                        self.absolute_path, e ) )
                 thumb = Image.new( 'RGB', size, (0, 0, 0) )
                 thumb.paste( im,
                     (int( (size[0] - im.size[0]) / 2 ),
@@ -157,9 +161,10 @@ class Picture( Item ):
             relative_path=None ) + '/' + self.path
         self_dict['fullsize'] = url_for( 'cloud_plugin_fullsize', file_id=self.id )
         self_dict['nsfw'] = '<small class="text-bright nsfw">NSFW</small>' if self.nsfw else ''
+        self_dict['dimensions'] = '<small class="text-bright dimensions">{}x{}</small>'.format( self.width, self.height )
         self_dict['aspect'] = '<small class="text-bright aspect-ratio">{}</small>'.format( ASPECT_RATIO_FMT[self.aspect] ) if self.aspect else ''
         self_dict['rating'] = '<small class="rating">' + \
-            ''.join( ['<a href="#" class="star-on star-{}"'.format( i ) for i in range( self.rating )] ) + \
+            ''.join( ['<a href="#" class="star-on star-{}"></a>'.format( i ) for i in range( self.rating )] ) + \
             ''.join( ['<a href="#" class="star-off star-{}"></a>'.format( i ) for i in range( 5 - self.rating )] ) + \
             '</small>'
 
@@ -192,6 +197,7 @@ class Picture( Item ):
             <!-- button bar -->
             <div class="d-flex flex-column">
                 {nsfw}
+                {dimensions}
                 {aspect}
                 <a href="#" onclick="return renameItem( {id} );">Edit</a>
                 {rating}
