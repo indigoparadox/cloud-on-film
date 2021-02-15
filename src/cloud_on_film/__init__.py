@@ -39,8 +39,9 @@ def create_app( config=None ):
     with app.app_context():
         from . import routes
 
-        import cloud_on_film.files.picture
-
         db.create_all()
+
+        # TODO: Installer.
+        import cloud_on_film.files.picture
 
         return app

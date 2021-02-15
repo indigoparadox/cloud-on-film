@@ -1,6 +1,7 @@
 
 var tagnames;
 var scrollingEnabled = true;
+var storeScrolling = false;
 
 (function( $ ) {
 
@@ -28,6 +29,16 @@ $().ready( function() {
 
    tagnames.clearPrefetchCache();
    tagnames.initialize();
+
+   /*
+   let previousScroll = window.sessionStorage.getItem( folderID.toString + '/scroll' );
+   if( previousScroll ) {
+      console.log( 'scrolling back to ' + previousScroll.toString() )
+      $(window).animate( {
+         scrollTop: previousScroll
+      } );
+   }
+   */
  } );
 
  $.fn.enableThumbnailCard = function() {
@@ -71,6 +82,11 @@ $(window).on( 'scroll', function( e ) {
 
    // Disable scrolling until get is finished.
    scrollingEnabled = false;
+
+   // Store the new postion for reuse on page load.
+   if( storeScrolling ) {
+      window.sessionStorage.setItem( folderID.toString + '/scroll', $(window).scrollTop() );
+   }
 
    /* if( 'search' == op ) {
       query_str = '?csrf_token=' + csrfToken + '&keywords=' + encodeURI( keywords );

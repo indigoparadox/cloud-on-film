@@ -9,7 +9,7 @@ from flask import current_app
 from datetime import datetime
 from PIL import Image
 from .models import db, HashEnum, Folder, Item, Tag, Library
-from .files.picture import Picture
+#from .files.picture import Picture
 from threading import Thread
 
 class ItemImportException( Exception ):

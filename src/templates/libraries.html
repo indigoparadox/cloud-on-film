@@ -3,7 +3,9 @@
 {% block scripts %}
 <script type="text/javascript">
 var page = {{ page }};
+{% if this_folder %}
 var folderID = {{ this_folder.id }};
+{% endif %}
 </script>
 <link rel="stylesheet" href="{{ url_for( 'static', filename='bootstrap-tagsinput.css' ) }}" />
 <link rel="stylesheet" href="{{ url_for( 'static', filename='featherlight.min.css' ) }}" />

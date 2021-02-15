@@ -37,12 +37,12 @@ class InvalidFolderException( Exception ):
 
 class LibraryRootException( Exception ):
     def __init__( self, *args, **kwargs ):
-        self.library_id = kwargs['library_id']
+        self.library_id = kwargs['library_id'] if 'library_id' in kwargs else None
         super().__init__( *args )
 
 class LibraryPermissionsException( Exception ):
     def __init__( self, *args, **kwargs ):
-        self.library_id = kwargs['library_id']
+        self.library_id = kwargs['library_id'] if 'library_id' in kwargs else None
         super().__init__( *args )
 
 class MaxDepthException( Exception ):
@@ -195,14 +195,18 @@ class Library( db.Model, JSONItemMixin ):
         return self.machine_name
 
     @staticmethod
+    def secure_query( user_id ):
+        return db.session.query( Library ) \
+            .filter( db.or_(
+                Library.owner_id == user_id,
+                Library.owner_id == None ) )
+
+    @staticmethod
     def enumerate_all( user_id ):
 
         '''Return a list of all libraries (as defined by SQLA Library model.'''
 
-        return db.session.query( Library ) \
-            .filter( db.or_(
-                Library.owner_id == user_id, Library.owner_id == None ) ) \
-            .all()
+        return Library.secure_query( user_id ).all()
 
 items_tags = db.Table( 'items_tags', db.metadata,
     db.Column( 'items_id', db.Integer, db.ForeignKey( 'items.id' ) ),
@@ -239,7 +243,7 @@ class Tag( db.Model ):
         'tag_parent', remote_side=[id] ) )
 
     # Tags are a bit different than meta relationships at they're many-to-many.
-    _items = db.relationship( 'Item', secondary=items_tags, back_populates='_tags' )
+    _items = db.relationship( 'Item', secondary=items_tags, back_populates='tags' )
 
     def __str__( self ):
         return self.name
@@ -369,12 +373,14 @@ class Folder( db.Model, JSONItemMixin ):
         return '/'.join( [self.library.absolute_path, self.path] )
 
     @staticmethod
-    def from_path( library, path, user_id ):
-        if not isinstance( library, Library ):
-            library = db.session.query( Library ) \
-                .filter( Library.id == library ) \
-                .filter( db.or_( Library.owner_id == user_id, Library.owner_id == None ) ) \
-                .first()
+    def from_path( library_id, path, user_id ):
+
+        # Do the fetching from scratch to ensure permissions.
+        assert( isinstance( library_id, int ) )
+
+        library = Library.secure_query( user_id ) \
+            .filter( Library.id == library_id ) \
+            .first()
 
         if not library:
             raise LibraryPermissionsException()
@@ -388,7 +394,7 @@ class Folder( db.Model, JSONItemMixin ):
         folder_iter = None
         parent = None
 
-        library_absolute_path = library.absolute_path
+        #library_absolute_path = library.absolute_path
 
         while( len( path_right ) > 0 ):
             parent_id = None
@@ -428,6 +434,35 @@ class Folder( db.Model, JSONItemMixin ):
 
         return folder_iter
 
+    @staticmethod
+    def secure_query( user_id ):
+        return db.session.query( Folder ) \
+            .filter( db.or_(
+                None == Folder.owner_id,
+                current_uid == Folder.owner_id ) )
+    
+    @staticmethod
+    def ensure_folder( folder_or_folder_id_or_path, user_id ):
+
+        ''' Given a folder, folder ID, or folder path, return that folder
+        model object. '''
+
+        folder = None
+        if isinstance( folder_or_folder_id_or_path, int ):
+            folder = db.session.query( Folder ) \
+                .filter( Folder.id == destination ) \
+                .filter( Folder.owner_id == user_id ) \
+                .first()
+        elif isinstance( folder_or_folder_id_or_path, str ):
+            folder = Folder.from_path( library, destination, user_id )
+        elif isinstance( folder_or_folder_id_or_path, Folder ):
+            folder = folder_or_folder_id_or_path
+
+        if not folder:
+            raise InvalidFolderException()
+
+        return folder
+
 class ItemMeta( db.Model, MetaPropertyMixin ):
 
     __tablename__ = 'item_meta'
@@ -453,7 +488,7 @@ class Item( db.Model, JSONItemMixin ):
         creator=lambda k, v: ItemMeta( key=k, value=v ) )
     folder_id = db.Column( db.Integer, db.ForeignKey( 'folders.id' ) )
     folder = db.relationship( 'Folder', back_populates='items' )
-    _tags = db.relationship(
+    tags = db.relationship(
         'Tag', secondary=items_tags, back_populates='_items' )
     name = db.Column(
         db.String( 256 ), index=True, unique=False, nullable=False )
@@ -511,7 +546,9 @@ class Item( db.Model, JSONItemMixin ):
         elif tag.parent:
             self._check_tag_heir( tag.parent )
     
-    def tags( self, append=[] ):
+    def fix_tags( self, append=[] ):
+
+        # TODO
 
         for tag in append:
             self._tags.append( tag )
@@ -592,11 +629,88 @@ class Item( db.Model, JSONItemMixin ):
 
         return item
 
+    @staticmethod
+    def secure_query( user_id ):
+
+        poly = Plugin.polymorph()
+
+        query = db.session.query( poly ) \
+            .filter( db.or_(
+                None == Item.owner_id,
+                user_id == Item.owner_id ) )
+
+        return query
+
+class FileExtension( db.Model ):
+
+    __tablename__ = 'item_types'
+
+    id = db.Column( db.Integer, primary_key=True )
+    extension = db.Column(
+        db.String( 12 ), index=True, unique=True, nullable=False )
+    mime_type = db.Column(
+        db.String( 128 ), index=False, unique=False, nullable=False )
+    plugin_id = db.Column( db.Integer, db.ForeignKey( 'plugins.id' ) )
+    plugin = db.relationship( 'Plugin',
+        backref=db.backref(
+            '_extensions',
+            collection_class=attribute_mapped_collection( 'extension' ),
+            lazy="joined",
+            cascade="all, delete-orphan" ) )
+
+class PluginMeta( db.Model, MetaPropertyMixin ):
+
+    __tablename__ = 'plugin_meta'
+
+    id = db.Column( db.Integer, primary_key=True )
+    key = db.Column( db.String( 12 ), index=True, unique=False, nullable=False )
+    value = \
+        db.Column( db.String( 256 ), index=False, unique=False, nullable=True )
+    plugin_id = db.Column( db.Integer, db.ForeignKey( 'plugins.id' ) )
+    plugin = db.relationship( 'Plugin',
+        backref=db.backref(
+            '_meta',
+            collection_class=attribute_mapped_collection( 'key' ),
+            lazy="joined",
+            cascade="all, delete-orphan" ) )
+
 class Plugin( db.Model ):
 
     __tablename__ = 'plugins'
 
     id = db.Column( db.Integer, primary_key=True )
+    machine_name = db.Column( db.String( 12 ), index=True, unique=True, nullable=False )
+    display_name = db.Column( db.String( 128 ), index=False, unique=True, nullable=False )
+    meta = association_proxy( '_meta', 'value',
+        creator=lambda k, v: PluginMeta( key=k, value=v ) )
+    enabled = db.Column(
+        db.Boolean, index=False, unique=False, nullable=False )
+    module_path = db.Column( db.String( 128 ), index=False, unique=True, nullable=False )
+    model_name = db.Column( db.String( 128 ), index=False, unique=True, nullable=False )
+    extensions = association_proxy( '_extensions', 'mime_type',
+        creator=lambda k, v: FileExtension( extension=k, mime_type=v ) )
+
+    @staticmethod
+    def from_extension( extension ):
+        return db.session.query( Plugin ) \
+            .filter( extension in Plugin.extensions ) \
+            .filter( Plugin.enabled == True ) \
+            .first()
+
+    @staticmethod
+    def polymorph():
+
+        plugins = db.session.query( Plugin ) \
+            .filter( Plugin.enabled == True ) \
+            .all()
+
+        models = []
+        for plugin in plugins:
+            plugin_module = importlib.import_module( plugin.module_path )
+            plugin_model = getattr( plugin_module, plugin.model_name )
+            models.append( plugin_model )
+        
+        return db.with_polymorphic( Item, models )
 
 class WorkerSemaphore( db.Model ):
 

@@ -5,7 +5,6 @@ from sqlalchemy import exc
 from .models import LibraryPermissionsException, StatusEnum, db, Library, Item, Folder, Tag, InvalidFolderException, LibraryRootException
 from .forms import NewLibraryForm, UploadLibraryForm
 from .importing import start_import_thread, threads
-from .plugins import plugin_polymorph, item_from_id, item_from_path
 from werkzeug import secure_filename
 import json
 import os
@@ -88,7 +87,8 @@ def cloud_plugin_preview( file_id, width=160, height=120 ):
     if not (width, height) in allowed_resolutions:
         abort( 404 )
 
-    item = item_from_id( file_id, current_uid )
+    item = Item.secure_query( current_uid ) \
+        .filter( Item.id == file_id ).first()
 
     # Safety checks.
     if not item:
@@ -109,7 +109,8 @@ def cloud_plugin_fullsize( file_id ):
 
     current_uid = 0 # TODO: current_uid
     
-    item = item_from_id( file_id, current_uid )
+    item = Item.secure_query( current_uid ) \
+        .filter( Item.id == file_id ).first()
 
     # Safety checks.
     if not item:
@@ -202,29 +203,27 @@ def cloud_libraries( machine_name=None, relative_path=None, page=0 ):
 
     current_uid = 0; # TODO: current_uid
 
-    library = db.session.query( Library ) \
-        .filter( db.or_(
-            Library.owner_id == current_uid,
-            Library.owner_id == None ) ) \
+    library = Library.secure_query( current_uid ) \
         .filter( Library.machine_name == machine_name ) \
         .first()
 
     if not library:
         abort( 404 )
-
-    poly = plugin_polymorph()
     
     try:
         # Show a folder listing.
         folder = Folder.from_path( library.id, relative_path, current_uid )
+
+        if not folder:
+            abort( 404 )
+
         offset = page * current_app.config['ITEMS_PER_PAGE']
-        items = db.session.query( poly ) \
+        items = Item.secure_query( current_uid ) \
             .filter( Item.folder_id == folder.id ) \
-            .filter( db.or_( None == Item.owner_id, current_uid == Item.owner_id ) ) \
             .order_by( Item.name ) \
             .offset( offset ) \
             .limit( current_app.config['ITEMS_PER_PAGE'] ) \
-            .all()
+            .all()     
             
         return render_template(
             'libraries.html', **l_globals, folders=folder.children,
@@ -234,21 +233,23 @@ def cloud_libraries( machine_name=None, relative_path=None, page=0 ):
     except LibraryRootException as e:
         # Show the root of the given library ID.
         return render_template(
-            'libraries.html', **l_globals, folders=library.children, pictures=[],
+            'libraries.html', **l_globals, folders=library.children, pictures=[], page=page,
             this_folder=None, current_uid=current_uid )
 
     except InvalidFolderException as e:
 
         # Try to see if this is a valid file and display it if so.
-        query = db.session.query( Item ) \
+        file_item = Item.secure_query( current_uid ) \
             .filter( Item.folder_id == e.parent_id ) \
-            .filter( db.or_( Item.owner_id == current_uid, Item.owner_id == None ) ) \
-            .filter( Item.name == e.name )
-        file_item = query.first()
+            .filter( Item.name == e.name ) \
+            .first()
+
+        if not file_item:
+            abort( 404 )
 
         return render_template(
             'file_item.html', **l_globals, file_item=file_item, tag_list=json.dumps( tags ),
-            current_uid=current_uid )
+            current_uid=current_uid, page=page )
 
 @current_app.route( '/ajax/item/<int:item_id>/save', methods=['POST'] )
 def cloud_item_ajax_save( item_id ):
@@ -260,9 +261,8 @@ def cloud_item_ajax_save( item_id ):
     #print( new_tags )
     #print( [Tag.from_path( t ) for t in new_tags] )
 
-    item = db.session.query( Item ) \
+    item = Item.secure_query( current_uid ) \
         .filter( Item.id == item_id ) \
-        .filter( db.or_( Item.owner_id == current_uid, Item.owner_id == None ) ) \
         .first()
     
     if not item:
@@ -280,9 +280,8 @@ def cloud_item_ajax_json( item_id ):
 
     current_uid = 0 # TODO: current_uid
 
-    item = db.session.query( Item ) \
+    item = Item.secure_query( current_uid ) \
         .filter( Item.id == item_id ) \
-        .filter( db.or_( Item.owner_id == current_uid, Item.owner_id == None ) ) \
         .first()
 
     if not item:
@@ -309,10 +308,8 @@ def cloud_items_ajax_json( folder_id, page ):
 
     offset = page * current_app.config['ITEMS_PER_PAGE']
 
-    poly = plugin_polymorph()
-    items = db.session.query( poly ) \
+    items = Item.secure_query( current_uid ) \
         .filter( Item.folder_id == folder_id ) \
-        .filter( db.or_( None == Item.owner_id, current_uid == Item.owner_id ) ) \
         .order_by( Item.name ) \
         .offset( offset ) \
         .limit( current_app.config['ITEMS_PER_PAGE'] ) \
@@ -335,8 +332,7 @@ def cloud_folders_ajax():
 
     json_out = []
     folders = []
-    query = db.session.query( Folder ) \
-        .filter( db.or_( None == Folder.owner_id, current_uid == Folder.owner_id ) )
+    query = Folder.secure_query( current_uid )
     if folder_id:
         # The tree already has this folder, so iterate through its children.
         folder_parent = query.filter( Folder.id == folder_id ).first()
@@ -350,8 +346,7 @@ def cloud_folders_ajax():
             'parent': '#',
             'text': 'root' # TODO: All libraries.
         }]
-        libraries = db.session.query( Library ) \
-            .filter( db.or_( None == Library.owner_id, current_uid == Library.owner_id ) ) \
+        libraries = Library.secure_query( current_uid ) \
             .all()
         if 0 == len( libraries ):
             abort( 403 )
@@ -387,13 +382,24 @@ def cloud_tags_ajax():
 
 @current_app.route( '/tags/<path:path>' )
 def cloud_tags( path ):
+    
     current_uid = 0 # TODO: current_uid
+    
     # TODO: Omit empty tags.
     tag = Tag.from_path( path )
+
+    items = Item.secure_query( current_uid ) \
+        .filter( tag in Item.tags ) \
+        .all()
+    
     if not tag:
         abort( 404 )
-    return render_template( 'libraries.html', pictures=tag.items(), 
+    return render_template( 'libraries.html', pictures=items, 
         tag_roots=[tag.parent], this_tag=tag, current_uid=current_uid )
+
+@current_app.route( '/ajax/search', methods=['GET'] ):
+def cloud_items_ajax_search():
+    pass
 
 @current_app.route( '/' )
 def cloud_root():

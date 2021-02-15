@@ -4,12 +4,11 @@ import stat
 from flask import current_app, url_for
 from sqlalchemy import func
 from sqlalchemy.ext.declarative import declared_attr
-from cloud_on_film.models import db, Item, ItemMeta, Library, Folder, DBItemNotFoundException
-from cloud_on_film.plugins import register_plugin
+from cloud_on_film.models import db, Item, ItemMeta, Library, Folder, DBItemNotFoundException, Plugin
 from PIL import Image
 from datetime import datetime
 
-PLUGIN = 'picture'
+MACHINE_NAME = 'picture'
 
 ASPECT_RATIO_FMT = {
     10: '16:10',
@@ -21,7 +20,7 @@ ASPECT_RATIO_FMT = {
 class Picture( Item ):
 
     __mapper_args__ = {
-        'polymorphic_identity': PLUGIN
+        'polymorphic_identity': MACHINE_NAME
     }
 
     @declared_attr
@@ -171,6 +170,8 @@ class Picture( Item ):
             ''.join( ['<a href="#" class="star-off star-{}"></a>'.format( i ) for i in range( 5 - self.rating )] ) + \
             '</small>'
         self_dict['classes'] += ' rating-{}'.format( self.rating )
+        for tag in self.tags:
+            self_dict['classes'] += ' tag-{}'.format( tag.name.lower().replace( '/', '-' ) )
 
         html_out = '''
 <div class="col-md-2 col-sm-4 coll-xs-6 px-0 card bg-secondary{classes}">
@@ -215,4 +216,25 @@ class Picture( Item ):
 '''.format( **self_dict )
         return html_out
 
-register_plugin( plugin='picture', model=Picture, extensions=['jpg', 'jpeg', 'gif', 'png', 'bmp', 'ico'] )
+plugin = db.session.query( Plugin ) \
+    .filter( Plugin.machine_name == MACHINE_NAME ) \
+    .first()
+
+if not plugin:
+    plugin = Plugin(
+        machine_name=MACHINE_NAME,
+        display_name='Pictures',
+        module_path='cloud_on_film.files.picture',
+        model_name='Picture',
+        enabled=True )
+    db.session.add( plugin )
+    db.session.commit()
+
+    plugin.extensions['jpg'] = 'image/jpeg'
+    plugin.extensions['jpeg'] = 'image/jpeg'
+    plugin.extensions['gif'] = 'image/gif'
+    plugin.extensions['png'] = 'image/png'
+    plugin.extensions['bmp'] = 'image/bmp'
+    plugin.extensions['ico'] = 'image/ico'
+
+    db.session.commit()
