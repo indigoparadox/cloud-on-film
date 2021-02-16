@@ -10,9 +10,6 @@ from flask_testing import TestCase
 from cloud_on_film import create_app, db
 from cloud_on_film.models import Library, Folder, Item, Tag
 from cloud_on_film.importing import picture
-from cloud_on_film.plugins import extension_model, item_from_path
-
-from cloud_on_film.files.picture import Picture
 
 class TestLibrary( TestCase ):
 
@@ -26,20 +23,40 @@ class TestLibrary( TestCase ):
     def setUp( self ):
         db.create_all()
 
+        self.user_id = 0 # TODO: current_uid
+        self.create_folders()
+        self.create_libraries()
+        self.create_data_folders()
+        self.create_data_tags()
+
+    def tearDown( self ):
+        db.session.remove()
+        db.drop_all()
+
+    def create_folders( self ):
+
         self.file_path = os.path.realpath( __file__ )
         self.lib_path = os.path.dirname( os.path.dirname( self.file_path ) )
         self.nsfw_lib_path = '/tmp/testing_nsfw_lib'
-        os.makedirs( os.path.join( self.lib_path, 'Foo Files 1/Foo Files 2/Foo Files 3/Foo Files 4' ),
-            exist_ok=True )
-        os.makedirs( self.nsfw_lib_path + '/foo_folder', exist_ok=True )
-        shutil.copy2( '../testing/random640x480.png', self.nsfw_lib_path + '/foo_folder/' )
         self.rel_path = os.path.join(
             os.path.basename( os.path.dirname( self.file_path ) ),
             os.path.basename( self.file_path ) )
-        current_app.logger.debug(
-            'running from path: {}'.format( self.file_path ) )
-        current_app.logger.debug( 'using {} as library path...'.format(
-            self.lib_path ) )
+
+        os.makedirs( self.nsfw_lib_path + '/foo_folder', exist_ok=True )
+        shutil.copy2(
+            '../testing/random640x480.png',
+            self.nsfw_lib_path + '/foo_folder/' )
+        os.makedirs( os.path.join(
+            self.lib_path,
+            'Foo Files 1/Foo Files 2/Foo Files 3/Foo Files 4' ),
+            exist_ok=True )
+
+    def create_libraries( self ):
+
+        #current_app.logger.debug(
+        #    'running from path: {}'.format( self.file_path ) )
+        #current_app.logger.debug( 'using {} as library path...'.format(
+        #    self.lib_path ) )
 
         self.lib = Library(
             display_name='Testing Library',
@@ -60,6 +77,8 @@ class TestLibrary( TestCase ):
         db.session.commit() # Commit to get library ID.
         current_app.logger.debug( 'created library {} with ID {}'.format(
             self.nsfw_lib.machine_name, self.nsfw_lib.id ) )
+        
+    def create_data_folders( self ):
 
         folder1 = Folder( library_id=self.lib.id, name='Foo Files 1' )
         db.session.add( folder1 )
@@ -75,6 +94,8 @@ class TestLibrary( TestCase ):
         db.session.commit()
         current_app.logger.debug( 'created folder {} with ID {}'.format(
             folder2.name, folder2.id ) )
+
+    def create_data_tags( self ):
 
         tag_root = Tag( name='' )
         db.session.add( tag_root )
@@ -101,33 +122,50 @@ class TestLibrary( TestCase ):
         db.session.add( tag_test_alt_1 )
         db.session.commit()
 
-    def tearDown( self ):
-        db.session.remove()
-        db.drop_all()
+    def create_data_items( self ):
 
-    #def test_plugin_interface( self ):
+        from cloud_on_film.files.picture import Picture
+
+        file_test = Picture.from_path(
+            self.lib.id, 'testing/random320x240.png', self.user_id )
         
+        file_test = Picture.from_path(
+            self.lib.id, 'testing/random100x100.png', self.user_id )
+        file_test.meta['rating'] = 4
+        
+        file_test = Picture.from_path(
+            self.lib.id, 'testing/random500x500.png', self.user_id )
+        file_test.meta['rating'] = 1
+
+        file_test = Picture.from_path(
+            self.lib.id, 'testing/random640x400.png', self.user_id )
+
+        file_test = Picture.from_path(
+            self.lib.id, 'testing/random640x480.png', self.user_id )
+        
+        file_test = Picture.from_path(
+            self.nsfw_lib.id, 'foo_folder/random640x480.png', self.user_id )
+
+        db.session.commit()
 
     def test_library_create( self ):
         current_app.logger.debug( 'testing library creation...' )
-        lib_test = Library.from_machine_name( 'testing_library' )
+        lib_test = Library.secure_query( self.user_id ) \
+            .filter( Library.machine_name == 'testing_library' ) \
+            .first()
         assert( lib_test.machine_name == 'testing_library' )
 
     def test_library_enumerate_all( self ):
         current_app.logger.debug( 'testing library_enumerate_all...' )
-        libs = Library.enumerate_all()
+        libs = Library.enumerate_all( self.user_id )
         assert( 2 == len( libs ) )
         assert( 'testing_library' == libs[0].machine_name )
         assert( 'testing_library' == str( libs[0] ) )
 
-    def test_folder_from_id( self ):
-        folder_test = Folder.from_id( 1 )
-        assert( folder_test.name == 'Foo Files 1' )
-        assert( str( folder_test ) == 'Foo Files 1' )
-
     def test_folder_from_path( self ):
         current_app.logger.debug( 'testing folder_from_path...' )
-        folder_test = Folder.from_path( self.lib, 'Foo Files 1/Foo Files 2' )
+        folder_test = Folder.from_path(
+            self.lib.id, 'Foo Files 1/Foo Files 2', self.user_id )
         assert( folder_test.name == 'Foo Files 2' )
         assert( str( folder_test ) == 'Foo Files 2' )
         assert( folder_test.id == 2 )
@@ -137,12 +175,18 @@ class TestLibrary( TestCase ):
 
     def test_create_folder_from_path( self ):
         current_app.logger.debug( 'testing creating via folder_from_path...' )
-        folder_test = Folder.from_path( self.lib, 'Foo Files 1/Foo Files 2/Foo Files 3/Foo Files 4' )
+        folder_test = Folder.from_path(
+            self.lib.id, 'Foo Files 1/Foo Files 2/Foo Files 3/Foo Files 4',
+            self.user_id )
         assert( folder_test.path == 'Foo Files 1/Foo Files 2/Foo Files 3/Foo Files 4' )
         assert( folder_test.name == 'Foo Files 4' )
 
     def test_file_from_path( self ):
-        file1 = item_from_path( self.lib.id, 'testing/random320x240.png' )
+
+        from cloud_on_film.files.picture import Picture
+
+        file1 = Picture.from_path(
+            self.lib.id, 'testing/random320x240.png', self.user_id )
         assert( file1.name == 'random320x240.png' )
         assert( file1.name != 'xxx.py' )
         assert( file1.name != 'xxx.png' )
@@ -153,23 +197,11 @@ class TestLibrary( TestCase ):
 
     def test_query_width( self ):
 
-        file_test = item_from_path( self.lib, 'testing/random500x500.png' )
-        file_test = item_from_path( self.lib, 'testing/random100x100.png' )
+        self.create_data_items()
 
-        poly = db.with_polymorphic( Item, [Picture] )
-        
-        print( 'picall' )
-        print( 'picall' )
-        print( 'picall' )
-        print( [type( p ) for p in db.session.query( poly ).all()] )
-        print( [p.plugin for p in db.session.query( poly ).all()] )
-        print( [p.width for p in db.session.query( poly ).all()] )
-        print( 'picall' )
-        print( 'picall' )
-        print( 'picall' )
-        
-        files_test = db.session.query( Picture ) \
-            .with_polymorphic( Picture ) \
+        from cloud_on_film.files.picture import Picture
+
+        files_test = Item.secure_query( self.user_id ) \
             .filter( Picture.width == 100 ) \
             .all()
 
@@ -178,6 +210,7 @@ class TestLibrary( TestCase ):
         assert( 100 == files_test[0].width )
 
     def test_import( self ):
+
         # Perform the import.
         pics_json = None
         with open( '../testing/test_import.json', 'r' ) as import_file:
@@ -188,26 +221,37 @@ class TestLibrary( TestCase ):
             picture( pic_json )
 
         # Test the results.
-        file_test = item_from_path( self.lib, 'testing/random100x100.png' )
         tag_testing_img = Tag.from_path( 'Testing Imports/Testing Image' )
 
-        assert( tag_testing_img in file_test.tags() )
+        from cloud_on_film.files.picture import Picture
+
+        file_test = Item.secure_query( self.user_id ) \
+            .filter( Picture.width == 100 ) \
+            .first()
+
+        assert( tag_testing_img in file_test.tags )
         assert( 100 == file_test.width )
         assert( 100 == file_test.height )
         assert( 1 == file_test.aspect )
         assert( not file_test.nsfw )
         assert( 0 == file_test.rating )
 
-        file_test = item_from_path( self.lib, 'testing/random500x500.png' )
-        assert( tag_testing_img in file_test.tags() )
+        file_test = Item.secure_query( self.user_id ) \
+            .filter( Picture.width == 500 ) \
+            .first()
+
+        assert( tag_testing_img in file_test.tags )
         assert( 500 == file_test.width )
         assert( 500 == file_test.height )
         assert( 1 == file_test.aspect )
         assert( not file_test.nsfw )
         assert( 3 == file_test.rating )
 
-        file_test = item_from_path( self.lib, 'testing/random640x400.png' )
-        assert( not tag_testing_img in file_test.tags() )
+        file_test = Item.secure_query( self.user_id ) \
+            .filter( Picture.aspect == 10 ) \
+            .first()
+
+        assert( not tag_testing_img in file_test.tags )
         assert( 640 == file_test.width )
         assert( 400 == file_test.height )
         assert( 10 == file_test.aspect )
@@ -216,39 +260,50 @@ class TestLibrary( TestCase ):
 
     def test_nsfw( self ):
 
-        file_test = item_from_path( self.lib, 'testing/random500x500.png' )
+        self.create_data_items()
 
-        file_test = item_from_path(
-            self.nsfw_lib, 'foo_folder/random640x480.png' )
+        from cloud_on_film.files.picture import Picture
+
+        file_test = Item.secure_query( self.user_id ) \
+            .filter( Picture.nsfw == 1 ) \
+            .first()
+
         assert( file_test.nsfw )
 
     def test_aspect( self ):
 
-        file_test = item_from_path(
-            self.nsfw_lib, 'foo_folder/random640x480.png' )
+        self.create_data_items()
+
+        from cloud_on_film.files.picture import Picture
+
+        file_test = Item.secure_query( self.user_id ) \
+            .filter( Picture.aspect == 4 ) \
+            .first()
+
         assert( 4 == file_test.aspect )
+        assert( 'random320x240.png' == file_test.name )
 
-        file_test = item_from_path(
-            self.lib, 'testing/random500x500.png' )
+        file_test = Item.secure_query( self.user_id ) \
+            .filter( Picture.width == 100 ) \
+            .first()
+
         assert( 1 == file_test.aspect )
+        assert( 'random100x100.png' == file_test.name )
 
-        file_test = item_from_path(
-            self.lib, 'testing/random640x400.png' )
+        file_test = Item.secure_query( self.user_id ) \
+            .filter( Picture.aspect == 10 ) \
+            .first()
+
         assert( 10 == file_test.aspect )
+        assert( 'random640x400.png' == file_test.name )
 
     def test_rating( self ):
 
-        file_test = item_from_path( self.lib, 'testing/random500x500.png' )
-        file_test.meta['rating'] = 1
-        db.session.commit()
-        file_test = item_from_path( self.lib, 'testing/random100x100.png' )
-        file_test.meta['rating'] = 4
-        db.session.commit()
+        self.create_data_items()
 
-        assert( '4' == file_test.meta['rating'] )
-        assert( 4 == file_test.rating )
+        from cloud_on_film.files.picture import Picture
 
-        files_test = db.session.query( Item ) \
+        files_test = Item.secure_query( self.user_id ) \
             .filter( Picture.rating > 1 ) \
             .all()
 
@@ -256,7 +311,7 @@ class TestLibrary( TestCase ):
         assert( 4 == files_test[0].rating )
         assert( 'random100x100.png' == files_test[0].name )
 
-        files_test = db.session.query( Item ) \
+        files_test = Item.secure_query( self.user_id ) \
             .filter( Picture.rating == 1 ) \
             .all()
 
