@@ -258,14 +258,15 @@ def cloud_libraries( machine_name=None, relative_path=None, page=0 ):
             current_uid=current_uid, page=page, rename_form=rename_form, search_form=search_form )
 
 @current_app.route( '/search' )
-@csrf.exempt
 def cloud_items_search():
 
     current_uid = 0 # TODO: current_uid
 
-    search_form = SearchQueryForm( request.form, csrf_enabled=False )
+    search_form = SearchQueryForm( request.args, csrf_enabled=False )
 
     rename_form = RenameItemForm( request.form )
+
+    print( request.form )
 
     page = 0
     if search_form.validate():
@@ -444,8 +445,6 @@ def cloud_items_ajax_search():
     current_uid = 0 # TODO: current_uid
 
     search_form = SearchQueryForm( request.form, csrf_enabled=False )
-
-    print( request.form )
 
     if not search_form.validate():
         return jsonify( { 'submit_status': 'error', 'fields': search_form.errors } )

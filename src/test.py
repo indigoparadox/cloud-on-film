@@ -46,7 +46,7 @@ class TestLibrary( TestCase ):
 
         os.makedirs( self.nsfw_lib_path + '/foo_folder', exist_ok=True )
         shutil.copy2(
-            '../testing/random640x480.png',
+            'testing/random640x480.png',
             self.nsfw_lib_path + '/foo_folder/' )
         os.makedirs( os.path.join(
             self.lib_path,
@@ -215,7 +215,7 @@ class TestLibrary( TestCase ):
 
         # Perform the import.
         pics_json = None
-        with open( '../testing/test_import.json', 'r' ) as import_file:
+        with open( 'testing/test_import.json', 'r' ) as import_file:
             pics_json = json.loads( import_file.read() )
         for pic_json in pics_json:
             pic_json['filename'] = os.path.join(
@@ -360,13 +360,6 @@ class TestLibrary( TestCase ):
         search_test.lexer.dump()
         res = search_test.search( self.user_id ).all()
 
-        print( 'xxx' )
-        print( 'xxx' )
-        from cloud_on_film.files.picture import Picture
-        print( inspect( Picture ).attrs.keys() )
-        print( 'xxx' )
-        print( 'xxx' )
-
         found_zero = False
         found_four = False
         for i in res:
@@ -377,6 +370,22 @@ class TestLibrary( TestCase ):
         
         assert( [not i.nsfw for i in res] ) 
         assert( found_zero and found_four )
+
+        search_test = Searcher( '&(name=%random640%)' )
+        search_test.lexer.lex()
+        search_test.lexer.dump()
+        res = search_test.search( self.user_id ).all()
+
+        found_ten = False
+        found_four = False
+        for i in res:
+            if 4 == i.aspect:
+                found_four = True
+            elif 10 == i.aspect:
+                found_ten = True
+        
+        assert( found_ten and found_four )
+        assert( 2 == len( res ) )
 
 if '__main__' == __name__:
     unittest.main()

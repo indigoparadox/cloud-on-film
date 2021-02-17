@@ -23,9 +23,9 @@ class RenameItemForm( FlaskForm ):
     #nsfw = BooleanField( 'NSFW' )
     tags = StringField( 'Tags' )
     comment = TextAreaField( 'Comment' )
-    location = HiddenField( '' )
+    location = HiddenField( '', validators=[DataRequired()] )
 
 class SearchQueryForm( FlaskForm ):
 
-    query = StringField( 'Search' )
+    query = StringField( 'Search', validators=[DataRequired()] )
     page = HiddenField( '' )

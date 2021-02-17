@@ -21,6 +21,7 @@ class SearchLexerParser( object ):
         gte = 4
         lte = 5
         has = 6
+        like = 7
 
     class Node( object ):
         def __init__( self ):
@@ -76,44 +77,56 @@ class SearchLexerParser( object ):
 
         self.pending_c = None
 
+    def is_value_pending( self ):
+        return '' != self.ctok_value and \
+            None != self.ctok_type
+
     def lex( self ):
         for c in self.query_str:
             self._lex_c( c )
 
         # Button up any remaining tokens.
         self._append_ctok_value( None ) # Handle pending_c.
-        if '' != self.ctok_value and \
-        None != self.ctok_type:
+        if self.is_value_pending():
             self.push_token()
 
     def _lex_c( self, c ):
 
         if "'" == c or '"' == c:
-            if '' == self.ctok_value and \
-            None == self.ctok_type:
+            if not self.is_value_pending():
                 self.ctok_type = str
                 self.ctok_quotes = True
 
-            elif '' != self.ctok_value and \
-            str == self.ctok_type:
+            elif str == self.ctok_type:
                 self.push_token()
 
             else:
-                raise SearchSyntaxException( 'invalid quote detected' )
+                raise SearchSyntaxException( 'invalid \'"\' or "\'" detected' )
 
-        elif '&' == c:
-            if '' != self.ctok_value and \
-            str == self.ctok_type:
+        elif '%' == c:
+            if None == self.last_attrib:
+                raise SearchSyntaxException( 'invalid "%%" in attribute name' )
+
+            else:
+                # Don't overthink this. We'll just check if the value starts 
+                # or ends with % on push to change the op to a LIKE.
                 self._append_ctok_value( c )
 
-            elif '' == self.ctok_value:
+        elif '&' == c:
+            if str == self.ctok_type:
+                self._append_ctok_value( c )
+
+            elif not self.is_value_pending():
                 self.push_and()
 
             else:
-                raise SearchSyntaxException( 'stray and detected' )
+                raise SearchSyntaxException( 'stray "&" detected' )
 
         elif '=' == c:
-            if '>' == self.pending_c:
+            if str == self.ctok_type and self.ctok_quotes:
+                self._append_ctok_value( c )
+
+            elif '>' == self.pending_c:
                 self.push_token()
                 self.push_gte()
                 self.pending_c = None
@@ -122,17 +135,15 @@ class SearchLexerParser( object ):
                 self.push_token()
                 self.push_lte()
                 self.pending_c = None
-            
-            elif self.ctok_quotes:
-                self._append_ctok_value( c )
 
-            elif None != self.ctok_value and \
-            str == self.ctok_type:
+            elif str == self.ctok_type:
+                if None != self.last_value:
+                    raise SearchSyntaxException( 'stray "=" detected' )
                 self.push_token()
                 self.push_eq()
 
             else:
-                raise SearchSyntaxException( 'stray equal detected' )
+                raise SearchSyntaxException( 'stray "=" detected' )
 
         elif '>' == c:
             # Handle this under =
@@ -143,8 +154,7 @@ class SearchLexerParser( object ):
             self.pending_c = '<'
 
         elif '(' == c:
-            if '' != self.ctok_value and \
-            str == self.ctok_type:
+            if str == self.ctok_type:
                 self._append_ctok_value( c )
             
             elif '' == self.ctok_value:
@@ -154,9 +164,7 @@ class SearchLexerParser( object ):
                 raise SearchSyntaxException( 'stray "("' )
 
         elif ')' == c:
-            if '' != self.ctok_value and \
-            str == self.ctok_type and \
-            self.ctok_quotes:
+            if str == self.ctok_type and self.ctok_quotes:
                 self._append_ctok_value( c )
             
             elif '' != self.ctok_value and \
@@ -227,6 +235,11 @@ class SearchLexerParser( object ):
         group = SearchLexerParser.Or()
         self._push_group( group )
         self.head = group
+    
+    def push_like( self ):
+        if SearchLexerParser.Op.eq and not self.last_op:
+            raise SearchSyntaxException( 'invalid comparison to LIKE' )
+        self.last_op = SearchLexerParser.Op.like
 
     def push_gt( self ):
         self.last_op = SearchLexerParser.Op.gt
@@ -245,6 +258,13 @@ class SearchLexerParser( object ):
     
     def push_token( self ):
 
+        # Change the OP to LIKE if we have a trailing %.
+        if str == self.ctok_type and \
+        (self.ctok_value.startswith( '%' ) or \
+        self.ctok_value.endswith( '%' )):
+            self.push_like()
+
+        # Determine if we're assigning attrib or value.
         if None == self.last_attrib:
             assert( str == self.ctok_type )
             self.last_attrib = self.ctok_value
@@ -304,11 +324,18 @@ class Searcher( object ):
                     raise SearchExecuteException( 'invalid attribute specified' )
                 
                 if SearchLexerParser.Op.eq == t.op:
-                    #print( 'filter: {} == {}'.format( t.children[0] ),  t.children[1] )
                     _query = _query.filter( getattr( Picture, t.children[0] ) == t.children[1] )
-                if SearchLexerParser.Op.gt == t.op:
-                    #print( type( t ) )
-                    #print( 'filter: {} > {}'.format( t.children[0] ),  t.children[1] )
+                elif SearchLexerParser.Op.gt == t.op:
                     _query = _query.filter( getattr( Picture, t.children[0] ) > t.children[1] )
+                elif SearchLexerParser.Op.lt == t.op:
+                    _query = _query.filter( getattr( Picture, t.children[0] ) < t.children[1] )
+                elif SearchLexerParser.Op.gte == t.op:
+                    _query = _query.filter( getattr( Picture, t.children[0] ) >= t.children[1] )
+                elif SearchLexerParser.Op.lte == t.op:
+                    _query = _query.filter( getattr( Picture, t.children[0] ) <= t.children[1] )
+                elif SearchLexerParser.Op.neq == t.op:
+                    _query = _query.filter( getattr( Picture, t.children[0] ) != t.children[1] )
+                elif SearchLexerParser.Op.gt.like == t.op:
+                    _query = _query.filter( getattr( Picture, t.children[0] ).like( t.children[1] ) )
 
         return _query
