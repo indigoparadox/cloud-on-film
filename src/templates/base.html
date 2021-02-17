@@ -1,9 +1,25 @@
-<!doctype HTML>
+{% macro show_form( form_object, id, action='#', method='POST', class_str='' ) %}
+<form id="{{ id }}" method="{{ method }}" class="{{ class_str }}">
+{% for field in form_object if 'csrf_token' != field.name and field.type != 'HiddenField' %}
+<div class="form-group">
+    {{ field.label() }}
+    {{ field( class_='form-control' ) }}
+</div>
+{% endfor %}
+<div class="form-hidden">
+{% for field in form_object if 'csrf_token' == field.name or field.type == 'HiddenField' %}
+    {{ field }}
+{% endfor %}
+</div>
+</form>
+{% endmacro %}<!doctype HTML>
 <html>
 <head>
 <title>{{ title }}</title>
 <script type="text/javascript">
 var flaskRoot = "{{ url_for( 'cloud_root' ) }}";
+//var csrfToken = $('meta[name=csrf-token]').attr( 'content' );
+var csrfToken = "{{ csrf_token() }}";
 var currentUID = {{ current_uid }};
 </script>
 <script src="{{ url_for( 'static', filename='jquery.min.js' ) }}"></script>
@@ -41,10 +57,7 @@ var currentUID = {{ current_uid }};
 </ul>
 {% endwith %} <!-- /libraries -->
 
-<form id="search-query">
-    <label for="search-query-input">Search:</label>
-    <input type="text" id="search-query-input" name="query" />
-</form>
+{{ show_form( search_form, id="search-query" ) }}
 
 {% endblock %}
 </div>
@@ -57,7 +70,7 @@ var currentUID = {{ current_uid }};
 <div class="container">
 
 <div class="row">
-<h1>{{ title }}</h1>
+<!-- <h1 it="page-title">{{ title }}</h1> -->
 {% with flashes = get_flashed_messages() %}
 {% if flashes %}
 <ul class="flashes">

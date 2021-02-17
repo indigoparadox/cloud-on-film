@@ -10,6 +10,7 @@ from flask_testing import TestCase
 from cloud_on_film import create_app, db
 from cloud_on_film.models import Library, Folder, Item, Tag
 from cloud_on_film.importing import picture
+from cloud_on_film.search import Searcher
 
 class TestLibrary( TestCase ):
 
@@ -140,8 +141,8 @@ class TestLibrary( TestCase ):
         file_test = Picture.from_path(
             self.lib.id, 'testing/random640x400.png', self.user_id )
 
-        file_test = Picture.from_path(
-            self.lib.id, 'testing/random640x480.png', self.user_id )
+        #file_test = Picture.from_path(
+        #    self.lib.id, 'testing/random640x480.png', self.user_id )
         
         file_test = Picture.from_path(
             self.nsfw_lib.id, 'foo_folder/random640x480.png', self.user_id )
@@ -319,6 +320,55 @@ class TestLibrary( TestCase ):
         assert( 1 == files_test[0].rating )
         assert( 'random500x500.png' == files_test[0].name )
 
+    def test_search_query( self ):
+
+        self.create_data_items()
+
+        search_test = Searcher( '&((rating=4)(nsfw=0))' )
+        search_test.lexer.lex()
+        search_test.lexer.dump()
+        res = search_test.search( self.user_id ).all()
+        
+        assert( [not i.nsfw for i in res] ) 
+        assert( [4 == i.rating for i in res] ) 
+
+        search_test = Searcher( 'aspect=10' )
+        search_test.lexer.lex()
+        search_test.lexer.dump()
+        res = search_test.search( self.user_id ).all()
+
+        assert( [10 == i.aspect for i in res] ) 
+
+        search_test = Searcher( '(rating>1)' )
+        search_test.lexer.lex()
+        search_test.lexer.dump()
+        res = search_test.search( self.user_id ).all()
+
+        assert( [1 < i.rating for i in res] ) 
+
+        search_test = Searcher( '&((aspect=4)(width>320))' )
+        search_test.lexer.lex()
+        search_test.lexer.dump()
+        res = search_test.search( self.user_id ).all()
+
+        assert( [4 == i.aspect for i in res] ) 
+        assert( [320 < i.width for i in res] ) 
+
+        search_test = Searcher( '&((rating>=0)(nsfw=0))' )
+        search_test.lexer.lex()
+        search_test.lexer.dump()
+        res = search_test.search( self.user_id ).all()
+
+        found_zero = False
+        found_four = False
+        for i in res:
+            if 4 == i.rating:
+                found_four = True
+            elif 0 == i.rating:
+                found_zero = True
+        
+        assert( [not i.nsfw for i in res] ) 
+        assert( found_zero and found_four )
 
 if '__main__' == __name__:
     unittest.main()

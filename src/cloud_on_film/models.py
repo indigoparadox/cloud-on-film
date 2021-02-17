@@ -196,10 +196,14 @@ class Library( db.Model, JSONItemMixin ):
 
     @staticmethod
     def secure_query( user_id ):
-        return db.session.query( Library ) \
-            .filter( db.or_(
+        query = db.session.query( Library )
+
+        if 0 <= user_id:
+            query = query.filter( db.or_(
                 Library.owner_id == user_id,
                 Library.owner_id == None ) )
+
+        return query
 
     @staticmethod
     def enumerate_all( user_id ):
@@ -436,10 +440,14 @@ class Folder( db.Model, JSONItemMixin ):
 
     @staticmethod
     def secure_query( user_id ):
-        return db.session.query( Folder ) \
-            .filter( db.or_(
+        query = db.session.query( Folder )
+        
+        if 0 <= user_id:
+            query = query.filter( db.or_(
                 None == Folder.owner_id,
-                current_uid == Folder.owner_id ) )
+                user_id == Folder.owner_id ) )
+
+        return query
     
     @staticmethod
     def ensure_folder( folder_or_folder_id_or_path, user_id ):
@@ -605,10 +613,9 @@ class Item( db.Model, JSONItemMixin ):
         
         # Get the folder from path so we're sure the folder is added to the DB before the file is.
         folder = Folder.from_path( library_id, os.path.dirname( relative_path ), user_id )
-        item = db.session.query( Item ) \
+        item = Item.secure_query( user_id ) \
             .filter( Item.folder_id == folder.id ) \
             .filter( Item.name == os.path.basename( relative_path ) ) \
-            .filter( Item.owner_id == user_id ) \
             .first()
 
         absolute_path = os.path.join( folder.absolute_path, filename )
@@ -634,8 +641,10 @@ class Item( db.Model, JSONItemMixin ):
 
         poly = Plugin.polymorph()
 
-        query = db.session.query( poly ) \
-            .filter( db.or_(
+        query = db.session.query( poly )
+        
+        if 0 <= user_id:
+            query = query.filter( db.or_(
                 None == Item.owner_id,
                 user_id == Item.owner_id ) )
 

@@ -1,6 +1,6 @@
 
 from flask_wtf import FlaskForm
-from wtforms import StringField, FileField, BooleanField
+from wtforms import StringField, FileField, BooleanField, HiddenField, TextAreaField
 from wtforms.validators import DataRequired
 
 class NewLibraryForm( FlaskForm ):
@@ -16,3 +16,16 @@ class UploadLibraryForm( FlaskForm ):
 
     upload = FileField( 'Library Import File' )
 
+class RenameItemForm( FlaskForm ):
+
+    id = HiddenField( '' )
+    name = StringField( 'Name', validators=[DataRequired()] )
+    #nsfw = BooleanField( 'NSFW' )
+    tags = StringField( 'Tags' )
+    comment = TextAreaField( 'Comment' )
+    location = HiddenField( '' )
+
+class SearchQueryForm( FlaskForm ):
+
+    query = StringField( 'Search' )
+    page = HiddenField( '' )

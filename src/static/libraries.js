@@ -39,6 +39,15 @@ $().ready( function() {
       } );
    }
    */
+
+   // Setup XSRF for AJAX requests.
+   $.ajaxSetup( {
+      beforeSend: function( xhr, settings ) {
+         if (!/^(GET|HEAD|OPTIONS|TRACE)$/i.test( settings.type ) && !this.crossDomain) {
+            xhr.setRequestHeader( "X-CSRFToken", csrfToken );
+         }
+      }
+   } );
  } );
 
  $.fn.enableThumbnailCard = function() {
@@ -93,9 +102,19 @@ $(window).on( 'scroll', function( e ) {
    } */
 
    page += 1;
-   let loadURL = flaskRoot + 'ajax/html/items/' + folderID.toString() + '/' + page.toString();
+   let pageRE = new RegExp( '%page%', 'g' );
+   let folderIDRE = new RegExp( '%folder%', 'g' );
+   let loadURL = scrollURL.replace( pageRE, page.toString() ).replace( folderIDRE, folderID.toString() );
+   let scrollObject = {
+      url: loadURL,
+      method: scrollMethod
+   };
+   if( 'POST' == scrollMethod ) {
+      scrollObject.data = scrollDataCallback();
+   }
+
    // Grab the next [loadIncrement] columns and append them to the table.
-   $.get( loadURL, function( data ) {
+   $.ajax( scrollObject ).done( function( data ) {
       for( var i = 0 ; data.length > i ; i++ ) {
          let element = $(data[i]);
          $('#folder-items').append( element );
@@ -116,7 +135,7 @@ function renameItem( id ) {
    $.getJSON( flaskRoot + 'ajax/item/' + id.toString() + '/json', function( item_data ) {
       console.log( item_data );
       
-      $('#modal-input-tags').tagsinput( {
+      $('#modal-form-rename #tags').tagsinput( {
          tagClass: function( name ) {
             return 'bg-dark';
          },
@@ -128,13 +147,13 @@ function renameItem( id ) {
          }
       } );
 
-      $('#modal-id').val( id );
-      $('#modal-input-tags').tagsinput( 'removeAll' );
-      for( const tag_idx in item_data['_tags'] ) {
-         $('#modal-input-tags').tagsinput( 'add', item_data['_tags'][tag_idx] );
+      $('#modal-form-rename #id').val( id );
+      $('#modal-form-rename #tags').tagsinput( 'removeAll' );
+      for( const tag_idx in item_data['tags'] ) {
+         $('#modal-form-rename #tags').tagsinput( 'add', item_data['tags'][tag_idx] );
       }
-      $('#modal-input-name').val( item_data['name'] );
-      $('#modal-input-comment').val( item_data['comment'] );
+      $('#modal-form-rename #name').val( item_data['name'] );
+      $('#modal-form-rename #comment').val( item_data['comment'] );
       //var img_preview_tag = $('<img src="' + flaskRoot + 'preview/' + 
       //   data['id'] + '/360/270" class="" style="display: none;" />');
       var img_preview_tag = $('<img src="' + flaskRoot + 'preview/' +
@@ -198,4 +217,12 @@ function saveRename() {
    } );
 
    return false;
+}
+
+function clearDynamicPage() {
+   // Disable folderID since we're now a fully dynamic page.
+   folderID = -1;
+   $('#libraries-folders .libraries-folders-inner').empty();
+   $('#folder-items').empty();
+   //$('#page-title').text( '' );
 }

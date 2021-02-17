@@ -2,9 +2,11 @@
 import logging 
 from flask import Flask, render_template, request, current_app, flash, send_file, abort, redirect, url_for, jsonify
 from sqlalchemy import exc
+from sqlalchemy.inspection import inspect
 from .models import LibraryPermissionsException, StatusEnum, db, Library, Item, Folder, Tag, InvalidFolderException, LibraryRootException
-from .forms import NewLibraryForm, UploadLibraryForm
+from .forms import NewLibraryForm, UploadLibraryForm, RenameItemForm, SearchQueryForm
 from .importing import start_import_thread, threads
+from .search import Searcher
 from werkzeug import secure_filename
 import json
 import os
@@ -193,6 +195,9 @@ def cloud_libraries_upload( id='' ):
 @current_app.route( '/libraries/<string:machine_name>/<path:relative_path>/<int:page>' )
 def cloud_libraries( machine_name=None, relative_path=None, page=0 ):
 
+    rename_form = RenameItemForm( request.form )
+    search_form = SearchQueryForm( request.form )
+
     l_globals = {
         'library_name': machine_name,
         'title': os.path.basename(relative_path )
@@ -228,13 +233,13 @@ def cloud_libraries( machine_name=None, relative_path=None, page=0 ):
         return render_template(
             'libraries.html', **l_globals, folders=folder.children,
             items=items, items_classes=' pictures', page=page, current_uid=current_uid,
-            this_folder=folder )
+            this_folder=folder, rename_form=rename_form, search_form=search_form )
 
     except LibraryRootException as e:
         # Show the root of the given library ID.
         return render_template(
             'libraries.html', **l_globals, folders=library.children, pictures=[], page=page,
-            this_folder=None, current_uid=current_uid )
+            this_folder=None, current_uid=current_uid, rename_form=rename_form, search_form=search_form )
 
     except InvalidFolderException as e:
 
@@ -249,7 +254,7 @@ def cloud_libraries( machine_name=None, relative_path=None, page=0 ):
 
         return render_template(
             'file_item.html', **l_globals, file_item=file_item, tag_list=json.dumps( tags ),
-            current_uid=current_uid, page=page )
+            current_uid=current_uid, page=page, rename_form=rename_form, search_form=search_form )
 
 @current_app.route( '/ajax/item/<int:item_id>/save', methods=['POST'] )
 def cloud_item_ajax_save( item_id ):
@@ -394,12 +399,50 @@ def cloud_tags( path ):
     
     if not tag:
         abort( 404 )
+
     return render_template( 'libraries.html', pictures=items, 
         tag_roots=[tag.parent], this_tag=tag, current_uid=current_uid )
 
-@current_app.route( '/ajax/search', methods=['GET'] ):
+@current_app.route( '/ajax/html/search', methods=['POST'] )
 def cloud_items_ajax_search():
-    pass
+
+    current_uid = 0 # TODO: current_uid
+
+    search_form = SearchQueryForm( request.form )
+
+    if not search_form.validate():
+        return jsonify( { 'submit_status': 'error', 'fields': search_form.errors } )
+
+    print( request.form )
+
+    page = int( search_form.page.data )
+    query_str = search_form.query.data
+    offset = page * current_app.config['ITEMS_PER_PAGE']
+    limit = current_app.config['ITEMS_PER_PAGE']
+
+    #query = Item.secure_query( current_uid )
+    #item_keys = inspect( Item ).attrs.keys()
+    #print( item_keys )
+
+    #for token in query_str.split( ',' ):
+    #    token_pair = token.split( '=' )
+    #    if 2 == len( token_pair ) and token_pair[0] in item_keys:
+    #        query = query.filter( getattr( Item, token_pair[0] ) == token_pair[1] )
+    #    else:
+    #        return jsonify( { 'submit_status': 'error', 'fields': ['Invalid tokens.'] } )
+
+    searcher = Searcher( query_str )
+    searcher.lexer.lex()
+    query = searcher.search( current_uid ) \
+        .order_by( Item.name ) \
+        .offset( offset ) \
+        .limit( limit )
+                
+    # TODO: limit
+    #items = query.limit( 20 ).all()
+
+    #return jsonify( [i.to_dict( ignore_keys=['parent', 'folder'] ) for i in items] )
+    return jsonify( [m.library_html() for m in query.all()] )
 
 @current_app.route( '/' )
 def cloud_root():

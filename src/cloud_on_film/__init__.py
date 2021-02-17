@@ -2,6 +2,7 @@
 import logging
 from flask_sqlalchemy import SQLAlchemy
 from flask import Flask, render_template, request
+from flask_wtf import CSRFProtect
 from .config import Config
 uwsgi_present = False
 try:
@@ -35,7 +36,9 @@ def create_app( config=None ):
             app.config.from_object( cfg )
 
     db.init_app( app )
-    
+
+    csrf = CSRFProtect( app )
+
     with app.app_context():
         from . import routes
 

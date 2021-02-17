@@ -1,0 +1,55 @@
+
+<div class="col-md-2 col-sm-4 coll-xs-6 px-0 card bg-secondary{{ classes }}">
+
+    <div class="px-0 py-0 libraries-thumbnail-wrapper" data-src="{{ url_for( 'cloud_plugin_preview', file_id=id ) }}">
+        <a href="{{ fullsize_page }}" class="thumbnail"
+            data-fullsize="{{ url_for( 'cloud_plugin_fullsize', file_id=id ) }}">
+            <noscript>
+                <img
+                    class="img-responsive libraries-thumbnail"
+                    src="{{ url_for( 'cloud_plugin_preview', file_id=id ) }}"
+                    alt="{{ name }}" />
+            </noscript>
+        </a>
+    </div> <!-- /libraries-thumbnail-wrapper -->
+
+    <form action="{{ url_for( 'cloud_edit_filedata' ) }}" method="POST"
+        class="container-fluid d-flex flex-column flex-grow-1">
+
+        <div class="card-body container-fluid d-flex flex-column flex-grow-1 w-100 px-0">
+
+            <!-- body text -->
+            <h3 class="card-title d-flex flex-column">{{ name }}</h3>
+            <p class="card-text d-flex flex-column flex-grow-1">
+                {% if comment %}
+                {{ comment }}
+                {% endif %}
+            </p>
+
+            <!-- button bar -->
+            <div class="d-flex flex-column">
+                {% if nsfw %}
+                <small class="text-bright nsfw">NSFW</small>
+                {% endif %}
+                <small class="text-bright dimensions">{{ width }}x{{ height }}</small>
+                {% if aspect %}
+                <small class="text-bright aspect-ratio">{{ aspect }}</small>
+                {% endif %}
+                <small class="edit">
+                    <a href="#" onclick="return renameItem( {{ id }} );">Edit</a>
+                </small>
+                <small class="rating">
+                {% for r in range( rating ) %}
+                    <a href="#" class="star star-on star-{{ r }}"></a>
+                {% endfor %}
+                {% for r in range( 5 - rating ) %}
+                    <a href="#" class="star star-off star-{{ r }}"></a>
+                {% endfor %}
+                </small>
+                    
+            </div>
+
+        </div> <!-- /card-body -->
+
+    </form>
+</div> <!-- /card -->

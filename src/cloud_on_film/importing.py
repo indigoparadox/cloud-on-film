@@ -52,10 +52,12 @@ def picture( picture ):
 
     logger = logging.getLogger( 'libraries.import.picture' )
 
+    current_uid = -1 # TODO: override current_uid
+
     # Find matching library.
     relative_path = None
     library = None
-    for lib in Library.enumerate_all():
+    for lib in Library.enumerate_all( -1 ):
         match = re.match(
             r'^{}\/(.*)'.format( lib.absolute_path ), picture['filename'] )
         if match:
@@ -73,7 +75,7 @@ def picture( picture ):
     # Spelunk into folders starting from the library we found.
     # Circumvent user checking.
     folder_relative_path = os.path.dirname( relative_path )
-    folder = Folder.from_path( library.id, folder_relative_path, library.owner_id )
+    folder = Folder.from_path( library.id, folder_relative_path, current_uid )
 
     # See if the picture already exists.
     name = os.path.basename( picture['filename'] )
@@ -96,6 +98,7 @@ def picture( picture ):
 
         st = os.stat( picture['filename'] )
 
+        from .files.picture import Picture
         pic = Picture(
             name=name,
             folder_id=folder.id,
@@ -108,7 +111,7 @@ def picture( picture ):
         db.session.flush()
         db.session.refresh( pic )
 
-        pic.tags( append=[Tag.from_path( t ) for t in picture['tags']] )
+        pic.tags.append=[Tag.from_path( t ) for t in picture['tags']]
 
         if picture['comment']:
             pic.meta['comment'] = picture['comment']

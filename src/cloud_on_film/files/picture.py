@@ -1,7 +1,7 @@
 
 import os
 import stat
-from flask import current_app, url_for
+from flask import current_app, url_for, render_template
 from sqlalchemy import func
 from sqlalchemy.ext.declarative import declared_attr
 from cloud_on_film.models import db, Item, ItemMeta, Library, Folder, DBItemNotFoundException, Plugin
@@ -154,66 +154,28 @@ class Picture( Item ):
         self_dict = self.to_dict( ignore_keys=['folder', '_meta', '_tags'] )
 
         self_dict['classes'] = ''
-        self_dict['comment'] = self.comment if self.comment else ''
-        self_dict['preview'] = url_for( 'cloud_plugin_preview', file_id=self.id )
+        #self_dict['comment'] = self.comment if self.comment else ''
+        #self_dict['preview'] = url_for( 'cloud_plugin_preview', file_id=self.id )
         self_dict['fullsize_page'] = url_for( 'cloud_libraries',
             machine_name=self.folder.library.machine_name,
             relative_path=None ) + '/' + self.path
-        self_dict['fullsize'] = url_for( 'cloud_plugin_fullsize', file_id=self.id )
-        self_dict['nsfw'] = '<small class="text-bright nsfw">NSFW</small>' if self.nsfw else ''
+        #self_dict['fullsize'] = url_for( 'cloud_plugin_fullsize', file_id=self.id )
+        #self_dict['nsfw'] = '<small class="text-bright nsfw">NSFW</small>' if self.nsfw else ''
         self_dict['classes'] += ' nsfw' if self.nsfw else ''
-        self_dict['dimensions'] = '<small class="text-bright dimensions">{}x{}</small>'.format( self.width, self.height )
-        self_dict['aspect'] = '<small class="text-bright aspect-ratio">{}</small>'.format( ASPECT_RATIO_FMT[self.aspect] ) if self.aspect else ''
+        #self_dict['dimensions'] = '<small class="text-bright dimensions">{}x{}</small>'.format( self.width, self.height )
+        #self_dict['aspect'] = '<small class="text-bright aspect-ratio">{}</small>'.format( ASPECT_RATIO_FMT[self.aspect] ) if self.aspect else ''
+        self_dict['aspect'] = ASPECT_RATIO_FMT[self.aspect] if self.aspect else None
         self_dict['classes'] += ' wp-{}'.format( ASPECT_RATIO_FMT[self.aspect].replace( ':', 'x' ) ) if self.aspect else ''
-        self_dict['rating'] = '<small class="rating">' + \
-            ''.join( ['<a href="#" class="star-on star-{}"></a>'.format( i ) for i in range( self.rating )] ) + \
-            ''.join( ['<a href="#" class="star-off star-{}"></a>'.format( i ) for i in range( 5 - self.rating )] ) + \
-            '</small>'
+        #self_dict['rating'] = '<small class="rating">' + \
+        #    ''.join( ['<a href="#" class="star-on star-{}"></a>'.format( i ) for i in range( self.rating )] ) + \
+        #    ''.join( ['<a href="#" class="star-off star-{}"></a>'.format( i ) for i in range( 5 - self.rating )] ) + \
+        #    '</small>'
+        self_dict['rating'] = int( self_dict['rating'] )
         self_dict['classes'] += ' rating-{}'.format( self.rating )
         for tag in self.tags:
             self_dict['classes'] += ' tag-{}'.format( tag.name.lower().replace( '/', '-' ) )
 
-        html_out = '''
-<div class="col-md-2 col-sm-4 coll-xs-6 px-0 card bg-secondary{classes}">
-
-    <div class="px-0 py-0 libraries-thumbnail-wrapper" data-src="{preview}">
-        <a href="{fullsize_page}" class="thumbnail"
-            data-fullsize="{fullsize}">
-            <noscript>
-                <img
-                    class="img-responsive libraries-thumbnail"
-                    src="{preview}"
-                    alt="{name}" />
-            </noscript>
-        </a>
-    </div> <!-- /libraries-thumbnail-wrapper -->
-
-    <form action="{{ url_for( 'cloud_edit_filedata' ) }}" method="POST"
-        class="container-fluid d-flex flex-column flex-grow-1">
-
-        <div class="card-body container-fluid d-flex flex-column flex-grow-1 w-100 px-0">
-
-            <!-- body text -->
-            <h3 class="card-title d-flex flex-column">{name}</h3>
-            <p class="card-text d-flex flex-column flex-grow-1">
-                {comment}
-            </p>
-
-            <!-- button bar -->
-            <div class="d-flex flex-column">
-                {nsfw}
-                {dimensions}
-                {aspect}
-                <a href="#" onclick="return renameItem( {id} );">Edit</a>
-                {rating}
-            </div>
-
-        </div> <!-- /card-body -->
-
-    </form>
-</div> <!-- /card -->
-
-'''.format( **self_dict )
+        html_out = render_template( 'file_card_picture.html', **self_dict )
         return html_out
 
 plugin = db.session.query( Plugin ) \
