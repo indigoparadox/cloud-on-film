@@ -1,9 +1,9 @@
-{% macro show_form( form_object, id, action='#', method='POST', class_str='' ) %}
-<form id="{{ id }}" method="{{ method }}" class="{{ class_str }}">
+{% macro show_form( form_object, id, action='#', method='POST', class='' ) %}
+<form id="{{ id }}" method="{{ method }}" class="{{ class }}">
 {% for field in form_object if 'csrf_token' != field.name and field.type != 'HiddenField' %}
 <div class="form-group">
     {{ field.label() }}
-    {{ field( class_='form-control' ) }}
+    {{ field( class_='form-control mx-2' ) }}
 </div>
 {% endfor %}
 <div class="form-hidden">
@@ -15,80 +15,77 @@
 {% endmacro %}<!doctype HTML>
 <html>
 <head>
-<title>{{ title }}</title>
-<script type="text/javascript">
-var flaskRoot = "{{ url_for( 'cloud_root' ) }}";
-//var csrfToken = $('meta[name=csrf-token]').attr( 'content' );
-var csrfToken = "{{ csrf_token() }}";
-var currentUID = {{ current_uid }};
-</script>
-<script src="{{ url_for( 'static', filename='jquery.min.js' ) }}"></script>
-<script src="{{ url_for( 'static', filename='jquery-ui.js' ) }}"></script>
-<script src="{{ url_for( 'static', filename='popper.min.js' ) }}"></script>
-<script src="{{ url_for( 'static', filename='bootstrap.min.js' ) }}"></script>
-<script src="{{ url_for( 'static', filename='sidebar.js' ) }}"></script>
-<script src="{{ url_for( 'static', filename='search.js' ) }}"></script>
-<link rel="stylesheet" href="{{ url_for( 'static', filename='base.min.css' ) }}" />
-<link rel="stylesheet" href="{{ url_for( 'static', filename='bootstrap.min.css' ) }}" />
-<link rel="stylesheet" href="{{ url_for( 'static', filename='bootstrap-custom.css' ) }}" />
-<link rel="stylesheet" href="{{ url_for( 'static', filename='style.css' ) }}" />
-{% block scripts %}{% endblock %}
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{{ title }}</title>
+    <script type="text/javascript">
+    var flaskRoot = "{{ url_for( 'cloud_root' ) }}";
+    //var csrfToken = $('meta[name=csrf-token]').attr( 'content' );
+    var csrfToken = "{{ csrf_token() }}";
+    var currentUID = {{ current_uid }};
+    </script>
+    <script src="{{ url_for( 'static', filename='jquery.min.js' ) }}"></script>
+    <script src="{{ url_for( 'static', filename='jquery-ui.js' ) }}"></script>
+    <script src="{{ url_for( 'static', filename='popper.min.js' ) }}"></script>
+    <script src="{{ url_for( 'static', filename='bootstrap.min.js' ) }}"></script>
+    <script src="{{ url_for( 'static', filename='search.js' ) }}"></script>
+    <link rel="stylesheet" href="{{ url_for( 'static', filename='base.min.css' ) }}" />
+    <link rel="stylesheet" href="{{ url_for( 'static', filename='bootstrap.min.css' ) }}" />
+    <link rel="stylesheet" href="{{ url_for( 'static', filename='bootstrap-custom.css' ) }}" />
+    <link rel="stylesheet" href="{{ url_for( 'static', filename='style.css' ) }}" />
+    {% block scripts %}{% endblock %}
 </head>
 <body class="h-100 bg-dark text-light">
 
 {% block modals %}{% endblock %}
+<nav class="navbar navbar-expand-md navbar-nav navbar-dark bg-light">
+    <button class="navbar-toggler" data-toggle="collapse" data-target="#navbar-collapsible-content">
+        <span id="sidebar-toggle"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navbar-collapsible-content">
+        <ul class="navbar-nav mr-auto">
+            {% with libraries = library_enumerate_all( current_uid ) %}
+            {% for lib in libraries %}
+            {% if lib.machine_name == library_name %}
+            <li class="nav-item active">
+            {% else %}
+            <li class="nav-item">
+            {% endif %}
+            <a class="nav-link text-primary" href="{{ url_for( 'cloud_libraries', machine_name=lib.machine_name, relative_path=None ) }}">{{ lib.display_name }}</a>
+            </li>
+            {% endfor %}
+            {% endwith %} <!-- /libraries -->
 
-{% if not no_sidebar %}
-<div id="sidebar" class="sidebar h-100 bg-light">
-<a id="sidebar-toggle" href="#"></a>
-<div id="sidebar-inner">
-{% block sidebar %}
-<h2>Libraries</h2>
-{% with libraries = library_enumerate_all( current_uid ) %}
-<ul class="libraries">
-{% for lib in libraries %}
-{% if lib.machine_name == library_name %}
-<li class="active">
-{% else %}
-<li>
-{% endif %}
-<a class="text-primary" href="{{ url_for( 'cloud_libraries', machine_name=lib.machine_name, relative_path=None ) }}">{{ lib.display_name }}</a>
-</li>
-{% endfor %}
-</ul>
-{% endwith %} <!-- /libraries -->
+            {% block sidebar %}
+            {% endblock %}
+        </ul>
+    </div>
+</nav>
 
-{% endblock %}
-</div>
-</div>
-<div id="sidebar-resize"></div>
+<!-- <div id="sidebar-resize" class="d-none d-md-block"></div> -->
 
-<div id="main" class="main-width">
-{% endif %}{# /no_sidebar #}
+<main id="main" class="">
 
-<div class="container">
+    <div class="container">
 
-<div class="row">
-<!-- <h1 it="page-title">{{ title }}</h1> -->
-{% with flashes = get_flashed_messages() %}
-{% if flashes %}
-<ul class="flashes">
-{% for flashed in flashes %}
-<li class="flash">{{ flashed }}</li>
-{% endfor %}
-</ul>
-{% endif %}
-{% endwith %}
+        <div class="row">
+        <!-- <h1 it="page-title">{{ title }}</h1> -->
+        {% with flashes = get_flashed_messages() %}
+        {% if flashes %}
+        <ul class="flashes">
+        {% for flashed in flashes %}
+        <li class="flash">{{ flashed }}</li>
+        {% endfor %}
+        </ul>
+        {% endif %}
+        {% endwith %}
 
-</div> <!-- /row -->
+        </div> <!-- /row -->
 
-{% block content %}{% endblock %}
+        {% block content %}{% endblock %}
 
-</div> <!-- /container -->
+    </div> <!-- /container -->
 
-{% if not no_sidebar %}
-</div> <!-- /main -->
-{% endif %}{# /no_sidebar #}
+</main> <!-- /main -->
 
 </body>
 </html>

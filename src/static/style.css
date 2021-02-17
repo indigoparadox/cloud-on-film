@@ -6,36 +6,9 @@
     padding-left: 16px;
 }
 
-/* Sidebar Stuff */
-
-.sidebar {
-   width: 120px;
-   position: fixed;
-   overflow-x: hidden;
-   z-index: 5;
-}
-
 #sidebar-toggle {
     background-image: url( 'arrow-right-32.png' );
-    display: none;
-    margin: 0;
-    padding: 0;
+    display: inline-block;
     width: 32px;
     height: 32px;
-}
-
-#sidebar-resize {
-    background-color: blue;
-    cursor: col-resize;
-    width: 5px;
-    height: 100%;
-    position: fixed;
-    left: 0;
-    top: 0;
-    z-index: 5;
-}
-
-#main {
-    position: relative;
-    z-index: 1;    
 }

@@ -51,7 +51,7 @@ var scrollDataCallback = null;
                   <input type="hidden" id="modal-id" name="id" value="" />
                </div>
             </form> -->
-            {{ show_form( rename_form, id='modal-form-rename', class_str='col-md-4' ) }}
+            {{ show_form( rename_form, id='modal-form-rename', class='col-md-4' ) }}
             <div id="modal-form-tree" class="col-md-4">
                <div id="modal-input-move"></div>
             </div>
@@ -66,57 +66,42 @@ var scrollDataCallback = null;
 </div>
 {% endblock %}
 
+{% block sidebar %}
+<li class="nav-item">
+   {{ show_form( search_form, id="search-query", class="form-inline" ) }}
+</li>
+{% endblock %}
+
 {% block content %}
 
-<div id="filter-bar" class="fixed-top main-width bg-light">
-{{ show_form( search_form, id="search-query" ) }}
-</div>
-
-<div id="libraries-folders" class="w-100 py-3 row">
-
-<!-- TODO: This should go on files page.
-<ul class="nav nav-tabs">
-   <li class="nav-item">
-{% if 'folders' == categories %}
-      <a id="nav-folders" class="nav-link active" href="{{ url_self( categories='folders' ) }}">
-{% else %}
-      <a id="nav-folders" class="nav-link" href="{{ url_self( categories='folders' ) }}">
-{% endif %}
-         Folders</a>
-   </li>
-   <li class="nav-item">
-{% if 'tags' == categories %}
-      <a id="nav-tags" class="nav-link active" href="{{ url_self( categories='tags' ) }}">
-{% else %}
-      <a id="nav-tags" class="nav-link" href="{{ url_self( categories='tags' ) }}">
-{% endif %}
-         Tags</a>
-   </li>
-</ul>
--->
-
-<ul class="libraries-folders-inner">
-{% if this_folder %}
-<li class="libraries-folder libraries-parent-folder">
-{% if this_folder.parent %}
-<a href="{{ url_for( 'cloud_libraries', machine_name=this_folder.library.machine_name, relative_path=None ) }}/{{ this_folder.parent.path }}">
-..
-</a>
-{% else %}
-<a href="{{ url_for( 'cloud_libraries', machine_name=this_folder.library.machine_name, relative_path=None ) }}">
-..
-</a>
-{% endif %}
-</li>
-{% endif %}
-{% for item in folders %}
-<li class="libraries-folder">
-<a href="{{ url_for( 'cloud_libraries', machine_name=item.library.machine_name, relative_path=None ) }}/{{ item.path }}">
-{{ item.name }}
-</a></li>
-{% endfor %}
-</ul>
-</div> <!-- /row -->
+<nav class="w-100 py-3 row navbar-dark bg-dark">
+   <button class="navbar-toggler" data-toggle="collapse" data-target="#libraries-folders">
+      <span id="sidebar-toggle"></span> Folders
+   </button>
+   <div id="libraries-folders" class="collapse navbar-collapse w-100">
+      <ul class="libraries-folders-inner">
+         {% if this_folder %}
+         <li class="libraries-folder libraries-parent-folder">
+         {% if this_folder.parent %}
+         <a href="{{ url_for( 'cloud_libraries', machine_name=this_folder.library.machine_name, relative_path=None ) }}/{{ this_folder.parent.path }}">
+         ..
+         </a>
+         {% else %}
+         <a href="{{ url_for( 'cloud_libraries', machine_name=this_folder.library.machine_name, relative_path=None ) }}">
+         ..
+         </a>
+         {% endif %}
+         </li>
+         {% endif %}
+         {% for item in folders %}
+         <li class="libraries-folder">
+         <a href="{{ url_for( 'cloud_libraries', machine_name=item.library.machine_name, relative_path=None ) }}/{{ item.path }}">
+         {{ item.name }}
+         </a></li>
+         {% endfor %}
+      </ul>
+   </div>
+</nav> <!-- /row -->
 
 <div id="folder-items" class="row folder-{{ this_folder.id }}{{ items_classes }}">
 {% for item in items %}
