@@ -2,12 +2,19 @@
 
 {% block scripts %}
 <script type="text/javascript">
+{% if page is defined %}
 var page = {{ page }};
-{% if this_folder %}
+{% endif %}
+{% if this_folder is defined and this_folder %}
 var folderID = {{ this_folder.id }};
 var scrollURL = flaskRoot + 'ajax/html/items/%folder%/%page%';
-var scrollMethod = 'GET';
 var scrollDataCallback = null;
+var scrollMethod = 'GET';
+{% else %}
+var folderID = -1;
+var scrollURL =  flaskRoot + 'ajax/html/search';
+var scrollDataCallback = onSearchSubmit;
+var scrollMethod = 'POST';
 {% endif %}
 </script>
 <link rel="stylesheet" href="{{ url_for( 'static', filename='bootstrap-tagsinput.css' ) }}" />
@@ -36,21 +43,6 @@ var scrollDataCallback = null;
          <div class="row">
             <div id="modal-form-preview" class="col-md-4">
             </div>
-            <!-- <form id="modal-form-rename" class="col-md-4">
-               <div class="form-group">
-                  <label for="modal-input-name">Name</label>
-                  <input type="text" id="modal-input-name" name="name" class="form-control" />
-               </div>
-               <div class="form-group">
-                  <label for="modal-input-tags">Tags</label>
-                  <input type="text" id="modal-input-tags" name="tags" class="form-control" />
-               </div>
-               <div class="form-group">
-                  <label for="modal-input-comment">Comment</label>
-                  <textarea id="modal-input-comment" name="comment" class="form-control"></textarea>
-                  <input type="hidden" id="modal-id" name="id" value="" />
-               </div>
-            </form> -->
             {{ show_form( rename_form, id='modal-form-rename', class='col-md-4' ) }}
             <div id="modal-form-tree" class="col-md-4">
                <div id="modal-input-move"></div>
@@ -68,17 +60,23 @@ var scrollDataCallback = null;
 
 {% block sidebar %}
 <li class="nav-item">
-   {{ show_form( search_form, id="search-query", class="form-inline" ) }}
+   {{ show_form( search_form, id="search-query", class="form-inline", method='GET', action=url_for( 'cloud_items_search' ), submit='Submit', enable_csrf=False ) }}
 </li>
 {% endblock %}
 
 {% block content %}
 
+{% if folders %}
+
+{% if 0 >= items|length or 1 == folders|length or not this_folder is defined or not this_folder %}
+{% set folders_classes=' show' %}
+{% endif %}
+
 <nav class="w-100 py-3 row navbar-dark bg-dark">
    <button class="navbar-toggler" data-toggle="collapse" data-target="#libraries-folders">
-      <span id="sidebar-toggle"></span> Folders
+      <span class="sidebar-toggle-icon"></span> Folders
    </button>
-   <div id="libraries-folders" class="collapse navbar-collapse w-100">
+   <div id="libraries-folders" class="collapse navbar-collapse w-100{{ folders_classes }}">
       <ul class="libraries-folders-inner">
          {% if this_folder %}
          <li class="libraries-folder libraries-parent-folder">
@@ -103,7 +101,13 @@ var scrollDataCallback = null;
    </div>
 </nav> <!-- /row -->
 
-<div id="folder-items" class="row folder-{{ this_folder.id }}{{ items_classes }}">
+{% endif %}
+
+{% if this_folder is defined and this_folder %}
+set items_classes = items_classes + ' folder-{{ this_folder.id }}'
+{% endif %}
+
+<div id="folder-items" class="row{{ items_classes }}">
 {% for item in items %}
 {{ item.library_html()|safe }}
 {% endfor %}

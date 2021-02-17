@@ -7,6 +7,10 @@ class SearchSyntaxException( Exception ):
     def __init__( self, *args, **kwargs ):
         super().__init__( *args, **kwargs )
 
+class SearchExecuteException( Exception ):
+    def __init__( self, *args, **kwargs ):
+        super().__init__( *args, **kwargs )
+
 class SearchLexerParser( object ):
 
     class Op( Enum ):
@@ -16,6 +20,7 @@ class SearchLexerParser( object ):
         lt = 3
         gte = 4
         lte = 5
+        has = 6
 
     class Node( object ):
         def __init__( self ):
@@ -291,8 +296,13 @@ class Searcher( object ):
                 current_app.logger.debug( 'search parser descending...' )
                 _query = self.search( user_id, t, _query )
             elif isinstance( t, SearchLexerParser.Compare ):
+
                 # TODO: Get plugin model or something.
                 from cloud_on_film.files.picture import Picture
+
+                if not hasattr( Picture, t.children[0] ):
+                    raise SearchExecuteException( 'invalid attribute specified' )
+                
                 if SearchLexerParser.Op.eq == t.op:
                     #print( 'filter: {} == {}'.format( t.children[0] ),  t.children[1] )
                     _query = _query.filter( getattr( Picture, t.children[0] ) == t.children[1] )

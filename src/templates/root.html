@@ -1,24 +1,5 @@
 {% extends "base.html" %}
 
-{% block sidebar %}
-
-<h2>Libraries</h2>
-{% with libraries = enumerate_libs() %}
-<ul class="libraries">
-{% for lib in libraries %}
-{% if lib.machine_name == library_name %}
-<li class="active">
-{% else %}
-<li>
-{% endif %}
-<a href="{{ url_for( 'cloud_libraries', machine_name='{{ lib.machine_name }}', relative_path=None ) }}">{{ lib.display_name }}</a>
-</li>
-{% endfor %}
-</ul>
-{% endwith %} <!-- /libraries -->
-
-{% endblock %}
-
 {% block content %}
 foo
 {% endblock %}

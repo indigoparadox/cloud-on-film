@@ -531,6 +531,10 @@ class Item( db.Model, JSONItemMixin ):
                 Library.id == Folder.library_id,
                 Folder.id == folder_id ) ).label( 'library_id' ) )
 
+    missing = db.case( [
+            (status == 1, 1)
+        ], else_=0 )
+
     # The plugin column should be allowed to be set by the subclass.
     # Items should be created as the subclass they are detected as.
     plugin= db.Column( db.String( 12 ), nullable=False )

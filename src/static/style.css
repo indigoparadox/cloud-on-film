@@ -6,9 +6,13 @@
     padding-left: 16px;
 }
 
-#sidebar-toggle {
-    background-image: url( 'arrow-right-32.png' );
+.sidebar-toggle-icon {
     display: inline-block;
     width: 32px;
     height: 32px;
+    background-image: url( 'arrow-up-32.png' );
+}
+
+.collapsed > .sidebar-toggle-icon {
+    background-image: url( 'arrow-down-32.png' );
 }

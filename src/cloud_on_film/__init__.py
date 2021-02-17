@@ -14,6 +14,8 @@ except ImportError:
 # Setup the database stuff.
 db = SQLAlchemy()
 
+csrf = CSRFProtect()
+
 def create_app( config=None ):
 
     logging.basicConfig( level=logging.INFO )
@@ -37,7 +39,7 @@ def create_app( config=None ):
 
     db.init_app( app )
 
-    csrf = CSRFProtect( app )
+    csrf.init_app( app )
 
     with app.app_context():
         from . import routes

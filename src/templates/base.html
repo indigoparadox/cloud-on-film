@@ -1,15 +1,25 @@
-{% macro show_form( form_object, id, action='#', method='POST', class='' ) %}
-<form id="{{ id }}" method="{{ method }}" class="{{ class }}">
+{% macro show_form( form_object, id, action='#', method='POST', class='', submit='', enable_csrf=True ) %}
+<form id="{{ id }}" action="{{ action }}" method="{{ method }}" class="{{ class }}">
 {% for field in form_object if 'csrf_token' != field.name and field.type != 'HiddenField' %}
 <div class="form-group">
     {{ field.label() }}
     {{ field( class_='form-control mx-2' ) }}
 </div>
 {% endfor %}
+{% if submit %}
+<div class="form-group">
+<input type="submit" value="{{ submit }}" />
+</div>
+{% endif %}
 <div class="form-hidden">
-{% for field in form_object if 'csrf_token' == field.name or field.type == 'HiddenField' %}
+{% for field in form_object if field.type == 'HiddenField' %}
     {{ field }}
 {% endfor %}
+{% if enable_csrf %}
+{% for field in form_object if 'csrf_token' == field.name %}
+    {{ field }}
+{% endfor %}
+{% endif %}
 </div>
 </form>
 {% endmacro %}<!doctype HTML>
@@ -39,21 +49,25 @@
 {% block modals %}{% endblock %}
 <nav class="navbar navbar-expand-md navbar-nav navbar-dark bg-light">
     <button class="navbar-toggler" data-toggle="collapse" data-target="#navbar-collapsible-content">
-        <span id="sidebar-toggle"></span>
+        <span class="sidebar-toggle-icon"></span>
     </button>
     <div class="collapse navbar-collapse" id="navbar-collapsible-content">
         <ul class="navbar-nav mr-auto">
-            {% with libraries = library_enumerate_all( current_uid ) %}
-            {% for lib in libraries %}
-            {% if lib.machine_name == library_name %}
-            <li class="nav-item active">
-            {% else %}
-            <li class="nav-item">
-            {% endif %}
-            <a class="nav-link text-primary" href="{{ url_for( 'cloud_libraries', machine_name=lib.machine_name, relative_path=None ) }}">{{ lib.display_name }}</a>
+            <li class="nav-item dropdown">
+                <a class="nav-link dropdown-toggle" href="#" id="navbar-dropdown-libraries" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                    Navigation
+                </a>
+                <div class="dropdown-menu bg-light" aria-labelledby="navbar-dropdown-libraries">
+                    <h6 class="dropdown-header">Libraries</h6>
+                    {% with libraries = library_enumerate_all( current_uid ) %}
+                    {% for lib in libraries %}
+                    <a class="dropdown-item text-white" href="{{ url_for( 'cloud_libraries', machine_name=lib.machine_name, relative_path=None ) }}">{{ lib.display_name }}</a>
+                    {% endfor %}
+                    {% endwith %} <!-- /libraries -->
+                    {% block dropdown %}
+                    {% endblock %}
+                </div>
             </li>
-            {% endfor %}
-            {% endwith %} <!-- /libraries -->
 
             {% block sidebar %}
             {% endblock %}

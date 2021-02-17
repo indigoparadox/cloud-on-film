@@ -7,6 +7,7 @@ from .models import LibraryPermissionsException, StatusEnum, db, Library, Item, 
 from .forms import NewLibraryForm, UploadLibraryForm, RenameItemForm, SearchQueryForm
 from .importing import start_import_thread, threads
 from .search import Searcher
+from . import csrf
 from werkzeug import secure_filename
 import json
 import os
@@ -256,6 +257,40 @@ def cloud_libraries( machine_name=None, relative_path=None, page=0 ):
             'file_item.html', **l_globals, file_item=file_item, tag_list=json.dumps( tags ),
             current_uid=current_uid, page=page, rename_form=rename_form, search_form=search_form )
 
+@current_app.route( '/search' )
+@csrf.exempt
+def cloud_items_search():
+
+    current_uid = 0 # TODO: current_uid
+
+    search_form = SearchQueryForm( request.form, csrf_enabled=False )
+
+    rename_form = RenameItemForm( request.form )
+
+    page = 0
+    if search_form.validate():
+        page = int( search_form.page.data ) if search_form.page.data else 0
+        query_str = search_form.query.data
+        offset = page * current_app.config['ITEMS_PER_PAGE']
+        limit = current_app.config['ITEMS_PER_PAGE']
+
+        searcher = Searcher( query_str )
+        searcher.lexer.lex()
+        items = searcher.search( current_uid ) \
+            .order_by( Item.name ) \
+            .offset( offset ) \
+            .limit( limit ) \
+            .all()
+
+    else:
+        items = []
+
+    #return jsonify( [m.library_html() for m in query.all()] )
+
+    return render_template(
+        'libraries.html', items=items,
+        current_uid=current_uid, page=page, rename_form=rename_form, search_form=search_form )
+
 @current_app.route( '/ajax/item/<int:item_id>/save', methods=['POST'] )
 def cloud_item_ajax_save( item_id ):
 
@@ -403,33 +438,22 @@ def cloud_tags( path ):
     return render_template( 'libraries.html', pictures=items, 
         tag_roots=[tag.parent], this_tag=tag, current_uid=current_uid )
 
-@current_app.route( '/ajax/html/search', methods=['POST'] )
+@current_app.route( '/ajax/html/search', methods=['GET', 'POST'] )
 def cloud_items_ajax_search():
 
     current_uid = 0 # TODO: current_uid
 
-    search_form = SearchQueryForm( request.form )
+    search_form = SearchQueryForm( request.form, csrf_enabled=False )
+
+    print( request.form )
 
     if not search_form.validate():
         return jsonify( { 'submit_status': 'error', 'fields': search_form.errors } )
-
-    print( request.form )
 
     page = int( search_form.page.data )
     query_str = search_form.query.data
     offset = page * current_app.config['ITEMS_PER_PAGE']
     limit = current_app.config['ITEMS_PER_PAGE']
-
-    #query = Item.secure_query( current_uid )
-    #item_keys = inspect( Item ).attrs.keys()
-    #print( item_keys )
-
-    #for token in query_str.split( ',' ):
-    #    token_pair = token.split( '=' )
-    #    if 2 == len( token_pair ) and token_pair[0] in item_keys:
-    #        query = query.filter( getattr( Item, token_pair[0] ) == token_pair[1] )
-    #    else:
-    #        return jsonify( { 'submit_status': 'error', 'fields': ['Invalid tokens.'] } )
 
     searcher = Searcher( query_str )
     searcher.lexer.lex()
@@ -437,11 +461,7 @@ def cloud_items_ajax_search():
         .order_by( Item.name ) \
         .offset( offset ) \
         .limit( limit )
-                
-    # TODO: limit
-    #items = query.limit( 20 ).all()
 
-    #return jsonify( [i.to_dict( ignore_keys=['parent', 'folder'] ) for i in items] )
     return jsonify( [m.library_html() for m in query.all()] )
 
 @current_app.route( '/' )

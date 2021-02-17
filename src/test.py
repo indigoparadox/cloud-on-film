@@ -5,6 +5,7 @@ import unittest
 import json
 import logging
 import shutil
+from sqlalchemy.inspection import inspect
 from flask import Flask, current_app
 from flask_testing import TestCase
 from cloud_on_film import create_app, db
@@ -358,6 +359,13 @@ class TestLibrary( TestCase ):
         search_test.lexer.lex()
         search_test.lexer.dump()
         res = search_test.search( self.user_id ).all()
+
+        print( 'xxx' )
+        print( 'xxx' )
+        from cloud_on_film.files.picture import Picture
+        print( inspect( Picture ).attrs.keys() )
+        print( 'xxx' )
+        print( 'xxx' )
 
         found_zero = False
         found_four = False

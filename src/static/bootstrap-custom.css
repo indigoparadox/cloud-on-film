@@ -25,3 +25,8 @@
 .text-secondary {
     color: #602080 !important;
 }
+
+.dropdown .dropdown-menu a:hover {
+    color: #fff;
+    background-color: #602080 !important;
+}
