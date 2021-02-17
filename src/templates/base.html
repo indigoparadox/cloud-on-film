@@ -30,6 +30,7 @@ var currentUID = {{ current_uid }};
 <script src="{{ url_for( 'static', filename='search.js' ) }}"></script>
 <link rel="stylesheet" href="{{ url_for( 'static', filename='base.min.css' ) }}" />
 <link rel="stylesheet" href="{{ url_for( 'static', filename='bootstrap.min.css' ) }}" />
+<link rel="stylesheet" href="{{ url_for( 'static', filename='bootstrap-custom.css' ) }}" />
 <link rel="stylesheet" href="{{ url_for( 'static', filename='style.css' ) }}" />
 {% block scripts %}{% endblock %}
 </head>
@@ -38,7 +39,7 @@ var currentUID = {{ current_uid }};
 {% block modals %}{% endblock %}
 
 {% if not no_sidebar %}
-<div id="sidebar" class="sidebar h-100 bg-dark">
+<div id="sidebar" class="sidebar h-100 bg-light">
 <a id="sidebar-toggle" href="#"></a>
 <div id="sidebar-inner">
 {% block sidebar %}
@@ -57,14 +58,12 @@ var currentUID = {{ current_uid }};
 </ul>
 {% endwith %} <!-- /libraries -->
 
-{{ show_form( search_form, id="search-query" ) }}
-
 {% endblock %}
 </div>
 </div>
 <div id="sidebar-resize"></div>
 
-<div id="main">
+<div id="main" class="main-width">
 {% endif %}{# /no_sidebar #}
 
 <div class="container">

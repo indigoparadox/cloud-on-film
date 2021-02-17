@@ -1,0 +1,27 @@
+
+:root {
+    --dark: #202040;
+    --light: #202060;
+    --secondary: #602080;
+    --primary: #b030b0;
+}
+
+.bg-dark {
+    background-color: #202040 !important;
+}
+
+.bg-light {
+    background-color: #202060 !important;
+}
+
+.bg-secondary {
+    background-color: #602080 !important;
+}
+
+.text-primary {
+    color: #b030b0 !important;
+}
+
+.text-secondary {
+    color: #602080 !important;
+}

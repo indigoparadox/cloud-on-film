@@ -68,6 +68,10 @@ var scrollDataCallback = null;
 
 {% block content %}
 
+<div id="filter-bar" class="fixed-top main-width bg-light">
+{{ show_form( search_form, id="search-query" ) }}
+</div>
+
 <div id="libraries-folders" class="w-100 py-3 row">
 
 <!-- TODO: This should go on files page.

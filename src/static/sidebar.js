@@ -57,7 +57,7 @@ $().ready( function() {
 function sidebarAbsoluteSize( sidebarWidth ) {
    $("#sidebar").css( 'width', sidebarWidth.toString() + 'px' );
    $('#sidebar-resize').css( 'left', sidebarWidth.toString() + 'px' );
-   $("#main").css( 'margin-left', (sidebarWidth + 32).toString() + 'px' );
+   $(".main-width").css( 'margin-left', (sidebarWidth + 32).toString() + 'px' );
 }
 
 function sidebarResize( offset ) {

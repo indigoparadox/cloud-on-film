@@ -65,9 +65,7 @@ $().ready( function() {
          'offset': 200,
          'debug': true,
          //'placeholder': "{{ url_for( 'static', filename='art-palette-72.png' ) }}"
-      } );
-    
-   $(this)
+      } )
       .find( 'a.thumbnail' )
       .each( function( elem ) {
          $(this).attr( 'href', $(this).data( 'fullsize' ) );

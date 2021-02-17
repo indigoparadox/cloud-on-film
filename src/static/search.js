@@ -3,6 +3,7 @@ var searchSubmitTimer = null;
 
 function searchSubmit() {
     console.log( 'submitting search...' );
+    page = 0; // Starting a new search.
     $('#search-query #page').val( page.toString() );
     $.ajax( {
         url: flaskRoot + 'ajax/html/search',
