@@ -1,16 +1,13 @@
-{% macro show_form( form_object, id, action='#', method='POST', class='', submit='', enable_csrf=True ) %}
+{% macro show_form( form_object, id, action='#', method='POST', class='', enable_csrf=True, dropdown_caption='More...' ) %}
 <form id="{{ id }}" action="{{ action }}" method="{{ method }}" class="{{ class }}">
-{% for field in form_object if 'csrf_token' != field.name and field.type != 'HiddenField' %}
+{% for field in form_object if 'csrf_token' != field.name and field.type != 'HiddenField' and not field.dropdown %}
 <div class="form-group">
+{% if field.type != 'SubmitField' %}
     {{ field.label() }}
+{% endif %}
     {{ field( class_='form-control mx-2' ) }}
 </div>
 {% endfor %}
-{% if submit %}
-<div class="form-group">
-<input type="submit" value="{{ submit }}" />
-</div>
-{% endif %}
 <div class="form-hidden">
 {% for field in form_object if field.type == 'HiddenField' %}
     {{ field }}
@@ -21,6 +18,23 @@
 {% endfor %}
 {% endif %}
 </div>
+{% if form_object.has_dropdowns() %}
+<div class="form-group">
+    <button type="button" class="btn btn-secondary mx-3 dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+        {{ dropdown_caption }}
+    </button>
+    <div class="dropdown-menu px-4 py-3">
+    {% for field in form_object if field.dropdown %}
+    <div class="form-group py-1">
+        {% if field.type != 'SubmitField' %}
+            {{ field.label() }}
+        {% endif %}
+        {{ field }}
+    </div>
+    {% endfor %}
+    </div>
+</div>
+{% endif %}
 </form>
 {% endmacro %}<!doctype HTML>
 <html>
@@ -31,12 +45,13 @@
     var flaskRoot = "{{ url_for( 'cloud_root' ) }}";
     //var csrfToken = $('meta[name=csrf-token]').attr( 'content' );
     var csrfToken = "{{ csrf_token() }}";
-    var currentUID = {{ current_uid }};
+    var currentUID = {{ user_current_uid() }};
     </script>
     <script src="{{ url_for( 'static', filename='jquery.min.js' ) }}"></script>
     <script src="{{ url_for( 'static', filename='jquery-ui.js' ) }}"></script>
     <script src="{{ url_for( 'static', filename='popper.min.js' ) }}"></script>
     <script src="{{ url_for( 'static', filename='bootstrap.min.js' ) }}"></script>
+    <script src="{{ url_for( 'static', filename='base.js' ) }}"></script>
     <script src="{{ url_for( 'static', filename='search.js' ) }}"></script>
     <link rel="stylesheet" href="{{ url_for( 'static', filename='base.min.css' ) }}" />
     <link rel="stylesheet" href="{{ url_for( 'static', filename='bootstrap.min.css' ) }}" />
@@ -46,7 +61,25 @@
 </head>
 <body class="h-100 bg-dark text-light">
 
+<div class="modal fade" id="promptModal" role="dialog">
+    <div class="modal-dialog modal-s modal-dialog-centered">
+        <div class="modal-content bg-dark">
+            <div class="modal-header">
+                <h5 class="modal-title">Edit</h5>
+            </div>
+            <div class="modal-body">
+                <p class="prompt-text"></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary">Delete</button>
+                <button type="button" class="btn btn-secondary">Cancel</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 {% block modals %}{% endblock %}
+
 <nav class="navbar navbar-expand-md navbar-nav navbar-dark bg-light">
     <button class="navbar-toggler" data-toggle="collapse" data-target="#navbar-collapsible-content">
         <span class="sidebar-toggle-icon"></span>
@@ -59,13 +92,20 @@
                 </a>
                 <div class="dropdown-menu bg-light" aria-labelledby="navbar-dropdown-libraries">
                     <h6 class="dropdown-header">Libraries</h6>
-                    {% with libraries = library_enumerate_all( current_uid ) %}
+                    {% with libraries = library_enumerate_all( user_current_uid() ) %}
                     {% for lib in libraries %}
                     <a class="dropdown-item text-white" href="{{ url_for( 'cloud_libraries', machine_name=lib.machine_name, relative_path=None ) }}">{{ lib.display_name }}</a>
                     {% endfor %}
                     {% endwith %} <!-- /libraries -->
                     {% block dropdown %}
                     {% endblock %}
+                    <h6 class="dropdown-header">Saved Searches</h6>
+                    {% for search in saved_search_enumerate_user( user_current_uid() ) %}
+                    <div class="dropdown-item">
+                        <a class="text-white" href="{{ url_for( 'cloud_items_search_saved', id=search.id ) }}">{{ search.display_name }}</a>
+                        <a class="text-white trash" onclick="return promptDeleteSearch( '{{ search.display_name }}', {{ search.id }} )" href="{{ url_for( 'cloud_items_search_delete', id=search.id ) }}"></a>
+                    </div>
+                    {% endfor %}
                 </div>
             </li>
 

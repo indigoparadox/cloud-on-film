@@ -1,9 +1,84 @@
 
 from flask_wtf import FlaskForm
-from wtforms import StringField, FileField, BooleanField, HiddenField, TextAreaField
-from wtforms.validators import DataRequired
+from wtforms import \
+    StringField as _StringField, \
+    FileField as _FileField, \
+    BooleanField as _BooleanField, \
+    HiddenField as _HiddenField, \
+    TextAreaField as _TextAreaField, \
+    SubmitField as _SubmitField
+from wtforms.validators import DataRequired, Optional
 
-class NewLibraryForm( FlaskForm ):
+class COFBaseFieldMixin( object ):
+    def process_kwargs( self, kwargs ):
+        self.dropdown = False
+        if 'dropdown' in kwargs:
+            if kwargs['dropdown']:
+                self.dropdown = True 
+            del kwargs['dropdown']
+        return kwargs
+
+class COFBaseFormMixin( object ):
+    def has_dropdowns( self ):
+        dropdowns = False
+        for key in self._fields:
+            if isinstance( self._fields[key], COFBaseFieldMixin ) \
+            and self._fields[key].dropdown:
+                dropdowns = True
+        return dropdowns
+
+class StringField( _StringField, COFBaseFieldMixin ):
+    def __init__( self, *args, **kwargs ):
+        kwargs = self.process_kwargs( kwargs )
+        super( _StringField, self ).__init__( *args, **kwargs )
+
+class FileField( _FileField, COFBaseFieldMixin ):
+    def __init__( self, *args, **kwargs ):
+        kwargs = self.process_kwargs( kwargs )
+        super( _FileField, self ).__init__( *args, **kwargs )
+
+class BooleanField( _BooleanField, COFBaseFieldMixin ):
+    def __init__( self, *args, **kwargs ):
+        kwargs = self.process_kwargs( kwargs )
+        super( _BooleanField, self ).__init__( *args, **kwargs )
+
+class HiddenField( _HiddenField, COFBaseFieldMixin ):
+    def __init__( self, *args, **kwargs ):
+        kwargs = self.process_kwargs( kwargs )
+        super( _HiddenField, self ).__init__( *args, **kwargs )
+
+class TextAreaField( _TextAreaField, COFBaseFieldMixin ):
+    def __init__( self, *args, **kwargs ):
+        kwargs = self.process_kwargs( kwargs )
+        super( _TextAreaField, self ).__init__( *args, **kwargs )
+
+class SubmitField( _SubmitField, COFBaseFieldMixin ):
+    def __init__( self, *args, **kwargs ):
+        kwargs = self.process_kwargs( kwargs )
+        super( _SubmitField, self ).__init__( *args, **kwargs )
+
+class RequiredIf( object ):
+    '''Validates field conditionally.
+    Usage::
+        login_method = StringField('', [AnyOf(['email', 'facebook'])])
+        email = StringField('', [RequiredIf(login_method='email')])
+        password = StringField('', [RequiredIf(login_method='email')])
+        facebook_token = StringField('', [RequiredIf(login_method='facebook')])
+    '''
+    def __init__( self, *args, **kwargs ):
+        self.conditions = kwargs
+        self.message = 'No name provided for saved query.'
+
+    def __call__( self, form, test_field ):
+        for name, data in self.conditions.items():
+            iter_field = form[name]
+            if iter_field is None:
+                raise Exception( 'no field named "{}"'.format( name ) )
+            if iter_field.data == data and not test_field.data:
+                DataRequired.__call__( self, form, test_field )
+            Optional()( form, test_field )
+
+class NewLibraryForm( FlaskForm, COFBaseFormMixin ):
 
     # TODO: Disallow name "new"
 
@@ -12,11 +87,11 @@ class NewLibraryForm( FlaskForm ):
     absolute_path = StringField( 'Absolute Path', validators=[DataRequired()] )
     nsfw = BooleanField( 'NSFW' )
 
-class UploadLibraryForm( FlaskForm ):
+class UploadLibraryForm( FlaskForm, COFBaseFormMixin ):
 
     upload = FileField( 'Library Import File' )
 
-class RenameItemForm( FlaskForm ):
+class RenameItemForm( FlaskForm, COFBaseFormMixin ):
 
     id = HiddenField( '' )
     name = StringField( 'Name', validators=[DataRequired()] )
@@ -25,7 +100,23 @@ class RenameItemForm( FlaskForm ):
     comment = TextAreaField( 'Comment' )
     location = HiddenField( '', validators=[DataRequired()] )
 
-class SearchQueryForm( FlaskForm ):
 
-    query = StringField( 'Search', validators=[DataRequired()] )
+class SaveSearchForm( FlaskForm, COFBaseFormMixin ):
+
+    query = _StringField( 'Search String', validators=[DataRequired()] )
+    name = StringField( 'Search Name', validators=[DataRequired()] )
+    save = SubmitField( 'Save Search' )
+    
+class SearchQueryForm( FlaskForm, COFBaseFormMixin ):
+
+    query = _StringField( '', validators=[DataRequired()] )
+    search = SubmitField( 'Search' )
+    #save_as = StringField( 'Query Name', dropdown=True, validators=[RequiredIf( save=True )] )
+    #save = SubmitField( 'Save', dropdown=True )
     page = HiddenField( '' )
+
+class SearchDeleteForm( FlaskForm, COFBaseFormMixin ):
+    
+    prompt = HiddenField( 'Are you sure you wish to delete this saved search? This action cannot be undone.')
+    delete = SubmitField( 'Delete' )
+

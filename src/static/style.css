@@ -16,3 +16,13 @@
 .collapsed > .sidebar-toggle-icon {
     background-image: url( 'arrow-down-32.png' );
 }
+
+.trash {
+    background-image: url( 'trash-can-32.png' );
+    background-size: 16px;
+    background-repeat: no-repeat;
+    display: inline-block;
+    width: 32px;
+    height: 32px;
+    float: right;
+}

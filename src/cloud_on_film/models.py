@@ -153,6 +153,11 @@ class User( db.Model, JSONItemMixin ):
     libraries = db.relationship( 'Library', back_populates='owner' )
     meta = db.relationship( 'UserMeta', back_populates='user' )
 
+    @staticmethod
+    def current_uid():
+        # TODO: current_uid
+        return 0
+
 class LibraryMeta( db.Model, MetaPropertyMixin ):
 
     __tablename__ = 'library_meta'
@@ -725,6 +730,28 @@ class Plugin( db.Model ):
         
         return db.with_polymorphic( Item, models )
 
+class SavedSearch( db.Model ):
+
+    __tablename__ = 'saved_searches'
+
+    id = db.Column( db.Integer, primary_key=True )
+    owner_id = db.Column( db.Integer, db.ForeignKey( 'users.id' ) )
+    display_name = db.Column( db.String( 128 ), index=False, nullable=True )
+    classes = db.Column( db.String( 128 ), index=False, nullable=True )
+    query = db.Column( db.String( 128 ), index=False, nullable=False )
+
+    @staticmethod
+    def secure_query( user_id ):
+        query = db.session.query( SavedSearch ) \
+            .filter( SavedSearch.owner_id == user_id )
+        return query
+
+    @staticmethod
+    def enumerate_user( user_id ):
+        return SavedSearch.secure_query( user_id ) \
+            .order_by( SavedSearch.display_name ) \
+            .all()
+    
 class WorkerSemaphore( db.Model ):
 
     __tablename__ = "db_semaphores"

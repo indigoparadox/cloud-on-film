@@ -1,0 +1,10 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<form action="{{ url_for( 'cloud_items_search_delete', id=search.id ) }}" method="POST">
+{{ show_form( delete, 'delete-form' ) }}
+</form>
+
+{% endblock %}
+

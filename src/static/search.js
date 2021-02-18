@@ -56,3 +56,21 @@ $(document).ready( function() {
         searchSubmitTimer = window.setTimeout( searchSubmit, 3000 );
     } );
 } );
+
+function promptDeleteSearch( name, id ) {
+    promptModal(
+        'Are you sure you wish to delete the saved search "' + name +
+            '"? This action cannot be undone.',
+        confirmDeleteSearch,
+        id
+    );
+    return false;
+}
+
+function confirmDeleteSearch( e ) {
+    let deleteID = $(this).data( 'userdata' );
+    // TODO: More elegant way of data passing.
+    $(this).data( 'userdata', null );
+    //window.location = flaskRoot + 'search/delete/' + deleteID.toString();
+    // TODO: AJAX POST query.
+}

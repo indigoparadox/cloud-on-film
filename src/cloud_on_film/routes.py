@@ -3,8 +3,8 @@ import logging
 from flask import Flask, render_template, request, current_app, flash, send_file, abort, redirect, url_for, jsonify
 from sqlalchemy import exc
 from sqlalchemy.inspection import inspect
-from .models import LibraryPermissionsException, StatusEnum, db, Library, Item, Folder, Tag, InvalidFolderException, LibraryRootException
-from .forms import NewLibraryForm, UploadLibraryForm, RenameItemForm, SearchQueryForm
+from .models import LibraryPermissionsException, StatusEnum, db, Library, Item, Folder, Tag, InvalidFolderException, LibraryRootException, SavedSearch, User
+from .forms import NewLibraryForm, UploadLibraryForm, RenameItemForm, SearchQueryForm, SaveSearchForm, SearchDeleteForm
 from .importing import start_import_thread, threads
 from .search import Searcher
 from . import csrf
@@ -17,9 +17,11 @@ import importlib
 import re
 from multiprocessing import Pool
 
+current_app.jinja_env.globals.update( user_current_uid=User.current_uid )
 current_app.jinja_env.globals.update( folder_from_path=Folder.from_path )
 current_app.jinja_env.globals.update( library_enumerate_all=Library.enumerate_all )
 current_app.jinja_env.globals.update( tag_enumerate_roots=Tag.enumerate_roots )
+current_app.jinja_env.globals.update( saved_search_enumerate_user=SavedSearch.enumerate_user )
 
 def url_self( **args ):
     return url_for( request.endpoint, **dict( request.view_args, **args ) )
@@ -81,7 +83,7 @@ def cloud_plugin_preview( file_id, width=160, height=120 ):
 
     '''Generate a preview thumbnail to be called by a tag src attribute on gallery pages.'''
 
-    current_uid = 0 # TODO: current_uid
+    current_uid = User.current_uid()
 
     allowed_resolutions = [
         tuple( [int( i ) for i in r.split( ',' )] )
@@ -110,7 +112,7 @@ def cloud_plugin_preview( file_id, width=160, height=120 ):
 @current_app.route( '/fullsize/<int:file_id>' )
 def cloud_plugin_fullsize( file_id ):
 
-    current_uid = 0 # TODO: current_uid
+    current_uid = User.current_uid()
     
     item = Item.secure_query( current_uid ) \
         .filter( Item.id == file_id ).first()
@@ -134,7 +136,7 @@ def cloud_plugin_fullsize( file_id ):
 @current_app.route( '/libraries/new', methods=['GET', 'POST'] )
 def cloud_libraries_new():
 
-    current_uid = 0 # TODO: current_uid
+    current_uid = User.current_uid()
 
     form = NewLibraryForm( request.form )
 
@@ -166,7 +168,7 @@ def cloud_libraries_new():
 @current_app.route( '/libraries/upload/<id>', methods=['GET', 'POST'] )
 def cloud_libraries_upload( id='' ):
 
-    current_uid = 0 # TODO: current_uid
+    current_uid = User.current_uid()
 
     form = UploadLibraryForm( request.form )
 
@@ -207,7 +209,7 @@ def cloud_libraries( machine_name=None, relative_path=None, page=0 ):
             if request.args.get( 'categories' ) in ['tags', 'folders']
                 else 'folders' }
 
-    current_uid = 0; # TODO: current_uid
+    current_uid = User.current_uid()
 
     library = Library.secure_query( current_uid ) \
         .filter( Library.machine_name == machine_name ) \
@@ -257,19 +259,119 @@ def cloud_libraries( machine_name=None, relative_path=None, page=0 ):
             'file_item.html', **l_globals, file_item=file_item, tag_list=json.dumps( tags ),
             current_uid=current_uid, page=page, rename_form=rename_form, search_form=search_form )
 
+
+@current_app.route( '/search/save', methods=['POST'] )
+def cloud_items_search_save():
+
+    current_uid = User.current_uid()
+
+    save_search_form = SaveSearchForm( request.form )
+
+    if save_search_form.validate():
+
+        search = SavedSearch.secure_query( current_uid ) \
+            .filter( SavedSearch.display_name == save_search_form.name.data ) \
+            .first()
+
+        if search:
+            search.query = save_search_form.query.data
+            db.session.commit()
+            flash( 'Updated search #{}.'.format( search.id ) )
+
+        else:
+
+            search = SavedSearch(
+                owner_id=current_uid,
+                display_name=save_search_form.name.data,
+                query=save_search_form.query.data )
+            db.session.add( search )
+            db.session.commit()
+            flash( 'Created search #{}.'.format( search.id ) )
+
+
+        return redirect( url_for( 'cloud_items_search_saved', id=search.id ) )
+
+    else:
+        if (search_form.search.data or \
+        search_form.save.data):
+            for field, errors in search_form.errors.items():
+                for error in errors:
+                    flash( error, 'error')
+
+        return redirect( url_for( 'cloud_items_search', name=search_form.name.data, query=search_form.query.data ) )
+
+
+@current_app.route( '/search/delete/<int:id>', methods=['GET', 'POST'] )
+def cloud_items_search_delete( id ):
+
+    search = SavedSearch.secure_query( User.current_uid() ) \
+        .filter( SavedSearch.id == id ) \
+        .first()
+
+    if not search:
+        abort( 404 )
+
+    if 'GET' == request.method:
+        delete = SearchDeleteForm( request.args )
+        return render_template( 'form_search_delete.html', search=search, delete=delete )
+
+    elif 'POST' == request.method:
+        delete = SearchDeleteForm( request.form )
+        if not delete.validate():
+            abort( 404 )
+
+        db.session.delete( search )
+        db.session.commit()
+
+        return redirect( url_for( 'cloud_root' ) )
+
+@current_app.route( '/search/saved/<int:id>' )
+def cloud_items_search_saved( id ):
+
+    current_uid = User.current_uid()
+    search = SavedSearch.secure_query( current_uid ) \
+        .filter( SavedSearch.id == id ) \
+        .first()
+
+    if not search:
+        abort( 404 )
+
+    search_form = SearchQueryForm( request.args, csrf_enabled=False )
+    save_search_form = SaveSearchForm( request.form )
+    rename_form = RenameItemForm()
+
+    page = int( request.args['page'] ) if 'page' in request.args else 0
+    offset = page * current_app.config['ITEMS_PER_PAGE']
+    limit = current_app.config['ITEMS_PER_PAGE']
+    searcher = Searcher( search.query )
+    searcher.lexer.lex()
+    items = searcher.search( current_uid ) \
+        .order_by( Item.name ) \
+        .offset( offset ) \
+        .limit( limit ) \
+        .all()
+
+    search_form.query.data = search.query
+    save_search_form.query.data = search_form.query.data
+    save_search_form.name.data = search.display_name
+
+    return render_template(
+        'libraries.html', items=items, save_search_form=save_search_form,
+        current_uid=current_uid, page=page, rename_form=rename_form, search_form=search_form )
+
 @current_app.route( '/search' )
 def cloud_items_search():
 
-    current_uid = 0 # TODO: current_uid
+    current_uid = User.current_uid()
 
     search_form = SearchQueryForm( request.args, csrf_enabled=False )
-
+    save_search_form = SaveSearchForm( request.form )
     rename_form = RenameItemForm( request.form )
 
-    print( request.form )
-
     page = 0
-    if search_form.validate():
+    if (search_form.search.data or \
+    search_form.save.data) \
+    and search_form.validate():
         page = int( search_form.page.data ) if search_form.page.data else 0
         query_str = search_form.query.data
         offset = page * current_app.config['ITEMS_PER_PAGE']
@@ -283,19 +385,26 @@ def cloud_items_search():
             .limit( limit ) \
             .all()
 
+        save_search_form.query.data = search_form.query.data
+
     else:
+        if (search_form.search.data or \
+        search_form.save.data):
+            for field, errors in search_form.errors.items():
+                for error in errors:
+                    flash( error, 'error')
         items = []
 
     #return jsonify( [m.library_html() for m in query.all()] )
 
     return render_template(
-        'libraries.html', items=items,
+        'libraries.html', items=items, save_search_form=save_search_form,
         current_uid=current_uid, page=page, rename_form=rename_form, search_form=search_form )
 
 @current_app.route( '/ajax/item/<int:item_id>/save', methods=['POST'] )
 def cloud_item_ajax_save( item_id ):
 
-    current_uid = 0 # TODO: current_uid
+    current_uid = User.current_uid()
 
     new_tags = request.form['tags'].split( ',' )
 
@@ -319,7 +428,7 @@ def cloud_item_ajax_save( item_id ):
 @current_app.route( '/ajax/item/<int:item_id>/json', methods=['GET'] )
 def cloud_item_ajax_json( item_id ):
 
-    current_uid = 0 # TODO: current_uid
+    current_uid = User.current_uid()
 
     item = Item.secure_query( current_uid ) \
         .filter( Item.id == item_id ) \
@@ -344,8 +453,7 @@ def cloud_item_ajax_json( item_id ):
 @current_app.route( '/ajax/html/items/<int:folder_id>/<int:page>', methods=['GET'] )
 def cloud_items_ajax_json( folder_id, page ):
 
-    # TODO: Determine current UID.
-    current_uid = 0
+    current_uid = User.current_uid()
 
     offset = page * current_app.config['ITEMS_PER_PAGE']
 
@@ -362,7 +470,7 @@ def cloud_items_ajax_json( folder_id, page ):
 @current_app.route( '/ajax/folders' )
 def cloud_folders_ajax():
 
-    current_uid = 0 # TODO: current_uid
+    current_uid = User.current_uid()
 
     folder_id = request.args.get( 'id' )
     if None != folder_id:
@@ -424,7 +532,7 @@ def cloud_tags_ajax():
 @current_app.route( '/tags/<path:path>' )
 def cloud_tags( path ):
     
-    current_uid = 0 # TODO: current_uid
+    current_uid = User.current_uid()
     
     # TODO: Omit empty tags.
     tag = Tag.from_path( path )
@@ -442,7 +550,7 @@ def cloud_tags( path ):
 @current_app.route( '/ajax/html/search', methods=['GET', 'POST'] )
 def cloud_items_ajax_search():
 
-    current_uid = 0 # TODO: current_uid
+    current_uid = User.current_uid()
 
     search_form = SearchQueryForm( request.form, csrf_enabled=False )
 
@@ -465,5 +573,4 @@ def cloud_items_ajax_search():
 
 @current_app.route( '/' )
 def cloud_root():
-    current_uid = 0 # TODO: current_uid
-    return render_template( 'root.html', current_uid=current_uid )
+    return render_template( 'root.html' )

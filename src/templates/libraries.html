@@ -60,11 +60,19 @@ var scrollMethod = 'POST';
 
 {% block sidebar %}
 <li class="nav-item">
-   {{ show_form( search_form, id="search-query", class="form-inline", method='GET', action=url_for( 'cloud_items_search' ), submit='Submit', enable_csrf=False ) }}
+   {{ show_form( search_form, id="search-query", class="form-inline", method='GET', action=url_for( 'cloud_items_search' ), enable_csrf=False ) }}
 </li>
 {% endblock %}
 
 {% block content %}
+
+{% if save_search_form is defined %}
+<div class="row">
+   <div id="save-search-wrapper" class="bg-secondary col-9 p-4 mx-auto my-3 rounded">
+      {{ show_form( save_search_form, id="save-search-query", action=url_for( 'cloud_items_search_save' ) ) }}
+   </div>
+</div>
+{% endif %}
 
 {% if folders %}
 
