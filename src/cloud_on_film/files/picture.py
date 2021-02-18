@@ -17,6 +17,13 @@ ASPECT_RATIO_FMT = {
     1:  '1:1'
 }
 
+MAGIC_JPEG=b'\xff\xd8\xff'
+MAGIC_GIF=b'\x47\x49\x46'
+MAGIC_PNG=b'\x89\x50\x4e'
+
+class ImageTypeException( Exception ):
+    pass
+
 class Picture( Item ):
 
     __mapper_args__ = {
@@ -78,6 +85,31 @@ class Picture( Item ):
                 (4.0 * cls.height.expression / cls.width == 3.0, 4),
                 (cls.height.expression == cls.width, 1),
             ], else_=0 ).label( 'aspect' ) )
+
+    def check_image_type( self, image_file_handle=None ):
+
+        start_bytes = None
+        if not image_file_handle:
+            with self.open_image() as check_file:
+                start_bytes = image_file_handle.read( 3 )
+        else:
+            start_bytes = image_file_handle.read( 3 )
+
+        image_type = None
+        if MAGIC_JPEG == start_bytes:
+            image_type = 'image/jpeg'
+            if not filename.lower().endswith( '.jpeg' ) and not filename.lower().endswith( '.jpg' ):
+                raise ImageTypeException( image_type )
+        elif MAGIC_GIF == start_bytes:
+            image_type = 'image/gif'
+            if not filename.lower().endswith( '.gif' ):
+                raise ImageTypeException( image_type )
+        elif MAGIC_PNG == start_bytes:
+            image_type = 'image/png'
+            if not filename.lower().endswith( '.png' ):
+                raise ImageTypeException( image_type )
+
+        return image_type
 
     def open_image( self ):
         im = Image.open( self.absolute_path )
