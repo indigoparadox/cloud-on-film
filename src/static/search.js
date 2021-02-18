@@ -62,15 +62,34 @@ function promptDeleteSearch( name, id ) {
         'Are you sure you wish to delete the saved search "' + name +
             '"? This action cannot be undone.',
         confirmDeleteSearch,
-        id
+        id,
+        DialogTypes.YESNO
     );
     return false;
 }
 
-function confirmDeleteSearch( e ) {
-    let deleteID = $(this).data( 'userdata' );
-    // TODO: More elegant way of data passing.
-    $(this).data( 'userdata', null );
-    //window.location = flaskRoot + 'search/delete/' + deleteID.toString();
-    // TODO: AJAX POST query.
+function confirmDeleteSearch( e, id ) {
+    $.ajax( {
+        url: flaskRoot + 'ajax/search/delete',
+        data: { 'id': id, 'csrf_token': csrfToken },
+        type: 'POST',
+        success: function( data ) {
+            console.log( data );
+            if( 'success' == data['submit_status'] ) {
+                promptModal(
+                    'Saved search successfully deleted.',
+                    function( e, data ) { window.location = flaskRoot; },
+                    null,
+                    DialogTypes.OKONLY
+                );
+            } else {
+                promptModal(
+                    'Problem deleting saved search.',
+                    promptModalHide,
+                    null,
+                    DialogTypes.OKONLY
+                );
+            }
+        }
+    } );
 }

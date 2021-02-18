@@ -547,6 +547,26 @@ def cloud_tags( path ):
     return render_template( 'libraries.html', pictures=items, 
         tag_roots=[tag.parent], this_tag=tag, current_uid=current_uid )
 
+@current_app.route( '/ajax/search/delete', methods=['POST'] )
+def cloud_items_ajax_search_delete():
+
+    delete = SearchDeleteForm( request.form )
+
+    if not delete.validate():
+        return jsonify( { 'submit_status': 'error', 'fields': search_form.errors } )
+
+    search = SavedSearch.secure_query( User.current_uid() ) \
+        .filter( SavedSearch.id == delete.id.data ) \
+        .first()
+
+    if not search:
+        return jsonify( { 'submit_status': 'error', 'message': 'Specified search not found.' } )
+
+    db.session.delete( search )
+    db.session.commit()
+
+    return jsonify( { 'submit_status': 'success' } )
+
 @current_app.route( '/ajax/html/search', methods=['GET', 'POST'] )
 def cloud_items_ajax_search():
 

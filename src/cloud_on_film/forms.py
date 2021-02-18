@@ -1,6 +1,7 @@
 
 from flask_wtf import FlaskForm
 from wtforms import \
+    Field, \
     StringField as _StringField, \
     FileField as _FileField, \
     BooleanField as _BooleanField, \
@@ -8,6 +9,7 @@ from wtforms import \
     TextAreaField as _TextAreaField, \
     SubmitField as _SubmitField
 from wtforms.validators import DataRequired, Optional
+from markupsafe import Markup
 
 class COFBaseFieldMixin( object ):
     def process_kwargs( self, kwargs ):
@@ -56,6 +58,45 @@ class SubmitField( _SubmitField, COFBaseFieldMixin ):
     def __init__( self, *args, **kwargs ):
         kwargs = self.process_kwargs( kwargs )
         super( _SubmitField, self ).__init__( *args, **kwargs )
+
+class DummyWidget(object):
+    
+    '''A convenience widget with no field and just a label.'''
+
+    def __init__( self, html_tag='', prefix_label=True ):
+        self.html_tag = html_tag
+        self.prefix_label = prefix_label
+
+    def __call__( self, field, **kwargs ):
+        return ''
+
+class LabelField( Field, COFBaseFieldMixin ):
+    widget = DummyWidget()
+
+    class DummyMeta( object ):
+        def render_field( self, *args, **kwargs ):
+            #return '<p class="{}">{}</p>'.format( args[1]['class_'], args[0]._label )
+            return ''
+
+    def __init__( self, *args, **kwargs ):
+        kwargs = self.process_kwargs( kwargs )
+        self.name = ''
+        self.filters = []
+        self._label = args[0]
+        self.meta = LabelField.DummyMeta()
+        super( Field, self ).__init__()
+
+    def label( self ):
+        return Markup( '<p>{}</p>'.format( self._label ) )
+
+    def _value( self ):
+        return None
+
+    def default( self ):
+        return ''
+
+    def process_formdata( self, valuelist ):
+        return None
 
 class RequiredIf( object ):
     '''Validates field conditionally.
@@ -117,6 +158,6 @@ class SearchQueryForm( FlaskForm, COFBaseFormMixin ):
 
 class SearchDeleteForm( FlaskForm, COFBaseFormMixin ):
     
-    prompt = HiddenField( 'Are you sure you wish to delete this saved search? This action cannot be undone.')
+    id = HiddenField( '' )
+    prompt = LabelField( 'Are you sure you wish to delete this saved search? This action cannot be undone.')
     delete = SubmitField( 'Delete' )
-
