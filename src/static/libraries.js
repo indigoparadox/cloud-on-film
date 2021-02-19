@@ -109,12 +109,15 @@ $(window).on( 'scroll', function( e ) {
    };
    if( 'POST' == scrollMethod ) {
       scrollObject.data = scrollDataCallback();
+   } else {
+      scrollObject.url += '?' + scrollArgsCallback();
    }
 
    // Grab the next [loadIncrement] columns and append them to the table.
    $.ajax( scrollObject ).done( function( data ) {
       for( var i = 0 ; data.length > i ; i++ ) {
          let element = $(data[i]);
+         console.log( 'element ' + i.toString() );
          $('#folder-items').append( element );
          $(element).enableThumbnailCard();
       }

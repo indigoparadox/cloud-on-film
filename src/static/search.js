@@ -6,10 +6,14 @@ function onSearchSubmit() {
     return $('#search-query').serialize();
 }
 
+function searchArgs() {
+    return 'query=' + $('#search-query #query').val() + '&page=' + page.toString();
+}
+
 function enableSearchScroll() {
     scrollURL = flaskRoot + 'ajax/html/search';
-    scrollDataCallback = onSearchSubmit;
-    scrollMethod = 'POST';
+    scrollArgsCallback = searchArgs;
+    scrollMethod = 'GET';
 }
 
 function searchSubmit() {

@@ -8,13 +8,15 @@ var page = {{ page }};
 {% if this_folder is defined and this_folder %}
 var folderID = {{ this_folder.id }};
 var scrollURL = flaskRoot + 'ajax/html/items/%folder%/%page%';
+var scrollArgsCallback = null;
 var scrollDataCallback = null;
 var scrollMethod = 'GET';
 {% else %}
 var folderID = -1;
 var scrollURL =  flaskRoot + 'ajax/html/search';
-var scrollDataCallback = onSearchSubmit;
-var scrollMethod = 'POST';
+var scrollArgsCallback = searchArgs;
+var scrollDataCallback = null;
+var scrollMethod = 'GET';
 {% endif %}
 </script>
 <link rel="stylesheet" href="{{ url_for( 'static', filename='bootstrap-tagsinput.css' ) }}" />
@@ -112,10 +114,10 @@ var scrollMethod = 'POST';
 {% endif %}
 
 {% if this_folder is defined and this_folder %}
-set items_classes = items_classes + ' folder-{{ this_folder.id }}'
+{% set items_classes = items_classes + ' folder-{{ this_folder.id }}' %}
 {% endif %}
 
-<div id="folder-items" class="row{{ items_classes }}">
+<div id="folder-items" class="row justify-content-center{{ items_classes }}">
 {% for item in items %}
 {{ item.library_html()|safe }}
 {% endfor %}

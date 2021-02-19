@@ -567,12 +567,12 @@ def cloud_items_ajax_search_delete():
 
     return jsonify( { 'submit_status': 'success' } )
 
-@current_app.route( '/ajax/html/search', methods=['GET', 'POST'] )
+@current_app.route( '/ajax/html/search', methods=['GET'] )
 def cloud_items_ajax_search():
 
     current_uid = User.current_uid()
 
-    search_form = SearchQueryForm( request.form, csrf_enabled=False )
+    search_form = SearchQueryForm( request.args, csrf_enabled=False )
 
     if not search_form.validate():
         return jsonify( { 'submit_status': 'error', 'fields': search_form.errors } )

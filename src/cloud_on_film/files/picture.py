@@ -205,7 +205,7 @@ class Picture( Item ):
         self_dict['rating'] = int( self_dict['rating'] )
         self_dict['classes'] += ' rating-{}'.format( self.rating )
         for tag in self.tags:
-            self_dict['classes'] += ' tag-{}'.format( tag.name.lower().replace( '/', '-' ) )
+            self_dict['classes'] += ' tag-{}'.format( tag.name.lower().replace( '/', '-' ).replace( ' ', '-' ) )
 
         html_out = render_template( 'file_card_picture.html', **self_dict )
         return html_out

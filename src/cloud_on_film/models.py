@@ -7,7 +7,6 @@ import hashlib
 import shutil
 import importlib
 from sqlalchemy import event, func
-from sqlalchemy.orm import query
 from sqlalchemy.inspection import inspect
 from sqlalchemy.ext.hybrid import hybrid_property, Comparator
 from sqlalchemy.orm.collections import attribute_mapped_collection
@@ -22,7 +21,7 @@ from collections import defaultdict
 class HashEnum( Enum ):
     md5 = 1
     sha128 = 2
-    sha256 = 3    
+    sha256 = 3
 
 class StatusEnum( Enum ):
     missing = 1
@@ -180,7 +179,10 @@ class Library( db.Model, JSONItemMixin ):
 
     id = db.Column( db.Integer, primary_key=True )
     folders = db.relationship( 'Folder', back_populates='library' )
-    children = db.relationship( 'Folder', primaryjoin='and_(Library.id == Folder.library_id, Folder.parent_id == None)' )
+    children = db.relationship(
+        'Folder',
+        primaryjoin=
+            'and_(Library.id == Folder.library_id, Folder.parent_id == None)' )
     display_name = db.Column(
         db.String( 64 ), index=False, unique=True, nullable=False )
     machine_name = db.Column(
@@ -201,6 +203,10 @@ class Library( db.Model, JSONItemMixin ):
 
     @staticmethod
     def secure_query( user_id ):
+
+        ''' Generate an SQLAlchemy query that respects library ownership vs
+        the specified user's privileges. '''
+
         query = db.session.query( Library )
 
         if 0 <= user_id:
@@ -455,7 +461,7 @@ class Folder( db.Model, JSONItemMixin ):
         return query
     
     @staticmethod
-    def ensure_folder( folder_or_folder_id_or_path, user_id ):
+    def ensure_folder( folder_or_folder_id_or_path, user_id, library=None ):
 
         ''' Given a folder, folder ID, or folder path, return that folder
         model object. '''
@@ -463,11 +469,11 @@ class Folder( db.Model, JSONItemMixin ):
         folder = None
         if isinstance( folder_or_folder_id_or_path, int ):
             folder = db.session.query( Folder ) \
-                .filter( Folder.id == destination ) \
+                .filter( Folder.id == folder_or_folder_id_or_path ) \
                 .filter( Folder.owner_id == user_id ) \
                 .first()
         elif isinstance( folder_or_folder_id_or_path, str ):
-            folder = Folder.from_path( library, destination, user_id )
+            folder = Folder.from_path( library, folder_or_folder_id_or_path, user_id )
         elif isinstance( folder_or_folder_id_or_path, Folder ):
             folder = folder_or_folder_id_or_path
 
@@ -604,7 +610,8 @@ class Item( db.Model, JSONItemMixin ):
     
     @staticmethod
     def hash_file( absolute_path, hash_algo=HashEnum.md5 ):
-        # We don't need to bother with the folder, since this can just fail if the file doesn't really exist.
+        # We don't need to bother with the folder, since this can just fail if
+        # the file doesn't really exist.
         absolute_path = os.path.join( absolute_path )
         ha = hashlib.md5()
         with open( absolute_path, 'rb' ) as file_f:
@@ -649,9 +656,7 @@ class Item( db.Model, JSONItemMixin ):
     def secure_query( user_id ):
 
         poly = Plugin.polymorph()
-
         query = db.session.query( poly )
-        
         if 0 <= user_id:
             query = query.filter( db.or_(
                 None == Item.owner_id,
