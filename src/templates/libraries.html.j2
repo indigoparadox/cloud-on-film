@@ -1,4 +1,4 @@
-{% extends 'base.html' %}
+{% extends 'base.html.j2' %}
 
 {% block scripts %}
 <script type="text/javascript">
@@ -43,7 +43,9 @@ var scrollMethod = 'GET';
       <div class="modal-body">
          <div class="container">
          <div class="row">
-            <div id="modal-form-preview" class="col-md-4">
+            <div id="modal-form-preview" class="col-md-4 d-flex flex-column">
+               <div id="modal-form-preview-img" class="mb-auto"></div>
+               <p id="modal-form-type"></p>
             </div>
             {{ show_form( rename_form, id='modal-form-rename', class='col-md-4' ) }}
             <div id="modal-form-tree" class="col-md-4">
@@ -53,6 +55,7 @@ var scrollMethod = 'GET';
          </div>
       </div>
       <div class="modal-footer">
+         <button type="button" class="btn btn-secondary" data-dismiss="modal" onclick="return saveRename()">Cancel</button>
          <button type="button" class="btn btn-primary" onclick="return saveRename()">Save Changes</button>
       </div>
    </div>
@@ -62,7 +65,8 @@ var scrollMethod = 'GET';
 
 {% block sidebar %}
 <li class="nav-item">
-   {{ show_form( search_form, id="search-query", class="form-inline", method='GET', action=url_for( 'cloud_items_search' ), enable_csrf=False ) }}
+   {# h-50 and d-flex keep groups v-aligned inside of menus. #}
+   {{ show_form( search_form, id="search-query", class="form-inline", group_class="form-group h-50 d-flex", method='GET', action=url_for( 'cloud_items_search' ), enable_csrf=False ) }}
 </li>
 {% endblock %}
 

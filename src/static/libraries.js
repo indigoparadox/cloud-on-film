@@ -149,19 +149,25 @@ function renameItem( id ) {
       } );
 
       $('#modal-form-rename #id').val( id );
+      $('#modal-form-type').text( item_data['check']['type'] );
+      $('#modal-form-type').attr( 'class',
+         'ok' == item_data['check']['status'] ? 
+         'text-success' : 'text-danger' );
       $('#modal-form-rename #tags').tagsinput( 'removeAll' );
       for( const tag_idx in item_data['tags'] ) {
-         $('#modal-form-rename #tags').tagsinput( 'add', item_data['tags'][tag_idx] );
+         $('#modal-form-rename #tags').tagsinput(
+               'add', item_data['tags'][tag_idx] );
       }
       $('#modal-form-rename #name').val( item_data['name'] );
       $('#modal-form-rename #comment').val( item_data['comment'] );
       //var img_preview_tag = $('<img src="' + flaskRoot + 'preview/' + 
       //   data['id'] + '/360/270" class="" style="display: none;" />');
       var img_preview_tag = $('<img src="' + flaskRoot + 'preview/' +
-         item_data['id'] + '/230/172" class="" style="display: none;" />');
-      $('#modal-form-preview').empty();
-      $('#modal-form-preview').append( img_preview_tag );
-      $('#modal-form-preview img').one( 'load', function( e ) {
+         item_data['id'] +
+         '/230/172" class="d-block w-100" style="display: none;" />');
+      $('#modal-form-preview-img').empty();
+      $('#modal-form-preview-img').append( img_preview_tag );
+      $('#modal-form-preview-img img').one( 'load', function( e ) {
          $(this).fadeIn();
       } );
 

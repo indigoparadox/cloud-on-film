@@ -1,7 +1,7 @@
-{% macro show_form( form_object, id, action='#', method='POST', class='', enable_csrf=True, dropdown_caption='More...' ) %}
+{% macro show_form( form_object, id, action='#', method='POST', class='', group_class='form-group', enable_csrf=True, dropdown_caption='More...' ) %}
 <form id="{{ id }}" action="{{ action }}" method="{{ method }}" class="{{ class }}">
 {% for field in form_object if 'csrf_token' != field.name and field.type != 'HiddenField' and not field.dropdown %}
-<div class="form-group">
+<div class="{{ group_class }}">
 {% if field.type != 'SubmitField' %}
     {{ field.label() }}
 {% endif %}
@@ -101,9 +101,10 @@
                     {% endblock %}
                     <h6 class="dropdown-header">Saved Searches</h6>
                     {% for search in saved_search_enumerate_user( user_current_uid() ) %}
-                    <div class="dropdown-item">
-                        <a class="text-white" href="{{ url_for( 'cloud_items_search_saved', id=search.id ) }}">{{ search.display_name }}</a>
-                        <a class="text-white trash" onclick="return promptDeleteSearch( '{{ search.display_name }}', {{ search.id }} )" href="{{ url_for( 'cloud_items_search_delete', id=search.id ) }}"></a>
+                    <!-- d-flex and ml-auto keep icons aligned to the right. -->
+                    <div class="dropdown-item d-flex">
+                        <a class="text-white mr-4" href="{{ url_for( 'cloud_items_search_saved', search_id=search.id ) }}">{{ search.display_name }}</a>
+                        <a class="text-white ml-auto align-self-center trash" onclick="return promptDeleteSearch( '{{ search.display_name }}', {{ search.id }} )" href="{{ url_for( 'cloud_items_search_delete', search_id=search.id ) }}"></a>
                     </div>
                     {% endfor %}
                 </div>

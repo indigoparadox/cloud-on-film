@@ -1,21 +1,39 @@
 
-import logging 
-from flask import Flask, render_template, request, current_app, flash, send_file, abort, redirect, url_for, jsonify
-from sqlalchemy import exc
-from sqlalchemy.inspection import inspect
-from .models import LibraryPermissionsException, StatusEnum, db, Library, Item, Folder, Tag, InvalidFolderException, LibraryRootException, SavedSearch, User
-from .forms import NewLibraryForm, UploadLibraryForm, RenameItemForm, SearchQueryForm, SaveSearchForm, SearchDeleteForm
-from .importing import start_import_thread, threads
-from .search import Searcher
-from . import csrf
-from werkzeug import secure_filename
 import json
 import os
 import mimetypes
 import io
-import importlib
-import re
-from multiprocessing import Pool
+from flask import \
+    render_template, \
+    request, \
+    current_app, \
+    flash, \
+    send_file, \
+    abort, \
+    redirect, \
+    url_for, \
+    jsonify
+from sqlalchemy import exc
+from .models import \
+    db, \
+    Library, \
+    Item, \
+    Folder, \
+    Tag, \
+    InvalidFolderException, \
+    LibraryRootException, \
+    SavedSearch, \
+    User
+from .forms import \
+    NewLibraryForm, \
+    UploadLibraryForm, \
+    RenameItemForm, \
+    SearchQueryForm, \
+    SaveSearchForm, \
+    SearchDeleteForm
+from .importing import start_import_thread, threads
+from .search import Searcher
+from . import csrf
 
 current_app.jinja_env.globals.update( user_current_uid=User.current_uid )
 current_app.jinja_env.globals.update( folder_from_path=Folder.from_path )
@@ -27,50 +45,6 @@ def url_self( **args ):
     return url_for( request.endpoint, **dict( request.view_args, **args ) )
 
 current_app.jinja_env.globals.update( url_self=url_self )
-
-@current_app.cli.command( "update" )
-def cloud_cli_update():
-    for library in db.session.query( Library ):
-        library_absolute_path = library.absolute_path
-        for dirpath, dirnames, filenames in os.walk( library_absolute_path ):
-            relative_path = re.sub( '^{}'.format( library_absolute_path ), '', dirpath )
-            try:
-                assert( None != library )
-                #print( 'lib_abs: ' + library.absolute_path )
-                folder = Folder.from_path( library, relative_path )
-                #print( folder )
-            except InvalidFolderException as e:
-                print( dirpath )
-                print( relative_path )
-                current_app.logger.error( e.absolute_path )
-            except LibraryRootException as e:
-                current_app.logger.error( 'root' )
-            #for dirname in dirnames:
-            #    current_app.logger.info( dirname )
-
-def cloud_update_item_meta( item ):
-    if not os.path.exists( item.absolute_path ):
-        current_app.logger.warn( 'file missing: {}'.format( item.absolute_path ) )
-        item.status = StatusEnum.missing
-        return
-    img = item.open_image()
-    if img and \
-    (item.width != int( img.size[0]  ) or \
-    item.height != int( img.size[1] )):
-        current_app.logger.info( 'updating metadata for {}, width={}, height={} (from {}, {})'.format(
-            item.absolute_path, img.size[0], img.size[1], db_width, db_height ) )
-        item.meta['width'] = img.size[0]
-        item.meta['height'] = img.size[1]
-
-@current_app.cli.command( "refresh" )
-def cloud_cli_refresh():
-    #with Pool( 5 ) as p:
-    #    res = p.map( cloud_update_item_meta, db.session.query( Item ) )
-    #    #db.session.commit()
-    #    print( res )
-    for item in db.session.query( Item ):
-        cloud_update_item_meta( item )
-    db.session.commit()
 
 @current_app.route( '/callbacks/edit', methods=['POST'] )
 def cloud_edit_filedata():
@@ -113,7 +87,7 @@ def cloud_plugin_preview( file_id, width=160, height=120 ):
 def cloud_plugin_fullsize( file_id ):
 
     current_uid = User.current_uid()
-    
+
     item = Item.secure_query( current_uid ) \
         .filter( Item.id == file_id ).first()
 
@@ -127,7 +101,7 @@ def cloud_plugin_fullsize( file_id ):
     #file_path = p.generate_thumbnail( file_id, (160, 120) )
 
     file_type = mimetypes.guess_type( item.path )[0]
-    
+
     current_app.logger.debug( '{} mimetype: {}'.format( item.path, file_type ) )
 
     with open( item.absolute_path, 'rb' ) as pic_f:
@@ -135,8 +109,6 @@ def cloud_plugin_fullsize( file_id ):
 
 @current_app.route( '/libraries/new', methods=['GET', 'POST'] )
 def cloud_libraries_new():
-
-    current_uid = User.current_uid()
 
     form = NewLibraryForm( request.form )
 
@@ -157,41 +129,37 @@ def cloud_libraries_new():
             flash( e )
             db.session.rollback()
 
-    return render_template( 'form_libraries_new.html.j2', form=form, current_uid=current_uid )
-
-    if 'GET' == request.method:
-        return render_template( 'form_libraries_uploading.html.j2', id=id, uid=current_uid )
-    elif 'POST' == request.method:
-        return threads[id].progress
+    return render_template( 'form_libraries_new.html.j2', form=form )
 
 @current_app.route( '/libraries/upload', methods=['GET', 'POST'] )
-@current_app.route( '/libraries/upload/<id>', methods=['GET', 'POST'] )
-def cloud_libraries_upload( id='' ):
-
-    current_uid = User.current_uid()
+@current_app.route( '/libraries/upload/<thread_id>', methods=['GET', 'POST'] )
+def cloud_libraries_upload( thread_id='' ):
 
     form = UploadLibraryForm( request.form )
 
     title = 'Upload Library Data'
     progress = 0
-    
-    if 'POST' == request.method and id:
-        return jsonify( { 'filename': threads[id].filename,
-            'progress': int( threads[id].progress ) } )
-    elif 'POST' == request.method and form.validate_on_submit() and not id:
+
+    if 'POST' == request.method and thread_id:
+        return jsonify( { 'filename': threads[thread_id].filename,
+            'progress': int( threads[thread_id].progress ) } )
+
+    elif 'POST' == request.method and \
+    form.validate_on_submit() and not thread_id:
         pictures = \
             json.loads( request.files['upload'].read().decode( 'utf-8' ) )
-        id = start_import_thread( pictures )
-        return redirect( url_for( 'cloud_libraries_upload', id=id ) )
-    elif 'GET' == request.method and id:
+        thread_id = start_import_thread( pictures )
+        return redirect( url_for( 'cloud_libraries_upload', id=thread_id ) )
+
+    elif 'GET' == request.method and thread_id:
         try:
-            title = 'Uploading thread #{}'.format( id )
-            progress = int( threads[id].progress )
-        except KeyError as e:
+            title = 'Uploading thread #{}'.format( thread_id )
+            progress = int( threads[thread_id].progress )
+        except KeyError:
             return redirect( url_for( 'cloud_libraries_upload' ) )
 
     return render_template( 'form_libraries_upload.html.j2',
-        title=title, form=form, id=id, progress=progress, current_uid=current_uid )
+        title=title, form=form, id=thread_id, progress=progress )
 
 @current_app.route( '/libraries/<string:machine_name>' )
 @current_app.route( '/libraries/<string:machine_name>/<path:relative_path>' )
@@ -217,7 +185,7 @@ def cloud_libraries( machine_name=None, relative_path=None, page=0 ):
 
     if not library:
         abort( 404 )
-    
+
     try:
         # Show a folder listing.
         folder = Folder.from_path( library.id, relative_path, current_uid )
@@ -231,8 +199,8 @@ def cloud_libraries( machine_name=None, relative_path=None, page=0 ):
             .order_by( Item.name ) \
             .offset( offset ) \
             .limit( current_app.config['ITEMS_PER_PAGE'] ) \
-            .all()     
-            
+            .all()
+
         return render_template(
             'libraries.html.j2', **l_globals, folders=folder.children,
             items=items, items_classes=' pictures', page=page, current_uid=current_uid,
@@ -241,8 +209,9 @@ def cloud_libraries( machine_name=None, relative_path=None, page=0 ):
     except LibraryRootException as e:
         # Show the root of the given library ID.
         return render_template(
-            'libraries.html.j2', **l_globals, folders=library.children, pictures=[], page=page,
-            this_folder=None, current_uid=current_uid, rename_form=rename_form, search_form=search_form )
+            'libraries.html.j2', **l_globals, folders=library.children,
+            pictures=[], page=page, this_folder=None, current_uid=current_uid,
+            rename_form=rename_form, search_form=search_form )
 
     except InvalidFolderException as e:
 
@@ -256,8 +225,8 @@ def cloud_libraries( machine_name=None, relative_path=None, page=0 ):
             abort( 404 )
 
         return render_template(
-            'file_item.html.j2', **l_globals, file_item=file_item, tag_list=json.dumps( tags ),
-            current_uid=current_uid, page=page, rename_form=rename_form, search_form=search_form )
+            'file_item.html.j2', **l_globals, file_item=file_item,
+            page=page, rename_form=rename_form, search_form=search_form )
 
 
 @current_app.route( '/search/save', methods=['POST'] )
@@ -289,23 +258,23 @@ def cloud_items_search_save():
             flash( 'Created search #{}.'.format( search.id ) )
 
 
-        return redirect( url_for( 'cloud_items_search_saved', id=search.id ) )
+        return redirect( url_for( 'cloud_items_search_saved', search_id=search.id ) )
 
     else:
-        if (search_form.search.data or \
-        search_form.save.data):
-            for field, errors in search_form.errors.items():
+        if save_search_form.search.data:
+            for field, errors in save_search_form.errors.items():
                 for error in errors:
                     flash( error, 'error')
 
-        return redirect( url_for( 'cloud_items_search', name=search_form.name.data, query=search_form.query.data ) )
+        return redirect( url_for( 'cloud_items_search',
+            name=save_search_form.name.data,
+            query=save_search_form.query.data ) )
 
-
-@current_app.route( '/search/delete/<int:id>', methods=['GET', 'POST'] )
-def cloud_items_search_delete( id ):
+@current_app.route( '/search/delete/<int:search_id>', methods=['GET', 'POST'] )
+def cloud_items_search_delete( search_id ):
 
     search = SavedSearch.secure_query( User.current_uid() ) \
-        .filter( SavedSearch.id == id ) \
+        .filter( SavedSearch.id == search_id ) \
         .first()
 
     if not search:
@@ -313,7 +282,8 @@ def cloud_items_search_delete( id ):
 
     if 'GET' == request.method:
         delete = SearchDeleteForm( request.args )
-        return render_template( 'form_search_delete.html.j2', search=search, delete=delete )
+        return render_template( 'form_search_delete.html.j2', search=search,
+            delete=delete )
 
     elif 'POST' == request.method:
         delete = SearchDeleteForm( request.form )
@@ -325,12 +295,12 @@ def cloud_items_search_delete( id ):
 
         return redirect( url_for( 'cloud_root' ) )
 
-@current_app.route( '/search/saved/<int:id>' )
-def cloud_items_search_saved( id ):
+@current_app.route( '/search/saved/<int:search_id>' )
+def cloud_items_search_saved( search_id ):
 
     current_uid = User.current_uid()
     search = SavedSearch.secure_query( current_uid ) \
-        .filter( SavedSearch.id == id ) \
+        .filter( SavedSearch.id == search_id ) \
         .first()
 
     if not search:
@@ -357,7 +327,7 @@ def cloud_items_search_saved( id ):
 
     return render_template(
         'libraries.html.j2', items=items, save_search_form=save_search_form,
-        current_uid=current_uid, page=page, rename_form=rename_form, search_form=search_form )
+        page=page, rename_form=rename_form, search_form=search_form )
 
 @current_app.route( '/search' )
 def cloud_items_search():
@@ -370,8 +340,9 @@ def cloud_items_search():
 
     page = 0
     if (search_form.search.data or \
-    search_form.save.data) \
-    and search_form.validate():
+    save_search_form.save.data) and \
+    (search_form.validate() or \
+    save_search_form.validate()):
         page = int( search_form.page.data ) if search_form.page.data else 0
         query_str = search_form.query.data
         offset = page * current_app.config['ITEMS_PER_PAGE']
@@ -399,7 +370,7 @@ def cloud_items_search():
 
     return render_template(
         'libraries.html.j2', items=items, save_search_form=save_search_form,
-        current_uid=current_uid, page=page, rename_form=rename_form, search_form=search_form )
+        page=page, rename_form=rename_form, search_form=search_form )
 
 @current_app.route( '/ajax/item/<int:item_id>/save', methods=['POST'] )
 def cloud_item_ajax_save( item_id ):
@@ -414,13 +385,13 @@ def cloud_item_ajax_save( item_id ):
     item = Item.secure_query( current_uid ) \
         .filter( Item.id == item_id ) \
         .first()
-    
+
     if not item:
         abort( 403 )
 
     del item._tags[:]
     item.tags( append=[Tag.from_path( t ) for t in new_tags] )
-    
+
     db.session.commit()
 
     return jsonify( item.to_dict( ignore_keys=['parent', 'folder'] ) )
@@ -447,7 +418,7 @@ def cloud_item_ajax_json( item_id ):
     parents.reverse()
     parents.insert( 0, 'library-{}'.format( item.library_id ) )
     item_dict['parents'] = parents
-        
+
     return jsonify( item_dict )
 
 @current_app.route( '/ajax/html/items/<int:folder_id>/<int:page>', methods=['GET'] )
@@ -463,7 +434,7 @@ def cloud_items_ajax_json( folder_id, page ):
         .offset( offset ) \
         .limit( current_app.config['ITEMS_PER_PAGE'] ) \
         .all()
-        
+
     #return jsonify( [i.to_dict( ignore_keys=['parent', 'folder'] ) for i in items] )
     return jsonify( [m.library_html() for m in items] )
 
@@ -515,11 +486,11 @@ def cloud_folders_ajax():
         'id': f.id,
         'parent': folder_id if folder_id else 'library-{}'.format( f.library_id ),
         'text': f.name,
-        'children': True if 0 < len( f.children ) else False
+        'children': 0 < len( f.children )
     } for f in folders]
 
     #print( folder.to_dict( ignore_keys=['parent'], max_depth=2 ) )
- 
+
     return jsonify( json_out )
 
 @current_app.route( '/ajax/tags.json')
@@ -531,21 +502,21 @@ def cloud_tags_ajax():
 
 @current_app.route( '/tags/<path:path>' )
 def cloud_tags( path ):
-    
+
     current_uid = User.current_uid()
-    
+
     # TODO: Omit empty tags.
     tag = Tag.from_path( path )
 
     items = Item.secure_query( current_uid ) \
         .filter( tag in Item.tags ) \
         .all()
-    
+
     if not tag:
         abort( 404 )
 
-    return render_template( 'libraries.html.j2', pictures=items, 
-        tag_roots=[tag.parent], this_tag=tag, current_uid=current_uid )
+    return render_template( 'libraries.html.j2', pictures=items,
+        tag_roots=[tag.parent], this_tag=tag )
 
 @current_app.route( '/ajax/search/delete', methods=['POST'] )
 def cloud_items_ajax_search_delete():
@@ -553,14 +524,16 @@ def cloud_items_ajax_search_delete():
     delete = SearchDeleteForm( request.form )
 
     if not delete.validate():
-        return jsonify( { 'submit_status': 'error', 'fields': search_form.errors } )
+        return jsonify( { 'submit_status': 'error', 'fields': delete.errors } )
 
     search = SavedSearch.secure_query( User.current_uid() ) \
         .filter( SavedSearch.id == delete.id.data ) \
         .first()
 
     if not search:
-        return jsonify( { 'submit_status': 'error', 'message': 'Specified search not found.' } )
+        return jsonify( {
+            'submit_status': 'error',
+            'message': 'Specified search not found.' } )
 
     db.session.delete( search )
     db.session.commit()

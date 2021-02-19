@@ -1,22 +1,16 @@
 
-from operator import add, sub
 import os
 import errno
-import stat
 import hashlib
 import shutil
 import importlib
-from sqlalchemy import event, func
+from enum import Enum
+from sqlalchemy import func
 from sqlalchemy.inspection import inspect
-from sqlalchemy.ext.hybrid import hybrid_property, Comparator
 from sqlalchemy.orm.collections import attribute_mapped_collection
 from sqlalchemy.ext.associationproxy import association_proxy
-from sqlalchemy.sql.sqltypes import Integer
-from . import db
-from enum import Enum
 from flask import current_app
-from datetime import datetime
-from collections import defaultdict
+from . import db
 
 class HashEnum( Enum ):
     md5 = 1
@@ -45,11 +39,10 @@ class LibraryPermissionsException( Exception ):
         super().__init__( *args )
 
 class MaxDepthException( Exception ):
-    def __init__( self, *args, **kwargs ):
-        super().__init__( *args, **kwargs )
+    pass
 
 class DBItemNotFoundException( Exception ):
-    def __init__( self, *args, **kwargs ):
+    def __init__( self, **kwargs ):
         #super().__init__( *args, **kwargs )
         self.absolute_path = kwargs['absolute_path'] if 'absolute_path' in kwargs else None
         self.folder = kwargs['folder'] if 'folder' in kwargs else None
@@ -79,14 +72,18 @@ class JSONItemMixin( object ):
                             # Translate list of tuples into a dict.
                             dict_out[key] = {}
                             for item in val:
-                                tuple_out = item.to_dict( ignore_keys=ignore_keys, max_depth=(max_depth - 1) )
+                                tuple_out = item.to_dict( 
+                                    ignore_keys=ignore_keys,
+                                    max_depth=(max_depth - 1) )
                                 dict_out[key][tuple_out[0]] = tuple_out[1]
 
                         else:
                             # Just translate the list.
                             dict_out[key] = []
                             for item in val:
-                                dict_out[key].append( item.to_dict( ignore_keys=ignore_keys, max_depth=(max_depth - 1) ) )
+                                dict_out[key].append( item.to_dict(
+                                    ignore_keys=ignore_keys,
+                                    max_depth=(max_depth - 1) ) )
 
                     except MaxDepthException:
                         dict_out[key] = None
@@ -99,12 +96,14 @@ class JSONItemMixin( object ):
                     if hasattr( val[dict_key], 'to_dict' ):
                         dict_out[key][dict_key] = val[dict_key].to_dict()
 
-                        # Meta properties are a tuple with a redundant "key" and "val".
-                        # Just keep the "val" if this arrangement is detected.
+                        # Meta properties are a tuple with a redundant "key" 
+                        # and "val". Just keep the "val" if this arrangement 
+                        # is detected.
                         if isinstance( dict_out[key][dict_key], tuple ) and \
                         2 == len( dict_out[key][dict_key] ) and \
                         dict_key == dict_out[key][dict_key][0]:
-                            dict_out[key][dict_key] = dict_out[key][dict_key][1]
+                            dict_out[key][dict_key] = \
+                                dict_out[key][dict_key][1]
                     else:
                         dict_out[key][dict_key] = val[dict_key]
 
@@ -306,7 +305,7 @@ class Tag( db.Model ):
 
             path.pop( 0 )
             tag_parent = tag_iter
-        
+
         return tag_iter
 
     @staticmethod
@@ -452,14 +451,14 @@ class Folder( db.Model, JSONItemMixin ):
     @staticmethod
     def secure_query( user_id ):
         query = db.session.query( Folder )
-        
+
         if 0 <= user_id:
             query = query.filter( db.or_(
                 None == Folder.owner_id,
                 user_id == Folder.owner_id ) )
 
         return query
-    
+
     @staticmethod
     def ensure_folder( folder_or_folder_id_or_path, user_id, library=None ):
 
@@ -568,7 +567,7 @@ class Item( db.Model, JSONItemMixin ):
             tag.parent._items.append( self )
         elif tag.parent:
             self._check_tag_heir( tag.parent )
-    
+
     def fix_tags( self, append=[] ):
 
         # TODO
@@ -578,11 +577,11 @@ class Item( db.Model, JSONItemMixin ):
 
         for tag in self._tags:
             self._check_tag_heir( tag )
-            
+
         return self._tags
 
     def move( self, library, destination, user_id ):
-        
+
         if isinstance( destination, int ):
             destination = db.session.query( Folder ) \
                 .filter( Folder.id == destination ) \
@@ -607,26 +606,26 @@ class Item( db.Model, JSONItemMixin ):
     @property
     def absolute_path( self ):
         return '/'.join( [self.folder.absolute_path, self.name] )
-    
+
     @staticmethod
     def hash_file( absolute_path, hash_algo=HashEnum.md5 ):
         # We don't need to bother with the folder, since this can just fail if
         # the file doesn't really exist.
         absolute_path = os.path.join( absolute_path )
-        ha = hashlib.md5()
+        hash_out = hashlib.md5()
         with open( absolute_path, 'rb' ) as file_f:
             buf = file_f.read( 4096 )
             while 0 < len( buf ):
-                ha.update( buf )
+                hash_out.update( buf )
                 buf = file_f.read( 4096 )
-        return ha.hexdigest()
+        return hash_out.hexdigest()
 
     @staticmethod
     def from_path( library_id, relative_path, user_id ):
         # TODO: Check if exists on FS and create Item if so but not in DB.
 
         filename = os.path.basename( relative_path )
-        
+
         # Get the folder from path so we're sure the folder is added to the DB before the file is.
         folder = Folder.from_path( library_id, os.path.dirname( relative_path ), user_id )
         item = Item.secure_query( user_id ) \
@@ -638,7 +637,7 @@ class Item( db.Model, JSONItemMixin ):
 
         if not item and not os.path.exists( absolute_path ):
             raise FileNotFoundError( errno.ENOENT, os.strerror(errno.ENOENT), absolute_path )
-        
+
         elif not item:
             # Toss it up to the plugin or situation to create an entry.
             raise DBItemNotFoundException(
@@ -659,7 +658,7 @@ class Item( db.Model, JSONItemMixin ):
         query = db.session.query( poly )
         if 0 <= user_id:
             query = query.filter( db.or_(
-                None == Item.owner_id,
+                Item.owner_id == None,
                 user_id == Item.owner_id ) )
 
         return query
@@ -717,14 +716,14 @@ class Plugin( db.Model ):
     def from_extension( extension ):
         return db.session.query( Plugin ) \
             .filter( extension in Plugin.extensions ) \
-            .filter( Plugin.enabled == True ) \
+            .filter( Plugin.enabled ) \
             .first()
 
     @staticmethod
     def polymorph():
 
         plugins = db.session.query( Plugin ) \
-            .filter( Plugin.enabled == True ) \
+            .filter( Plugin.enabled ) \
             .all()
 
         models = []
@@ -756,7 +755,7 @@ class SavedSearch( db.Model ):
         return SavedSearch.secure_query( user_id ) \
             .order_by( SavedSearch.display_name ) \
             .all()
-    
+
 class WorkerSemaphore( db.Model ):
 
     __tablename__ = "db_semaphores"
