@@ -207,7 +207,7 @@ class Picture( Item ):
         for tag in self.tags:
             self_dict['classes'] += ' tag-{}'.format( tag.name.lower().replace( '/', '-' ).replace( ' ', '-' ) )
 
-        html_out = render_template( 'file_card_picture.html', **self_dict )
+        html_out = render_template( 'file_card_picture.html.j2', **self_dict )
         return html_out
 
 plugin = db.session.query( Plugin ) \

@@ -157,10 +157,10 @@ def cloud_libraries_new():
             flash( e )
             db.session.rollback()
 
-    return render_template( 'form_libraries_new.html', form=form, current_uid=current_uid )
+    return render_template( 'form_libraries_new.html.j2', form=form, current_uid=current_uid )
 
     if 'GET' == request.method:
-        return render_template( 'form_libraries_uploading.html', id=id, uid=current_uid )
+        return render_template( 'form_libraries_uploading.html.j2', id=id, uid=current_uid )
     elif 'POST' == request.method:
         return threads[id].progress
 
@@ -190,7 +190,7 @@ def cloud_libraries_upload( id='' ):
         except KeyError as e:
             return redirect( url_for( 'cloud_libraries_upload' ) )
 
-    return render_template( 'form_libraries_upload.html',
+    return render_template( 'form_libraries_upload.html.j2',
         title=title, form=form, id=id, progress=progress, current_uid=current_uid )
 
 @current_app.route( '/libraries/<string:machine_name>' )
@@ -234,14 +234,14 @@ def cloud_libraries( machine_name=None, relative_path=None, page=0 ):
             .all()     
             
         return render_template(
-            'libraries.html', **l_globals, folders=folder.children,
+            'libraries.html.j2', **l_globals, folders=folder.children,
             items=items, items_classes=' pictures', page=page, current_uid=current_uid,
             this_folder=folder, rename_form=rename_form, search_form=search_form )
 
     except LibraryRootException as e:
         # Show the root of the given library ID.
         return render_template(
-            'libraries.html', **l_globals, folders=library.children, pictures=[], page=page,
+            'libraries.html.j2', **l_globals, folders=library.children, pictures=[], page=page,
             this_folder=None, current_uid=current_uid, rename_form=rename_form, search_form=search_form )
 
     except InvalidFolderException as e:
@@ -256,7 +256,7 @@ def cloud_libraries( machine_name=None, relative_path=None, page=0 ):
             abort( 404 )
 
         return render_template(
-            'file_item.html', **l_globals, file_item=file_item, tag_list=json.dumps( tags ),
+            'file_item.html.j2', **l_globals, file_item=file_item, tag_list=json.dumps( tags ),
             current_uid=current_uid, page=page, rename_form=rename_form, search_form=search_form )
 
 
@@ -313,7 +313,7 @@ def cloud_items_search_delete( id ):
 
     if 'GET' == request.method:
         delete = SearchDeleteForm( request.args )
-        return render_template( 'form_search_delete.html', search=search, delete=delete )
+        return render_template( 'form_search_delete.html.j2', search=search, delete=delete )
 
     elif 'POST' == request.method:
         delete = SearchDeleteForm( request.form )
@@ -356,7 +356,7 @@ def cloud_items_search_saved( id ):
     save_search_form.name.data = search.display_name
 
     return render_template(
-        'libraries.html', items=items, save_search_form=save_search_form,
+        'libraries.html.j2', items=items, save_search_form=save_search_form,
         current_uid=current_uid, page=page, rename_form=rename_form, search_form=search_form )
 
 @current_app.route( '/search' )
@@ -398,7 +398,7 @@ def cloud_items_search():
     #return jsonify( [m.library_html() for m in query.all()] )
 
     return render_template(
-        'libraries.html', items=items, save_search_form=save_search_form,
+        'libraries.html.j2', items=items, save_search_form=save_search_form,
         current_uid=current_uid, page=page, rename_form=rename_form, search_form=search_form )
 
 @current_app.route( '/ajax/item/<int:item_id>/save', methods=['POST'] )
@@ -544,7 +544,7 @@ def cloud_tags( path ):
     if not tag:
         abort( 404 )
 
-    return render_template( 'libraries.html', pictures=items, 
+    return render_template( 'libraries.html.j2', pictures=items, 
         tag_roots=[tag.parent], this_tag=tag, current_uid=current_uid )
 
 @current_app.route( '/ajax/search/delete', methods=['POST'] )
@@ -593,4 +593,4 @@ def cloud_items_ajax_search():
 
 @current_app.route( '/' )
 def cloud_root():
-    return render_template( 'root.html' )
+    return render_template( 'root.html.j2' )
