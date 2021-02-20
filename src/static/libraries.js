@@ -113,6 +113,11 @@ $(window).on( 'scroll', function( e ) {
       scrollObject.url += '?' + scrollArgsCallback();
    }
 
+   $('#editModal').on( 'hidden.bs.modal', function( e ) {
+      $('#modal-input-move').jstree().destroy();
+      $('#modal-input-move').empty();
+   } );
+
    // Grab the next [loadIncrement] columns and append them to the table.
    $.ajax( scrollObject ).done( function( data ) {
       for( var i = 0 ; data.length > i ; i++ ) {
