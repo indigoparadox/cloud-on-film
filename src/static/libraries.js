@@ -133,8 +133,9 @@ $(window).on( 'scroll', function( e ) {
 
 function renameItem( id ) {
 
-   $.getJSON( flaskRoot + 'ajax/item/' + id.toString() + '/json', function( item_data ) {
-      console.log( item_data );
+   $.getJSON( flaskRoot + 'ajax/item/' + id.toString() + '/json',
+   function( itemData ) {
+      console.log( itemData );
       
       $('#modal-form-rename #tags').tagsinput( {
          tagClass: function( name ) {
@@ -149,27 +150,30 @@ function renameItem( id ) {
       } );
 
       $('#modal-form-rename #id').val( id );
-      $('#modal-form-type').text( item_data['check']['type'] );
+      $('#modal-form-type').text( itemData['check']['type'] );
       $('#modal-form-type').attr( 'class',
-         'ok' == item_data['check']['status'] ? 
+         'ok' == itemData['check']['status'] ? 
          'text-success' : 'text-danger' );
       $('#modal-form-rename #tags').tagsinput( 'removeAll' );
-      for( const tag_idx in item_data['tags'] ) {
+      for( const tag_idx in itemData['tags'] ) {
          $('#modal-form-rename #tags').tagsinput(
-               'add', item_data['tags'][tag_idx] );
+               'add', itemData['tags'][tag_idx] );
       }
-      $('#modal-form-rename #name').val( item_data['name'] );
-      $('#modal-form-rename #comment').val( item_data['comment'] );
+      $('#modal-form-rename #name').val( itemData['name'] );
+      $('#modal-form-rename #comment').val( itemData['comment'] );
       //var img_preview_tag = $('<img src="' + flaskRoot + 'preview/' + 
       //   data['id'] + '/360/270" class="" style="display: none;" />');
       var img_preview_tag = $('<img src="' + flaskRoot + 'preview/' +
-         item_data['id'] +
+      itemData['id'] +
          '/230/172" class="d-block w-100" style="display: none;" />');
       $('#modal-form-preview-img').empty();
       $('#modal-form-preview-img').append( img_preview_tag );
       $('#modal-form-preview-img img').one( 'load', function( e ) {
          $(this).fadeIn();
       } );
+
+      let treeLoaded = $.Deferred();
+      let treeLoadFinished = false;
 
       $('#modal-input-move').jstree( {
          core: {
@@ -180,28 +184,42 @@ function renameItem( id ) {
                }
             }
          }
-      } ).bind( 'loaded.jstree', function( e, tree_data ) {
+      } );
+      $('#modal-input-move').on( 'loaded.jstree', function( e, treeData ) {
          // Open the root first.
-         tree_data.instance.open_node( tree_data.instance.element.find( '#root' ) );
+         let rootNode = treeData.instance.element.find( '#root' );
+         treeData.instance.open_node( rootNode );
+      } );
+      $('#modal-input-move').on( 'after_open.jstree', function( e, parentNode ) {
+         if( treeLoadFinished ) {
+            return;
+         }
 
          // Iterate through current item's parents starting from the root.
-         for( parent_idx in item_data['parents'] ) {
-            parent_id = item_data['parents'][parent_idx];
+         let parentIdx = 0;
+         for( parentIdx in itemData['parents'] ) {
+            parentID = itemData['parents'][parentIdx];
 
             // Try to find the current parent in the tree's loaded nodes and open it.
-            tree_data.instance.element.find( 'li' ).each( function( i ) {
-               //console.log( 'looking for: ' + parent_id );
-               //console.log( 'found: ' + $(this).attr( 'id' ) );
-               if( $(this).attr( 'id' ) == parent_id ) {
-                  tree_data.instance.open_node( $(this) );
+            parentNode.instance.element.find( '#' + parentID ).each( function( i ) {
+               parentNode.instance.open_node( $(this) );
+               if( parentIdx == itemData['parents'].length - 1 ) {
+                  // Last parent should be visible, now.
+                  treeLoaded.resolve( parentNode, this );
                }
             } );
-
-            //tree_data.instance.select_node( tree_data.instance.element.find( '#' + item_data['folder_id'].toString() ) );
          }
       } );
 
       $('#editModal').modal( 'show' );
+
+      $.when( treeLoaded ).done( function( parentNode, node ) {
+         // All parents are loaded, so select the last one.
+         parentNode.instance.deselect_all();
+         parentNode.instance.select_node( node, true );
+         console.assert( 1 == parentNode.instance.get_selected( true ).length );
+         treeLoadFinished = true;
+      } );
    } );
 
    return false;
@@ -209,12 +227,14 @@ function renameItem( id ) {
 
 function saveRename() {
 
-   var id = $('#modal-id').val();
+   let moveSelected = $('#modal-input-move').jstree( 'get_selected', true )[0];
+   console.log( $('#modal-input-move').jstree( 'get_selected', true ) );
+   // Build the path using IDs, as those are simpler to parse server-side.
+   let movePath = $('#modal-input-move').jstree().get_path( moveSelected, '/', true );
+   $('#modal-form-rename #location').val( movePath );
+   
    $.ajax( {
-      url: flaskRoot + 'ajax/item/' + id.toString() + '/save',
-      /* data: {
-         'tags': $('#modal-input-tags > input').tagsinput( 'items' )
-      }, */
+      url: flaskRoot + 'ajax/item/save',
       data: $('#modal-form-rename').serialize(),
       type: 'POST',
       success: function( data ) {

@@ -372,29 +372,56 @@ def cloud_items_search():
         'libraries.html.j2', items=items, save_search_form=save_search_form,
         page=page, rename_form=rename_form, search_form=search_form )
 
-@current_app.route( '/ajax/item/<int:item_id>/save', methods=['POST'] )
-def cloud_item_ajax_save( item_id ):
+@current_app.route( '/ajax/item/save', methods=['POST'] )
+def cloud_item_ajax_save():
 
     current_uid = User.current_uid()
 
-    new_tags = request.form['tags'].split( ',' )
-
-    #print( new_tags )
-    #print( [Tag.from_path( t ) for t in new_tags] )
+    save_form = RenameItemForm( request.form )
+    if not save_form.validate():
+        return jsonify( { 'submit_status': 'error', 'fields': save_form.errors } )
 
     item = Item.secure_query( current_uid ) \
-        .filter( Item.id == item_id ) \
+        .filter( Item.id == save_form.id.data ) \
         .first()
-
     if not item:
         abort( 403 )
 
-    del item._tags[:]
-    item.tags( append=[Tag.from_path( t ) for t in new_tags] )
+    # Translate tags data.
+    new_tags = request.form['tags'].split( ',' )
+    item.tags = [Tag.from_path( t ) for t in new_tags]
 
-    db.session.commit()
+    # Translate location data.
+    new_location = request.form['location'].split( '/' )
+    current_path = None
+    for path_id in new_location:
+        if path_id.startswith( 'library-' ):
+            library_id = path_id.split( '-' )[1]
+            current_path = Library.secure_query( current_uid ) \
+                .filter( Library.id == library_id ) \
+                .first()
+        elif path_id.startswith( 'folder-' ):
+            folder_id = path_id.split( '-' )[1]
+            if isinstance( current_path, Library ):
+                current_path = Folder.secure_query( current_uid ) \
+                    .filter( Folder.id == folder_id ) \
+                    .filter( Folder.library_id == current_path.id ) \
+                    .first()
+            elif isinstance( current_path, Folder ):
+                current_path = Folder.secure_query( current_uid ) \
+                    .filter( Folder.id == folder_id ) \
+                    .filter( Folder.parent_id == current_path.id ) \
+                    .first()
+            else:
+                return jsonify( {'submit_status': 'error', 'errors': ['Invalid save path specified.'] } )
 
-    return jsonify( item.to_dict( ignore_keys=['parent', 'folder'] ) )
+    print( current_path.absolute_path )
+
+    #db.session.commit()
+
+    # Return the modified item.
+    item_dict = item.to_dict( ignore_keys=['parent', 'folder'] )
+    return jsonify( item_dict )
 
 @current_app.route( '/ajax/item/<int:item_id>/json', methods=['GET'] )
 def cloud_item_ajax_json( item_id ):
@@ -413,7 +440,7 @@ def cloud_item_ajax_json( item_id ):
     parents = []
     parent_iter = item.folder
     while parent_iter:
-        parents.append( str( parent_iter.id ) )
+        parents.append( 'folder-{}'.format( parent_iter.id ) )
         parent_iter = parent_iter.parent
     parents.reverse()
     parents.insert( 0, 'library-{}'.format( item.library_id ) )
@@ -444,6 +471,8 @@ def cloud_folders_ajax():
     current_uid = User.current_uid()
 
     folder_id = request.args.get( 'id' )
+    if folder_id.startswith( 'folder-' ):
+        folder_id = folder_id.split( '-' )[1]
     if None != folder_id:
         try:
             folder_id = None if '#' == folder_id else int( folder_id )
@@ -455,7 +484,10 @@ def cloud_folders_ajax():
     query = Folder.secure_query( current_uid )
     if folder_id:
         # The tree already has this folder, so iterate through its children.
-        folder_parent = query.filter( Folder.id == folder_id ).first()
+        folder_parent = query \
+            .filter( Folder.id == folder_id ) \
+            .order_by( Folder.name ) \
+            .first()
         if not folder_parent:
             abort( 403 )
         folders = folder_parent.children
@@ -464,9 +496,10 @@ def cloud_folders_ajax():
         json_out += [{
             'id': 'root',
             'parent': '#',
-            'text': 'root' # TODO: All libraries.
+            'text': 'root'
         }]
         libraries = Library.secure_query( current_uid ) \
+            .order_by( Library.display_name ) \
             .all()
         if 0 == len( libraries ):
             abort( 403 )
@@ -480,16 +513,16 @@ def cloud_folders_ajax():
             )
             folders += query.filter( Folder.parent_id == None ) \
                 .filter( Folder.library_id == library.id ) \
+                .order_by( Folder.name ) \
                 .all()
 
     json_out += [{
-        'id': f.id,
-        'parent': folder_id if folder_id else 'library-{}'.format( f.library_id ),
+        'id': 'folder-{}'.format( f.id ),
+        'parent': 'folder-{}'.format( folder_id ) \
+            if folder_id else 'library-{}'.format( f.library_id ),
         'text': f.name,
         'children': 0 < len( f.children )
     } for f in folders]
-
-    #print( folder.to_dict( ignore_keys=['parent'], max_depth=2 ) )
 
     return jsonify( json_out )
 

@@ -284,12 +284,14 @@ class Tag( db.Model ):
     @staticmethod
     def from_path( path ):
 
-        path = [''] + path.split( '/' )
+        path = path.split( '/' )
         tag_iter = None
         tag_parent = None
         while 0 < len( path ):
             tag_parent_id = None
+            parent_path = 'root'
             if tag_parent:
+                parent_path = tag_parent.path
                 tag_parent_id = tag_parent.id
 
             tag_iter = db.session.query( Tag ) \
@@ -299,7 +301,7 @@ class Tag( db.Model ):
             if not tag_iter:
                 # Create the missing new tag.
                 tag_iter = Tag( parent_id=tag_parent_id, name=path[0] )
-                current_app.logger.info( 'creating new tag: {}'.format( tag_iter.path ) )
+                current_app.logger.info( 'creating new tag {} under {}'.format( tag_iter.path, parent_path ) )
                 db.session.add( tag_iter )
                 db.session.commit()
 
@@ -334,7 +336,10 @@ class Folder( db.Model, JSONItemMixin ):
     __tablename__ = 'folders'
 
     id = db.Column( db.Integer, primary_key=True )
-    items = db.relationship( 'Item', back_populates='folder' )
+    items = db.relationship(
+        'Item',
+        back_populates='folder',
+        order_by='Item.name' )
     parent_id = db.Column(
         db.Integer, db.ForeignKey( 'folders.id' ), nullable=True )
     parent = db.relationship( 'Folder', remote_side=[id] )
@@ -344,8 +349,10 @@ class Folder( db.Model, JSONItemMixin ):
     name = db.Column(
         db.String( 256 ), index=True, unique=False, nullable=False )
     meta = db.relationship( 'FolderMeta', back_populates='folder' )
-    children = db.relationship( 'Folder', backref=db.backref(
-        'folder_parent', remote_side=[id] ) )
+    children = db.relationship(
+        'Folder',
+        backref=db.backref( 'folder_parent', remote_side=[id] ),
+        order_by=name )
     status = db.Column( db.Enum( StatusEnum ) )
 
     owner_id = db.column_property(
