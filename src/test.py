@@ -3,10 +3,8 @@
 import os
 import unittest
 import json
-import logging
 import shutil
-from sqlalchemy.inspection import inspect
-from flask import Flask, current_app
+from flask import current_app
 from flask_testing import TestCase
 from cloud_on_film import create_app, db
 from cloud_on_film.models import Library, Folder, Item, Tag
@@ -78,7 +76,7 @@ class TestLibrary( TestCase ):
         db.session.commit() # Commit to get library ID.
         current_app.logger.debug( 'created library {} with ID {}'.format(
             self.nsfw_lib.machine_name, self.nsfw_lib.id ) )
-        
+
     def create_data_folders( self ):
 
         folder1 = Folder( library_id=self.lib.id, name='Foo Files 1' )
@@ -129,12 +127,12 @@ class TestLibrary( TestCase ):
 
         file_test = Picture.from_path(
             self.lib.id, 'testing/random320x240.png', self.user_id )
-        
+
         file_test = Picture.from_path(
             self.lib.id, 'testing/random100x100.png', self.user_id )
         file_test.meta['rating'] = 4
         file_test.tags.append( tag_sub_test_3 )
-        
+
         file_test = Picture.from_path(
             self.lib.id, 'testing/random500x500.png', self.user_id )
         file_test.meta['rating'] = 1
@@ -144,7 +142,7 @@ class TestLibrary( TestCase ):
 
         #file_test = Picture.from_path(
         #    self.lib.id, 'testing/random640x480.png', self.user_id )
-        
+
         file_test = Picture.from_path(
             self.nsfw_lib.id, 'foo_folder/random640x480.png', self.user_id )
 
@@ -202,8 +200,6 @@ class TestLibrary( TestCase ):
 
         tag = Tag.from_path( 'IFDY/Test Tag 1/Sub Test Tag 3' )
 
-        all_tags = db.session.query( Tag ).all()
-
         files_test = Item.secure_query( self.user_id ) \
             .filter( Picture.width == 100 ) \
             .all()
@@ -244,13 +240,6 @@ class TestLibrary( TestCase ):
         file_test = Item.secure_query( self.user_id ) \
             .filter( Picture.width == 100 ) \
             .first()
-
-        all_tags = db.session.query( Tag ) \
-            .all()
-
-        print( 'xxx' )
-        print( file_test.tags )
-        print( 'xxx' )
 
         assert( tag_testing_img in file_test.tags )
         assert( 100 == file_test.width )
@@ -350,31 +339,31 @@ class TestLibrary( TestCase ):
         search_test.lexer.lex()
         search_test.lexer.dump()
         res = search_test.search( self.user_id ).all()
-        
-        assert( [not i.nsfw for i in res] ) 
-        assert( [4 == i.rating for i in res] ) 
+
+        assert( [not i.nsfw for i in res] )
+        assert( [4 == i.rating for i in res] )
 
         search_test = Searcher( 'aspect=10' )
         search_test.lexer.lex()
         search_test.lexer.dump()
         res = search_test.search( self.user_id ).all()
 
-        assert( [10 == i.aspect for i in res] ) 
+        assert( [10 == i.aspect for i in res] )
 
         search_test = Searcher( '(rating>1)' )
         search_test.lexer.lex()
         search_test.lexer.dump()
         res = search_test.search( self.user_id ).all()
 
-        assert( [1 < i.rating for i in res] ) 
+        assert( [1 < i.rating for i in res] )
 
         search_test = Searcher( '&((aspect=4)(width>320))' )
         search_test.lexer.lex()
         search_test.lexer.dump()
         res = search_test.search( self.user_id ).all()
 
-        assert( [4 == i.aspect for i in res] ) 
-        assert( [320 < i.width for i in res] ) 
+        assert( [4 == i.aspect for i in res] )
+        assert( [320 < i.width for i in res] )
 
         search_test = Searcher( '&((rating>=0)(nsfw=0))' )
         search_test.lexer.lex()
@@ -388,8 +377,8 @@ class TestLibrary( TestCase ):
                 found_four = True
             elif 0 == i.rating:
                 found_zero = True
-        
-        assert( [not i.nsfw for i in res] ) 
+
+        assert( [not i.nsfw for i in res] )
         assert( found_zero and found_four )
 
         search_test = Searcher( '&(name=%random640%)' )
@@ -404,10 +393,9 @@ class TestLibrary( TestCase ):
                 found_four = True
             elif 10 == i.aspect:
                 found_ten = True
-        
+
         assert( found_ten and found_four )
         assert( 2 == len( res ) )
 
 if '__main__' == __name__:
     unittest.main()
-
