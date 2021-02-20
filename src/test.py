@@ -29,7 +29,6 @@ class TestLibrary( TestCase ):
         self.create_folders()
         self.create_libraries()
         self.create_data_folders()
-        self.create_data_tags()
 
     def tearDown( self ):
         db.session.remove()
@@ -97,34 +96,34 @@ class TestLibrary( TestCase ):
         current_app.logger.debug( 'created folder {} with ID {}'.format(
             folder2.name, folder2.id ) )
 
-    def create_data_tags( self ):
+    def create_data_items( self ):
 
-        tag_root = Tag( name='' )
-        db.session.add( tag_root )
-        db.session.commit()
-
-        tag_ifdy = Tag( name='IFDY', parent_id = tag_root.id )
+        tag_ifdy = Tag( name='IFDY', parent_id = None )
         db.session.add( tag_ifdy )
         db.session.commit()
 
         tag_test_1 = Tag( name='Test Tag 1', parent_id = tag_ifdy.id )
         db.session.add( tag_test_1 )
+        db.session.commit()
+
         tag_test_2 = Tag( name='Test Tag 2', parent_id = tag_ifdy.id )
         db.session.add( tag_test_2 )
+        db.session.commit()
+
         tag_nsfw_test_1 = Tag( name='NSFW Test Tag 1',
-            parent_id = tag_root.id )
+            parent_id = tag_ifdy.id )
         db.session.add( tag_nsfw_test_1 )
         db.session.commit()
 
         tag_sub_test_3 = Tag(
             name='Sub Test Tag 3', parent_id = tag_test_1.id )
         db.session.add( tag_sub_test_3 )
+        db.session.commit()
+
         tag_test_alt_1 = Tag(
             name='Test Tag 1', parent_id = tag_test_2.id )
         db.session.add( tag_test_alt_1 )
         db.session.commit()
-
-    def create_data_items( self ):
 
         from cloud_on_film.files.picture import Picture
 
@@ -134,6 +133,7 @@ class TestLibrary( TestCase ):
         file_test = Picture.from_path(
             self.lib.id, 'testing/random100x100.png', self.user_id )
         file_test.meta['rating'] = 4
+        file_test.tags.append( tag_sub_test_3 )
         
         file_test = Picture.from_path(
             self.lib.id, 'testing/random500x500.png', self.user_id )
@@ -194,8 +194,22 @@ class TestLibrary( TestCase ):
         assert( file1.name != 'xxx.png' )
         assert( file1.size == 461998 )
 
-    def test_tag_from_path( self ):
+    def test_item_tags( self ):
+
+        self.create_data_items()
+
+        from cloud_on_film.files.picture import Picture
+
         tag = Tag.from_path( 'IFDY/Test Tag 1/Sub Test Tag 3' )
+
+        all_tags = db.session.query( Tag ).all()
+
+        files_test = Item.secure_query( self.user_id ) \
+            .filter( Picture.width == 100 ) \
+            .all()
+
+        assert( 1 == len( files_test ) )
+        assert( tag in files_test[0].tags )
 
     def test_query_width( self ):
 
@@ -230,6 +244,13 @@ class TestLibrary( TestCase ):
         file_test = Item.secure_query( self.user_id ) \
             .filter( Picture.width == 100 ) \
             .first()
+
+        all_tags = db.session.query( Tag ) \
+            .all()
+
+        print( 'xxx' )
+        print( file_test.tags )
+        print( 'xxx' )
 
         assert( tag_testing_img in file_test.tags )
         assert( 100 == file_test.width )

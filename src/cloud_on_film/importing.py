@@ -111,7 +111,7 @@ def picture( picture ):
         db.session.flush()
         db.session.refresh( pic )
 
-        pic.tags.append=[Tag.from_path( t ) for t in picture['tags']]
+        pic.tags += [Tag.from_path( t ) for t in picture['tags']]
 
         if picture['comment']:
             pic.meta['comment'] = picture['comment']
