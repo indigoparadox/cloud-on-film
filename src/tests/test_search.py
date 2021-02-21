@@ -41,6 +41,7 @@ class TestSearch( TestCase ):
         search_test.lexer.dump()
         res = search_test.search( self.user_id ).all()
 
+        assert( 1 == len( res ) )
         assert( [10 == i.aspect for i in res] )
 
     def test_search_and( self ):
@@ -52,6 +53,7 @@ class TestSearch( TestCase ):
         search_test.lexer.dump()
         res = search_test.search( self.user_id ).all()
 
+        assert( 1 == len( res ) )
         assert( [not i.nsfw for i in res] )
         assert( [4 == i.rating for i in res] )
         
@@ -64,27 +66,29 @@ class TestSearch( TestCase ):
         search_test.lexer.dump()
         res = search_test.search( self.user_id ).all()
 
+        assert( 1 == len( res ) )
         assert( [1 < i.rating for i in res] )
 
     def test_search_gte( self ):
 
         DataHelper.create_data_items( self, db )
 
-        search_test = Searcher( '&((rating>=0)(nsfw=0))' )
+        search_test = Searcher( 'rating>=1' )
         search_test.lexer.lex()
         search_test.lexer.dump()
         res = search_test.search( self.user_id ).all()
 
-        found_zero = False
+        found_one = False
         found_four = False
         for i in res:
             if 4 == i.rating:
                 found_four = True
-            elif 0 == i.rating:
-                found_zero = True
+            elif 1 == i.rating:
+                found_one = True
 
+        assert( 2 == len( res ) )
         assert( [not i.nsfw for i in res] )
-        assert( found_zero and found_four )
+        assert( found_one and found_four )
 
     def test_search_like( self ):
 

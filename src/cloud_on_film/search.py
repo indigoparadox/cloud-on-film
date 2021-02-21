@@ -75,140 +75,163 @@ class SearchLexerParser( object ):
         self.ctok_type = None
         self.ctok_quotes = False
 
-        self.pending_c = None
-
     def is_value_pending( self ):
         return '' != self.ctok_value and \
             None != self.ctok_type
 
     def lex( self ):
-        for c in self.query_str:
-            self._lex_c( c )
+        skip = False
+        for i in range( len( self.query_str ) ):
+            if skip:
+                skip = False
+                continue
+
+            c = self.query_str[i]
+
+            if "'" == c or '"' == c:
+                if not self.is_value_pending():
+                    self.ctok_type = str
+                    self.ctok_quotes = True
+
+                elif str == self.ctok_type:
+                    self.push_token()
+
+                else:
+                    raise SearchSyntaxException( 'invalid \'"\' or "\'" detected' )
+
+            elif '%' == c:
+                if None == self.last_attrib:
+                    raise SearchSyntaxException( 'invalid "%%" in attribute name' )
+
+                else:
+                    # Don't overthink this. We'll just check if the value starts 
+                    # or ends with % on push to change the op to a LIKE.
+                    self.ctok_value += c
+
+            elif '&' == c:
+                if str == self.ctok_type:
+                    self.ctok_value += c
+
+                elif not self.is_value_pending():
+                    self.push_and()
+
+                else:
+                    raise SearchSyntaxException( 'stray "&" detected' )
+
+            elif '|' == c:
+                if str == self.ctok_type:
+                    self.ctok_value += c
+
+                elif not self.is_value_pending():
+                    self.push_or()
+
+                else:
+                    raise SearchSyntaxException( 'stray "|" detected' )
+
+            elif '=' == c:
+                if str == self.ctok_type and self.ctok_quotes:
+                    self.ctok_value += c
+
+                elif str == self.ctok_type:
+                    if None != self.last_value:
+                        raise SearchSyntaxException( 'stray "=" detected' )
+                    self.push_token()
+                    self.push_eq()
+
+                else:
+                    raise SearchSyntaxException( 'stray "=" detected' )
+
+            elif '>' == c:
+                if str == self.ctok_type and self.ctok_quotes:
+                    self.ctok_value += c
+
+                elif str == self.ctok_type and \
+                None == self.last_attrib:
+                    self.push_token()
+                    if i + 1 < len( self.query_str ) and \
+                    '=' == self.query_str[i + 1]:
+                        # Is GTE (>=).
+                        self.push_gte()
+                        skip = True # Skip '='.
+                    else:
+                        # Is GT (>).
+                        self.push_gt()
+
+                else:
+                    raise SearchSyntaxException( 'stray ">" detected' )
+
+            elif '<' == c:
+                if str == self.ctok_type and self.ctok_quotes:
+                    self.ctok_value += c
+
+                elif str == self.ctok_type and \
+                None == self.last_attrib:
+                    self.push_token()
+                    if i + 1 < len( self.query_str ) and \
+                    '=' == self.query_str[i + 1]:
+                        # Is LTE (<=).
+                        self.push_lte()
+                        skip = True # Skip '='.
+                    else:
+                        # Is LT (<).
+                        self.push_lt()
+
+                else:
+                    raise SearchSyntaxException( 'stray "<" detected' )
+
+            elif '(' == c:
+                if str == self.ctok_type:
+                    self.ctok_value += c
+                
+                elif '' == self.ctok_value:
+                    self.start_group()
+
+                else:
+                    raise SearchSyntaxException( 'stray "("' )
+
+            elif ')' == c:
+                if str == self.ctok_type and self.ctok_quotes:
+                    self.ctok_value += c
+                
+                elif '' != self.ctok_value and \
+                str == self.ctok_type and \
+                not self.ctok_quotes:
+                    self.push_token()
+                    self.end_group()
+
+                elif '' != self.ctok_value and \
+                None != self.ctok_type:
+                    self.push_token()
+                    self.end_group()
+
+                elif isinstance( self.head, SearchLexerParser.Group ):
+                    self.end_group()
+
+                #elif isinstance( self.head, SearchLexerParser.Compare ):
+                #    self.end_group()
+                #    pass
+
+                else:
+                    raise SearchSyntaxException( 'stray ")"' )
+
+            elif c.isdigit():
+                if None == self.ctok_type:
+                    self.ctok_type = int
+
+                self.ctok_value += c
+
+            elif c.isalpha():
+                if None == self.ctok_type:
+                    self.ctok_type = str
+
+                if str == self.ctok_type:
+                    self.ctok_value += c
+                else:
+                    raise SearchSyntaxException( 'attempted to add alpha char to int' )
 
         # Button up any remaining tokens.
-        self._append_ctok_value( None ) # Handle pending_c.
         if self.is_value_pending():
             self.push_token()
-
-    def _lex_c( self, c ):
-
-        if "'" == c or '"' == c:
-            if not self.is_value_pending():
-                self.ctok_type = str
-                self.ctok_quotes = True
-
-            elif str == self.ctok_type:
-                self.push_token()
-
-            else:
-                raise SearchSyntaxException( 'invalid \'"\' or "\'" detected' )
-
-        elif '%' == c:
-            if None == self.last_attrib:
-                raise SearchSyntaxException( 'invalid "%%" in attribute name' )
-
-            else:
-                # Don't overthink this. We'll just check if the value starts 
-                # or ends with % on push to change the op to a LIKE.
-                self._append_ctok_value( c )
-
-        elif '&' == c:
-            if str == self.ctok_type:
-                self._append_ctok_value( c )
-
-            elif not self.is_value_pending():
-                self.push_and()
-
-            else:
-                raise SearchSyntaxException( 'stray "&" detected' )
-
-        elif '=' == c:
-            if str == self.ctok_type and self.ctok_quotes:
-                self._append_ctok_value( c )
-
-            elif '>' == self.pending_c:
-                self.push_token()
-                self.push_gte()
-                self.pending_c = None
-
-            elif '<' == self.pending_c:
-                self.push_token()
-                self.push_lte()
-                self.pending_c = None
-
-            elif str == self.ctok_type:
-                if None != self.last_value:
-                    raise SearchSyntaxException( 'stray "=" detected' )
-                self.push_token()
-                self.push_eq()
-
-            else:
-                raise SearchSyntaxException( 'stray "=" detected' )
-
-        elif '>' == c:
-            # Handle this under =
-            self.pending_c = '>'
-
-        elif '<' == c:
-            # Handle this under =
-            self.pending_c = '<'
-
-        elif '(' == c:
-            if str == self.ctok_type:
-                self._append_ctok_value( c )
-            
-            elif '' == self.ctok_value:
-                self.start_group()
-
-            else:
-                raise SearchSyntaxException( 'stray "("' )
-
-        elif ')' == c:
-            if str == self.ctok_type and self.ctok_quotes:
-                self._append_ctok_value( c )
-            
-            elif '' != self.ctok_value and \
-            str == self.ctok_type and \
-            not self.ctok_quotes:
-                self.push_token()
-                self.end_group()
-
-            elif '' != self.ctok_value and \
-            None != self.ctok_type:
-                self.push_token()
-                self.end_group()
-
-            elif isinstance( self.head, SearchLexerParser.Group ):
-                self.end_group()
-
-            #elif isinstance( self.head, SearchLexerParser.Compare ):
-            #    self.end_group()
-            #    pass
-
-            else:
-                raise SearchSyntaxException( 'stray ")"' )
-
-        elif c.isdigit():
-            if None == self.ctok_type:
-                self.ctok_type = int
-
-            self._append_ctok_value( c )
-
-        elif c.isalpha():
-            if None == self.ctok_type:
-                self.ctok_type = str
-            
-            if str == self.ctok_type:
-                self._append_ctok_value( c )
-            else:
-                raise SearchSyntaxException( 'attempted to add alpha char to int' )
-
-    def _append_ctok_value( self, c ):
-        if None != self.pending_c:
-            self.ctok_value += self.pending_c
-            self.pending_c = None
-        if None != c:
-            self.ctok_value += c
 
     def _push_group( self, group ):
         assert( isinstance( self.head, list ) or isinstance( self.head, SearchLexerParser.Group ) )
@@ -235,7 +258,7 @@ class SearchLexerParser( object ):
         group = SearchLexerParser.Or()
         self._push_group( group )
         self.head = group
-    
+
     def push_like( self ):
         if SearchLexerParser.Op.eq and not self.last_op:
             raise SearchSyntaxException( 'invalid comparison to LIKE' )
