@@ -64,6 +64,12 @@ var scrollMethod = 'GET';
 {% endblock %}
 
 {% block sidebar %}
+<div style="display: none" id="form-edit-checked-items">
+<button class="btn btn-primary">Edit</button>
+</div>
+{% endblock %}
+
+{% block sidebar_collapsed %}
 <li class="nav-item">
    {# h-50 and d-flex keep groups v-aligned inside of menus. #}
    {{ show_form( search_form, id="search-query", class="form-inline", group_class="form-group h-50 d-flex", method='GET', action=url_for( 'cloud_items_search' ), enable_csrf=False ) }}
@@ -121,10 +127,12 @@ var scrollMethod = 'GET';
 {% set items_classes = items_classes + ' folder-{{ this_folder.id }}' %}
 {% endif %}
 
+<form>
 <div id="folder-items" class="row justify-content-center{{ items_classes }}">
 {% for item in items %}
 {{ item.library_html()|safe }}
 {% endfor %}
 </div> <!-- /row -->
+</form>
 
 {% endblock %}

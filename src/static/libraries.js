@@ -2,6 +2,7 @@
 var tagnames;
 var scrollingEnabled = true;
 var storeScrolling = false;
+var selectedItems = [];
 
 (function( $ ) {
 
@@ -76,6 +77,26 @@ $().ready( function() {
             'static/arrow-left-64.png" alt="Previous" />',
          'nextIcon': '<img src="' + flaskRoot + 
             'static/arrow-right-64.png" alt="Next" />',
+      } );
+
+   $(this)
+      .find( '.item-checkbox' )
+      .fadeIn()
+      .on( 'change', function( e ) {
+         if( this.checked ) {
+            selectedItems.push( $(this).attr( 'id' ) );
+         } else {
+            let idx = selectedItems.indexOf( $(this).attr( 'id' ) );
+            selectedItems.splice( idx, 1 );
+         }
+
+         if( 0 == selectedItems.length ) {
+            $('#form-edit-checked-items').slideUp();
+         } else {
+            $('#form-edit-checked-items').slideDown();
+         }
+
+         console.log( selectedItems );
       } );
 }
 

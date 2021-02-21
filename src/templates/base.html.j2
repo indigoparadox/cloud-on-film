@@ -80,12 +80,9 @@
 
 {% block modals %}{% endblock %}
 
-<nav class="navbar navbar-expand-md navbar-nav navbar-dark bg-light">
-    <button class="navbar-toggler" data-toggle="collapse" data-target="#navbar-collapsible-content">
-        <span class="sidebar-toggle-icon"></span>
-    </button>
-    <div class="collapse navbar-collapse" id="navbar-collapsible-content">
-        <ul class="navbar-nav mr-auto">
+<nav class="navbar sticky-top navbar-expand-md navbar-nav d-flex flex-row flex-wrap navbar-dark px-4 bg-light">
+    <div class="d-flex flex-row flex-grow-1 flex-md-grow-0" id="navbar-content">
+        <ul class="navbar-nav">
             <li class="nav-item dropdown">
                 <a class="nav-link dropdown-toggle" href="#" id="navbar-dropdown-libraries" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                     Navigation
@@ -109,11 +106,21 @@
                     {% endfor %}
                 </div>
             </li>
-
-            {% block sidebar %}
+        </ul>
+        <button class="navbar-toggler px-0 ml-auto d-flex d-md-none" data-toggle="collapse" data-target="#navbar-collapsible-content">
+            <span class="sidebar-toggle-icon"></span>
+        </button>
+    </div>
+    <div class="collapse navbar-collapse" id="navbar-collapsible-content">
+        <ul class="navbar-nav">
+            {% block sidebar_collapsed %}
             {% endblock %}
         </ul>
     </div>
+    <!-- Force module-specific stuff to next row. -->
+    <div class="w-100 navbar-collapse"></div>
+    {% block sidebar %}
+    {% endblock %}
 </nav>
 
 <!-- <div id="sidebar-resize" class="d-none d-md-block"></div> -->

@@ -46,11 +46,6 @@ def url_self( **args ):
 
 current_app.jinja_env.globals.update( url_self=url_self )
 
-@current_app.route( '/callbacks/edit', methods=['POST'] )
-def cloud_edit_filedata():
-
-    pass
-
 @current_app.route( '/preview/<int:file_id>' )
 @current_app.route( '/preview/<int:file_id>/<int:width>/<int:height>' )
 def cloud_plugin_preview( file_id, width=160, height=120 ):
