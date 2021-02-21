@@ -28,9 +28,22 @@ $().ready( function() {
          }
       }
    } );
- } );
 
- $.fn.enableThumbnailCard = function() {
+   $('#form-edit-checked-items').on( 'click', function( e ) {
+
+      // Grab the next [loadIncrement] columns and append them to the table.
+      $.get( flaskRoot + 'ajax/html/batch?item_ids=' + selectedItems.join() ).done( function( data ) {
+         $('#edit-batch-modal .modal-body').empty();
+         $('#edit-batch-modal .modal-body').append( data );
+         $('#edit-batch-modal').modal( 'show' );
+      } );
+
+      e.preventDefault();
+      return false;
+   } );
+} );
+
+$.fn.enableThumbnailCard = function() {
 
    // Enable image fade-in on load.
    $(this)

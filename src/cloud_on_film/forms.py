@@ -7,7 +7,9 @@ from wtforms import \
     BooleanField as _BooleanField, \
     HiddenField as _HiddenField, \
     TextAreaField as _TextAreaField, \
-    SubmitField as _SubmitField
+    SubmitField as _SubmitField, \
+    FormField as _FormField, \
+    FieldList as _FieldList
 from wtforms.validators import DataRequired, Optional
 from markupsafe import Markup
 
@@ -58,6 +60,16 @@ class SubmitField( _SubmitField, COFBaseFieldMixin ):
     def __init__( self, *args, **kwargs ):
         kwargs = self.process_kwargs( kwargs )
         super( _SubmitField, self ).__init__( *args, **kwargs )
+
+class FormField( _FormField, COFBaseFieldMixin ):
+    def __init__( self, *args, **kwargs ):
+        kwargs = self.process_kwargs( kwargs )
+        super( _FormField, self ).__init__( *args, **kwargs )
+
+class FieldList( _FieldList, COFBaseFieldMixin ):
+    def __init__( self, *args, **kwargs ):
+        kwargs = self.process_kwargs( kwargs )
+        super( _FieldList, self ).__init__( *args, **kwargs )
 
 class DummyWidget(object):
     
@@ -141,6 +153,10 @@ class RenameItemForm( FlaskForm, COFBaseFormMixin ):
     tags = StringField( 'Tags' )
     comment = TextAreaField( 'Comment' )
     location = HiddenField( '', validators=[DataRequired()] )
+
+class EditBatchItemForm( FlaskForm, COFBaseFormMixin ):
+
+    items = _FieldList( _FormField( RenameItemForm ) )
 
 class SaveSearchForm( FlaskForm, COFBaseFormMixin ):
 

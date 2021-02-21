@@ -1,0 +1,29 @@
+
+{% from 'macros.html.j2' import show_form %}
+
+<div class="d-flex flex-row flex-wrap h-100">
+    {% for field in item_form %}
+    <div class="row">
+        {{ field.label }}
+    </div>
+    {% endfor %}
+
+    {% for item_form in edit_form.items %}
+    <div class="d-flex">
+        <div class="preview">
+            <!-- TODO: Get tag from plugin? -->
+            <img src="/preview/{{ item_form.data['id'] }}/160/120" />
+        </div>
+        <div class="flex-fill d-flex flex-wrap">
+            {% for field in item_form
+                if field.type != 'HiddenField'
+                and not 'csrf_token' in field.name|string  %}
+            <div class="col">
+                {{ field.label }}
+                {{ field( class_='form-control mx-2' ) }}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endfor %}
+</div>

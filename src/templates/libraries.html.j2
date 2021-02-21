@@ -38,7 +38,7 @@ var scrollMethod = 'GET';
 {% endblock %}
 
 {% block modals %}
-<div class="modal fade" id="editModal" role="dialog">
+<div class="modal fade" id="edit-modal" role="dialog">
 <div class="modal-dialog modal-lg modal-dialog-centered">
    <div class="modal-content bg-dark">
       <div class="modal-header">
@@ -46,6 +46,23 @@ var scrollMethod = 'GET';
       </div>
       <div class="modal-body">
          {% include 'form_edit.html.j2' %}
+      </div>
+      <div class="modal-footer">
+         <button type="button" class="btn btn-secondary" data-dismiss="modal" onclick="return saveRename()">Cancel</button>
+         <button type="button" class="btn btn-primary" onclick="return saveRename()">Save Changes</button>
+      </div>
+   </div>
+</div>
+</div>
+
+<div class="modal fade" id="edit-batch-modal" role="dialog">
+<div class="modal-dialog modal-lg modal-dialog-centered">
+   <div class="modal-content bg-dark">
+      <div class="modal-header">
+         <h5 class="modal-title">Edit</h5>
+      </div>
+      <div class="modal-body">
+         {% include 'form_edit_batch.html.j2' %}
       </div>
       <div class="modal-footer">
          <button type="button" class="btn btn-secondary" data-dismiss="modal" onclick="return saveRename()">Cancel</button>

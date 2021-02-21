@@ -105,7 +105,7 @@ function editItem( id ) {
             }
         } );
  
-        $('#editModal').modal( 'show' );
+        $('#edit-modal').modal( 'show' );
     
         $.when( treeLoaded ).done( function( parentNode, node ) {
             // All parents are loaded, so select the last one.

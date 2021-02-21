@@ -3,6 +3,8 @@ import json
 import os
 import mimetypes
 import io
+from shutil import ignore_patterns
+from collections import namedtuple
 from flask import \
     render_template, \
     request, \
@@ -30,7 +32,8 @@ from .forms import \
     RenameItemForm, \
     SearchQueryForm, \
     SaveSearchForm, \
-    SearchDeleteForm
+    SearchDeleteForm, \
+    EditBatchItemForm
 from .importing import start_import_thread, threads
 from .search import Searcher
 from . import csrf
@@ -618,6 +621,35 @@ def cloud_items_ajax_search():
         .limit( limit )
 
     return jsonify( [m.library_html() for m in query.all()] )
+
+@current_app.route( '/ajax/html/batch', methods=['GET'] )
+def cloud_items_ajax_batch():
+
+    item_ids = [int( i.split( '-' )[-1] ) for i in request.args['item_ids'].split( ',' )]
+
+    #edit_form = EditBatchItemForm()
+
+    print( item_ids )
+
+    #page = int( search_form.page.data )
+    #offset = page * current_app.config['ITEMS_PER_PAGE']
+    limit = current_app.config['ITEMS_PER_PAGE']
+
+    items = Item.secure_query( User.current_uid() ) \
+        .filter( Item.id.in_( item_ids ) ) \
+        .limit( limit ) \
+        .all()
+
+    item_data = namedtuple( 'item_data', ['id', 'name', 'comment', 'tags'] )
+    edit_form = EditBatchItemForm( 
+        data={'items': [item_data(
+            i.id,
+            i.name,
+            i.comment,
+            ','.join( [t.path for t in i.tags] )
+            ) for i in items] } )
+
+    return render_template( 'form_edit_batch.html.j2', edit_form=edit_form )
 
 @current_app.route( '/' )
 def cloud_root():
