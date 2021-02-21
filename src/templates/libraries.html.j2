@@ -19,11 +19,6 @@ var scrollDataCallback = null;
 var scrollMethod = 'GET';
 {% endif %}
 </script>
-<link rel="stylesheet" href="{{ url_for( 'static', filename='bootstrap-tagsinput.css' ) }}" />
-<link rel="stylesheet" href="{{ url_for( 'static', filename='featherlight.min.css' ) }}" />
-<link rel="stylesheet" href="{{ url_for( 'static', filename='featherlight.gallery.min.css' ) }}" />
-<link rel="stylesheet" href="{{ url_for( 'static', filename='gallery.css' ) }}" />
-<link rel="stylesheet" href="{{ url_for( 'static', filename='jstree/style.min.css' ) }}" />
 <script src="{{ url_for( 'static', filename='typeahead.bundle.min.js' ) }}"></script>
 <script src="{{ url_for( 'static', filename='bootstrap-tagsinput.min.js' ) }}"></script>
 <script src="{{ url_for( 'static', filename='jquery.unveil2.min.js' ) }}"></script>
@@ -32,6 +27,14 @@ var scrollMethod = 'GET';
 <script src="{{ url_for( 'static', filename='featherlight.gallery.min.js' ) }}"></script>
 <script src="{{ url_for( 'static', filename='libraries.js' ) }}"></script>
 <script src="{{ url_for( 'static', filename='edit-item.js' ) }}"></script>
+{% endblock %}
+
+{% block styles %}
+<link rel="stylesheet" href="{{ url_for( 'static', filename='bootstrap-tagsinput.css' ) }}" />
+<link rel="stylesheet" href="{{ url_for( 'static', filename='featherlight.min.css' ) }}" />
+<link rel="stylesheet" href="{{ url_for( 'static', filename='featherlight.gallery.min.css' ) }}" />
+<link rel="stylesheet" href="{{ url_for( 'static', filename='gallery.css' ) }}" />
+<link rel="stylesheet" href="{{ url_for( 'static', filename='jstree/style.min.css' ) }}" />
 {% endblock %}
 
 {% block modals %}

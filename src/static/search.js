@@ -38,6 +38,7 @@ function searchSubmit() {
                 $(element).enableThumbnailCard();
             }
 
+            recreateItemSpacers();
             enableSearchScroll();
     
             // Re-enable scrolling after get is finished.

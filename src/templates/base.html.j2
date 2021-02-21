@@ -26,6 +26,13 @@
     {% else %}
     {% block scripts %}{% endblock %}
     {% endif %}
+    {% if include_styles is defined %}
+    {% for style_iter in include_styles %}
+    <link rel="stylesheet" href="{{ style_iter }}" />
+    {% endfor %}
+    {% else %}
+    {% block styles %}{% endblock %}
+    {% endif %}
 </head>
 <body class="h-100 bg-dark text-light">
 

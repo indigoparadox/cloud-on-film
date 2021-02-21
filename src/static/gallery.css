@@ -2,7 +2,6 @@
 #folder-items .card {
    max-width: 160px !important;
    min-width: 160px;
-   overflow: hidden;
 }
 
 .libraries-folder {
@@ -93,9 +92,4 @@
  text-decoration: none;
  outline: 0;
  background-color: #428bca;
-}
-
-#modal-input-move {
-   height: 390px;
-   overflow: scroll;
 }

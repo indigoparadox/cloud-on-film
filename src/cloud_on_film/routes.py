@@ -135,14 +135,22 @@ def cloud_edit( item_id ):
 
     title = 'Edit Item'
 
-    include_scripts=[
+    include_scripts = [
+        url_for( 'static', filename='typeahead.bundle.min.js' ),
+        url_for( 'static', filename='bootstrap-tagsinput.min.js' ),
+        url_for( 'static', filename='jstree.min.js' ),
         url_for( 'static', filename='edit-item.js' )
+    ]
+
+    include_styles = [
+        url_for( 'static', filename='bootstrap-tagsinput.css' ),
+        url_for( 'static', filename='jstree/style.min.css' )
     ]
 
     if 'GET' == request.method:
         return render_template( 'base.html.j2',
             title=title, rename_form=edit_form, item_id=item_id,
-            include_scripts=include_scripts,
+            include_scripts=include_scripts, include_styles=include_styles,
             include_content='form_edit.html.j2' )
 
 @current_app.route( '/libraries/upload', methods=['GET', 'POST'] )
