@@ -44,8 +44,15 @@
    background-image: url( star-gray-32.png );
 }
 
+/*
 .bootstrap-tagsinput {
    width: 100%;
+}
+*/
+
+.card-h-spacer {
+   width: 160px;
+   height: 0;
 }
 
 .tt-menu {

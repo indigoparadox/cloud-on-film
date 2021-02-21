@@ -143,9 +143,14 @@ $(window).on( 'scroll', function( e ) {
    $.ajax( scrollObject ).done( function( data ) {
       for( var i = 0 ; data.length > i ; i++ ) {
          let element = $(data[i]);
-         console.log( 'element ' + i.toString() );
          $('#folder-items').append( element );
-         $(element).enableThumbnailCard();
+         element.enableThumbnailCard();
+      }
+
+      // Remove and re-insert the spacers after the new items.
+      $('#folder-items .card-h-spacer').remove();
+      for( let i = 0 ; 20 > i ; i++ ) {
+         $('#folder-items').append( '<div class="card-h-spacer"></div>' );
       }
 
       // Re-enable scrolling after get is finished.

@@ -124,6 +124,9 @@ var scrollMethod = 'GET';
 {% for item in items %}
 {{ item.library_html()|safe }}
 {% endfor %}
+{% for i in range( 20 ) %}
+<div class="card-h-spacer"></div>
+{% endfor %}
 </div> <!-- /row -->
 </form>
 

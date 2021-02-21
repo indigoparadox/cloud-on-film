@@ -105,6 +105,7 @@ def cloud_plugin_fullsize( file_id ):
 @current_app.route( '/libraries/new', methods=['GET', 'POST'] )
 def cloud_libraries_new():
 
+    title = 'New Library'
     form = NewLibraryForm( request.form )
 
     if 'POST' == request.method and form.validate():
@@ -124,7 +125,8 @@ def cloud_libraries_new():
             flash( e )
             db.session.rollback()
 
-    return render_template( 'form_libraries_new.html.j2', form=form )
+    return render_template( 'base.html.j2',
+        title=title, form=form, include_content='form_generic.html.j2', form_id='form-library-new', form_method='POST' )
 
 @current_app.route( '/edit/<int:item_id>', methods=['GET', 'POST'] )
 def cloud_edit( item_id ):

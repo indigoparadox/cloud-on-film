@@ -127,6 +127,7 @@ class NewLibraryForm( FlaskForm, COFBaseFormMixin ):
     machine_name = StringField( 'Machine Name', validators=[DataRequired()] )
     absolute_path = StringField( 'Absolute Path', validators=[DataRequired()] )
     nsfw = BooleanField( 'NSFW' )
+    delete = SubmitField( 'Create' )
 
 class UploadLibraryForm( FlaskForm, COFBaseFormMixin ):
 
@@ -140,7 +141,7 @@ class RenameItemForm( FlaskForm, COFBaseFormMixin ):
     tags = StringField( 'Tags' )
     comment = TextAreaField( 'Comment' )
     location = HiddenField( '', validators=[DataRequired()] )
-    
+
 class SaveSearchForm( FlaskForm, COFBaseFormMixin ):
 
     query = _StringField( 'Search String', validators=[DataRequired()] )
