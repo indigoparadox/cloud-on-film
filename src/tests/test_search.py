@@ -94,7 +94,7 @@ class TestSearch( TestCase ):
 
         DataHelper.create_data_items( self, db )
 
-        search_test = Searcher( '&(name=%random640%)' )
+        search_test = Searcher( 'name=%random640%' )
         search_test.lexer.lex()
         search_test.lexer.dump()
         res = search_test.search( self.user_id ).all()

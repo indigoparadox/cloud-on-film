@@ -1,7 +1,10 @@
 
 from enum import Enum
+
+from sqlalchemy.orm import query
 from cloud_on_film.models import Item
 from flask import current_app
+from . import db
 
 class SearchSyntaxException( Exception ):
     def __init__( self, *args, **kwargs ):
@@ -114,6 +117,9 @@ class SearchLexerParser( object ):
 
                 elif not self.is_value_pending():
                     self.push_and()
+                    if i + 1 < len( self.query_str ) and \
+                    '(' == self.query_str[i + 1]:
+                        skip = True # Skip redundant group.
 
                 else:
                     raise SearchSyntaxException( 'stray "&" detected' )
@@ -124,6 +130,9 @@ class SearchLexerParser( object ):
 
                 elif not self.is_value_pending():
                     self.push_or()
+                    if i + 1 < len( self.query_str ) and \
+                    '(' == self.query_str[i + 1]:
+                        skip = True # Skip redundant group.
 
                 else:
                     raise SearchSyntaxException( 'stray "|" detected' )
@@ -234,12 +243,9 @@ class SearchLexerParser( object ):
             self.push_token()
 
     def _push_group( self, group ):
-        assert( isinstance( self.head, list ) or isinstance( self.head, SearchLexerParser.Group ) )
+        assert( isinstance( self.head, SearchLexerParser.Group ) )
         group.parent = self.head
-        if isinstance( self.head, list ):
-            self.head.append( group )
-        elif isinstance( self.head, SearchLexerParser.Group ):
-            self.head.children.append( group )
+        self.head.children.append( group )
 
     def start_group( self ):
         group = SearchLexerParser.Group()
@@ -247,7 +253,18 @@ class SearchLexerParser( object ):
         self.head = group
 
     def end_group( self ):
-        self.head = self.head.parent
+
+        orphan = self.head
+        parent = orphan.parent
+
+        if isinstance( orphan, SearchLexerParser.Group ) and \
+        isinstance( parent, SearchLexerParser.Group ) and \
+        1 == len( orphan.children ):
+            # Remove this group with only one child.
+            parent.children.remove( orphan )
+            parent.children.append( orphan.children[0] )
+    
+        self.head = parent
 
     def push_and( self ):
         group = SearchLexerParser.And()
@@ -334,31 +351,45 @@ class Searcher( object ):
         if not _tree_start:
             _tree_start = self.lexer.root
 
-        for t in _tree_start.children:
-            if isinstance( t, SearchLexerParser.Group ):
-                current_app.logger.debug( 'search parser descending...' )
-                _query = self.search( user_id, t, _query )
-            elif isinstance( t, SearchLexerParser.Compare ):
+        if isinstance( _tree_start, SearchLexerParser.Group ):
+            child_filter_list = []
+            for c in _tree_start.children:
+                child_filter_list.append( self.search( user_id, c, _query ) )
+            
+            filter_out = None
+            if isinstance( _tree_start, SearchLexerParser.Or ):
+                filter_out = db.or_( *child_filter_list )
 
-                # TODO: Get plugin model or something.
-                from cloud_on_film.files.picture import Picture
+            else:
+                # If it's not an or then it's an and.
+                filter_out = db.and_( *child_filter_list )
 
-                if not hasattr( Picture, t.children[0] ):
-                    raise SearchExecuteException( 'invalid attribute specified' )
-                
-                if SearchLexerParser.Op.eq == t.op:
-                    _query = _query.filter( getattr( Picture, t.children[0] ) == t.children[1] )
-                elif SearchLexerParser.Op.gt == t.op:
-                    _query = _query.filter( getattr( Picture, t.children[0] ) > t.children[1] )
-                elif SearchLexerParser.Op.lt == t.op:
-                    _query = _query.filter( getattr( Picture, t.children[0] ) < t.children[1] )
-                elif SearchLexerParser.Op.gte == t.op:
-                    _query = _query.filter( getattr( Picture, t.children[0] ) >= t.children[1] )
-                elif SearchLexerParser.Op.lte == t.op:
-                    _query = _query.filter( getattr( Picture, t.children[0] ) <= t.children[1] )
-                elif SearchLexerParser.Op.neq == t.op:
-                    _query = _query.filter( getattr( Picture, t.children[0] ) != t.children[1] )
-                elif SearchLexerParser.Op.gt.like == t.op:
-                    _query = _query.filter( getattr( Picture, t.children[0] ).like( t.children[1] ) )
+            if _tree_start.parent:
+                return filter_out
+            else:
+                return _query.filter( filter_out )
+
+        elif isinstance( _tree_start, SearchLexerParser.Compare ):
+
+            # TODO: Get plugin model or something.
+            from cloud_on_film.files.picture import Picture
+
+            if not hasattr( Picture, _tree_start.children[0] ):
+                raise SearchExecuteException( 'invalid attribute specified' )
+            
+            if SearchLexerParser.Op.eq == _tree_start.op:
+                return (getattr( Picture, _tree_start.children[0] ) == _tree_start.children[1])
+            elif SearchLexerParser.Op.gt == _tree_start.op:
+                return (getattr( Picture, _tree_start.children[0] ) > _tree_start.children[1])
+            elif SearchLexerParser.Op.lt == _tree_start.op:
+                return (getattr( Picture, _tree_start.children[0] ) < _tree_start.children[1])
+            elif SearchLexerParser.Op.gte == _tree_start.op:
+                return (getattr( Picture, _tree_start.children[0] ) >= _tree_start.children[1])
+            elif SearchLexerParser.Op.lte == _tree_start.op:
+                return (getattr( Picture, _tree_start.children[0] ) <= _tree_start.children[1])
+            elif SearchLexerParser.Op.neq == _tree_start.op:
+                return (getattr( Picture, _tree_start.children[0] ) != _tree_start.children[1])
+            elif SearchLexerParser.Op.like == _tree_start.op:
+                return (getattr( Picture, _tree_start.children[0] ).like( _tree_start.children[1] ))
 
         return _query
