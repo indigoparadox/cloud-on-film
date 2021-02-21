@@ -1,0 +1,39 @@
+{% macro show_form( form_object, id, action='#', method='POST', class='', group_class='form-group', enable_csrf=True, dropdown_caption='More...' ) %}
+<form id="{{ id }}" action="{{ action }}" method="{{ method }}" class="{{ class }}">
+{% for field in form_object if 'csrf_token' != field.name and field.type != 'HiddenField' and not field.dropdown %}
+<div class="{{ group_class }}">
+{% if field.type != 'SubmitField' %}
+    {{ field.label() }}
+{% endif %}
+    {{ field( class_='form-control mx-2' ) }}
+</div>
+{% endfor %}
+<div class="form-hidden">
+{% for field in form_object if field.type == 'HiddenField' %}
+    {{ field }}
+{% endfor %}
+{% if enable_csrf %}
+{% for field in form_object if 'csrf_token' == field.name %}
+    {{ field }}
+{% endfor %}
+{% endif %}
+</div>
+{% if form_object.has_dropdowns() %}
+<div class="form-group">
+    <button type="button" class="btn btn-secondary mx-3 dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+        {{ dropdown_caption }}
+    </button>
+    <div class="dropdown-menu px-4 py-3">
+    {% for field in form_object if field.dropdown %}
+    <div class="form-group py-1">
+        {% if field.type != 'SubmitField' %}
+            {{ field.label() }}
+        {% endif %}
+        {{ field }}
+    </div>
+    {% endfor %}
+    </div>
+</div>
+{% endif %}
+</form>
+{% endmacro %}

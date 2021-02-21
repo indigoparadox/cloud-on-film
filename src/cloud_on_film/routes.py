@@ -126,6 +126,23 @@ def cloud_libraries_new():
 
     return render_template( 'form_libraries_new.html.j2', form=form )
 
+@current_app.route( '/edit/<int:item_id>', methods=['GET', 'POST'] )
+def cloud_edit( item_id ):
+
+    edit_form = RenameItemForm( request.form )
+
+    title = 'Edit Item'
+
+    include_scripts=[
+        url_for( 'static', filename='edit-item.js' )
+    ]
+
+    if 'GET' == request.method:
+        return render_template( 'base.html.j2',
+            title=title, rename_form=edit_form, item_id=item_id,
+            include_scripts=include_scripts,
+            include_content='form_edit.html.j2' )
+
 @current_app.route( '/libraries/upload', methods=['GET', 'POST'] )
 @current_app.route( '/libraries/upload/<thread_id>', methods=['GET', 'POST'] )
 def cloud_libraries_upload( thread_id='' ):

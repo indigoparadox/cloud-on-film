@@ -31,6 +31,7 @@ var scrollMethod = 'GET';
 <script src="{{ url_for( 'static', filename='featherlight.min.js' ) }}"></script>
 <script src="{{ url_for( 'static', filename='featherlight.gallery.min.js' ) }}"></script>
 <script src="{{ url_for( 'static', filename='libraries.js' ) }}"></script>
+<script src="{{ url_for( 'static', filename='edit-item.js' ) }}"></script>
 {% endblock %}
 
 {% block modals %}
@@ -41,18 +42,7 @@ var scrollMethod = 'GET';
          <h5 class="modal-title">Edit</h5>
       </div>
       <div class="modal-body">
-         <div class="container">
-         <div class="row">
-            <div id="modal-form-preview" class="col-md-4 d-flex flex-column">
-               <div id="modal-form-preview-img" class="mb-auto"></div>
-               <p id="modal-form-type"></p>
-            </div>
-            {{ show_form( rename_form, id='modal-form-rename', class='col-md-4' ) }}
-            <div id="modal-form-tree" class="col-md-4">
-               <div id="modal-input-move"></div>
-            </div>
-         </div>
-         </div>
+         {% include 'form_edit.html.j2' %}
       </div>
       <div class="modal-footer">
          <button type="button" class="btn btn-secondary" data-dismiss="modal" onclick="return saveRename()">Cancel</button>
@@ -68,6 +58,8 @@ var scrollMethod = 'GET';
 <button class="btn btn-primary">Edit</button>
 </div>
 {% endblock %}
+
+{% from 'macros.html.j2' import show_form %}
 
 {% block sidebar_collapsed %}
 <li class="nav-item">

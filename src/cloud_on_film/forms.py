@@ -140,8 +140,7 @@ class RenameItemForm( FlaskForm, COFBaseFormMixin ):
     tags = StringField( 'Tags' )
     comment = TextAreaField( 'Comment' )
     location = HiddenField( '', validators=[DataRequired()] )
-
-
+    
 class SaveSearchForm( FlaskForm, COFBaseFormMixin ):
 
     query = _StringField( 'Search String', validators=[DataRequired()] )
