@@ -47,7 +47,7 @@ class MaxDepthException( Exception ):
 
 class DBItemNotFoundException( Exception ):
     def __init__( self, *args, **kwargs ):
-        super().__init__( *args, **kwargs )
+        super().__init__( *args )
         self.absolute_path = kwargs['absolute_path'] if 'absolute_path' in kwargs else None
         self.folder = kwargs['folder'] if 'folder' in kwargs else None
         self.filename = kwargs['filename'] if 'filename' in kwargs else None

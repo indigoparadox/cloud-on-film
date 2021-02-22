@@ -120,7 +120,17 @@ class TestSearch( TestCase ):
         res = search_test.search( self.user_id ).all()
 
         assert( 2 == len( res ) )
-        assert( [100 == i.width or 500 == i.width for i in res] )
+        for item in res:
+            assert( 100 == item.width or 500 == item.width )
 
-        #assert( [4 == i.aspect for i in res] )
-        #assert( [320 < i.width for i in res] )
+    def test_search_not( self ):
+
+        DataHelper.create_data_items( self, db )
+
+        search_test = Searcher( '!(width=500)' )
+        search_test.lexer.lex()
+        search_test.lexer.dump()
+        res = search_test.search( self.user_id ).all()
+
+        for item in res:
+            assert( 500 != item.width )

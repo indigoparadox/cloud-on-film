@@ -68,6 +68,10 @@ class SearchLexerParser( object ):
         def __str__( self ):
             return 'OR'
 
+    class Not( Group ):
+        def __str__( self ):
+            return 'NOT'
+
     def __init__( self, query_str ):
         self.query_str = query_str
         self.root = SearchLexerParser.Group()
@@ -113,6 +117,19 @@ class SearchLexerParser( object ):
                     # Don't overthink this. We'll just check if the value starts
                     # or ends with % on push to change the op to a LIKE.
                     self.ctok_value += c
+
+            elif '!' == c:
+                if str == self.ctok_type:
+                    self.ctok_value += c
+
+                elif not self.is_value_pending():
+                    self.push_not()
+                    if i + 1 < len( self.query_str ) and \
+                    '(' == self.query_str[i + 1]:
+                        skip = True # Skip redundant group.
+
+                else:
+                    raise SearchSyntaxException( 'stray "!" detected' )
 
             elif '&' == c:
                 if str == self.ctok_type:
@@ -262,6 +279,7 @@ class SearchLexerParser( object ):
 
         if isinstance( orphan, SearchLexerParser.Group ) and \
         isinstance( parent, SearchLexerParser.Group ) and \
+        not isinstance( orphan, SearchLexerParser.Not ) and \
         1 == len( orphan.children ):
             # Remove this group with only one child.
             parent.children.remove( orphan )
@@ -276,6 +294,11 @@ class SearchLexerParser( object ):
 
     def push_or( self ):
         group = SearchLexerParser.Or()
+        self._push_group( group )
+        self.head = group
+
+    def push_not( self ):
+        group = SearchLexerParser.Not()
         self._push_group( group )
         self.head = group
 
@@ -365,6 +388,9 @@ class Searcher( object ):
             filter_out = None
             if isinstance( _tree_start, SearchLexerParser.Or ):
                 filter_out = db.or_( *child_filter_list )
+
+            elif isinstance( _tree_start, SearchLexerParser.Not ):
+                filter_out = db.not_( *child_filter_list )
 
             else:
                 # If it's not an or then it's an and.
