@@ -6,6 +6,8 @@ from cloud_on_film.models import Item
 from flask import current_app
 from . import db
 
+#region exceptions
+
 class SearchSyntaxException( Exception ):
     def __init__( self, *args, **kwargs ):
         super().__init__( *args, **kwargs )
@@ -13,6 +15,8 @@ class SearchSyntaxException( Exception ):
 class SearchExecuteException( Exception ):
     def __init__( self, *args, **kwargs ):
         super().__init__( *args, **kwargs )
+
+#endregion
 
 class SearchLexerParser( object ):
 

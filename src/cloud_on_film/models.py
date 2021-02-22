@@ -22,6 +22,8 @@ class HashEnum( Enum ):
 class StatusEnum( Enum ):
     missing = 1
 
+# region exceptions
+
 class InvalidFolderException( Exception ):
     def __init__( self, *args, **kwargs ):
         self.name = kwargs['name'] if 'name' in kwargs else None
@@ -49,6 +51,10 @@ class DBItemNotFoundException( Exception ):
         self.absolute_path = kwargs['absolute_path'] if 'absolute_path' in kwargs else None
         self.folder = kwargs['folder'] if 'folder' in kwargs else None
         self.filename = kwargs['filename'] if 'filename' in kwargs else None
+
+#endregion
+
+#region mixins
 
 class JSONItemMixin( object ):
 
@@ -130,6 +136,10 @@ class MetaPropertyMixin( object ):
     def to_dict( self, *args, **kwargs ):
         return (self.key, self.value)
 
+# endregion
+
+# region user
+
 class UserMeta( db.Model, MetaPropertyMixin ):
 
     __tablename__ = 'user_meta'
@@ -157,6 +167,10 @@ class User( db.Model, JSONItemMixin ):
     def current_uid():
         # TODO: current_uid
         return 0
+
+# endregion
+
+# region library
 
 class LibraryMeta( db.Model, MetaPropertyMixin ):
 
@@ -223,6 +237,10 @@ class Library( db.Model, JSONItemMixin ):
         '''Return a list of all libraries (as defined by SQLA Library model.'''
 
         return Library.secure_query( user_id ).all()
+
+# endregion
+
+# region tag
 
 items_tags = db.Table( 'items_tags', db.metadata,
     db.Column( 'items_id', db.Integer, db.ForeignKey( 'items.id' ) ),
@@ -316,6 +334,10 @@ class Tag( db.Model ):
     def enumerate_roots():
         return db.session.query( Tag ) \
             .filter( Tag.parent_id == None )
+
+# endregion
+
+# region folder
 
 class FolderMeta( db.Model ):
 
@@ -490,6 +512,10 @@ class Folder( db.Model, JSONItemMixin ):
 
         return folder
 
+# endregion
+
+# region item
+
 class ItemMeta( db.Model, MetaPropertyMixin ):
 
     __tablename__ = 'item_meta'
@@ -611,6 +637,10 @@ class Item( db.Model, JSONItemMixin ):
     @property
     def path( self ):
         return '/'.join( [self.folder.path, self.name] )
+    
+    @property
+    def location( self ):
+        return '/'.join( [self.folder.library.machine_name, self.folder.path] )
 
     @property
     def absolute_path( self ):
@@ -671,6 +701,10 @@ class Item( db.Model, JSONItemMixin ):
                 user_id == Item.owner_id ) )
 
         return query
+
+# endregion
+
+# region plugin
 
 class FileExtension( db.Model ):
 
@@ -742,6 +776,8 @@ class Plugin( db.Model ):
             models.append( plugin_model )
         
         return db.with_polymorphic( Item, models )
+
+# endregion
 
 class SavedSearch( db.Model ):
 

@@ -2,27 +2,6 @@
 
 {% block scripts %}
 <script type="text/javascript">
-
-var thread_id = '{{ id }}';
-var last_progress = 0;
-
-function updateProgress() {
-    $.post( "{{ url_for( 'cloud_libraries_upload', id=id ) }}",
-    function( data ) {
-        $('#current-filename').html( data['filename'] );
-        if( data['progress'] != last_progress ) {
-            $('#thread-progress')
-                .css( { 'width': data['progress'] + '%' } );
-        }
-        last_progress = data['progress'];
-        setTimeout( updateProgress, 1000 );
-    } );
-}
-
-$().ready( function() {
-    updateProgress();
-} );
-
 </script>
 {% endblock %}
 
