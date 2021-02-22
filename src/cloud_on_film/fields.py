@@ -1,5 +1,6 @@
 
 from flask.helpers import url_for
+from flask.templating import render_template
 from wtforms.validators import DataRequired, Optional
 from markupsafe import Markup
 from wtforms import \
@@ -110,45 +111,12 @@ $().ready( function() {{
 
 class BrowserWidget( object ):
 
-    # TODO: Make IDs unique.
     def __call__(self, field, **kwargs ):
-        return '''
-<div class="w-100 mx-2 d-flex browser-field-{field_uuid}">
-    <input type="text" class="form-control flex-fill" name="{field_name}" id="{field_name}" value="{field_data}" />
-    <button type="button" class="btn btn-secondary dropdown-toggle dropdown-toggle-split" data-toggle="dropdown">
-        <span class="sr-only">Open Tree Browser</span>
-    </button>
-    <div class="dropdown-menu dropdown-menu-right pb-5 w-25 h-50">
-        <div id="{field_name}-tree" class="w-100 h-100 overflow-auto"></div>
-        <div class="m-1 d-flex">
-            <button type="button" class="btn btn-secondary ml-auto">Cancel</button>
-            <button type="button" class="btn btn-primary ml-1">Select Folder</button>
-        </div>
-    </div>
-</div>
-<script type="text/javascript">
-$().ready( function() {{
-
-    $('.browser-field-{field_uuid}').on( 'hide.bs.dropdown', function ( e ) {{
-        if( undefined == e.clickEvent ) {{
-            return true;
-        }}
-        let clickTarget = e.clickEvent.target;
-        if( 0 < $(clickTarget).parents( '.browser-field-{field_uuid} .dropdown-menu' ).length ) {{
-            // Don't close the dropdown by clicking inside the tree.
-            return false;
-        }}
-        return true;
-    }} );
-
-    $('.browser-field-{field_uuid} #{field_name}-tree').enableBrowserTree( "{browser_url}", [1] );
-}} );
-</script>
-'''.format(
-    field_name=field.name,
-    field_data=field.data,
-    browser_url=url_for( 'cloud_folders_ajax' ),
-    field_uuid=str( uuid.uuid1() ) )
+        return render_template( 'field-tree.html.j2',
+            field_name=field.name,
+            field_data=field.data,
+            browser_url=url_for( 'cloud_folders_ajax' ),
+            field_uuid=str( uuid.uuid1() ) )
 
 #endregion
 

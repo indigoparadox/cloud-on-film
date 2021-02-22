@@ -54,6 +54,7 @@ class WidgetRenderer( object ):
 class FormWidget( object ):
 
     template_name = 'form_generic.html.j2'
+    default_classes = "w-100"
 
     def __init__( self, form=None, **kwargs ):
 
@@ -71,10 +72,13 @@ class FormWidget( object ):
         #if hasattr( form, '_form_id' ) and not 'form_id' in self.kwargs:
         self.kwargs[self.form_pfx + '_id'] = self.form_id
 
+        if not 'form_class' in self.kwargs:
+            self.kwargs[self.form_pfx + '_class'] = self.default_classes
+
         # Aggregate classes from form and kwargs.
-        if hasattr( form, '_form_class' ) and not 'form_class' in self.kwargs:
-            self.kwargs[self.form_pfx + '_class'] = form._form_class
-        elif hasattr( form, '_form_class' ) and 'form_id' in self.kwargs:
+        #if hasattr( form, '_form_class' ) and not 'form_class' in self.kwargs:
+        #    self.kwargs[self.form_pfx + '_class'] = form._form_class
+        if hasattr( form, '_form_class' ) and 'form_class' in self.kwargs:
             self.kwargs[self.form_pfx + '_class'] += form._form_class
 
         if hasattr( form, '_form_method' ) and not 'form_method' in self.kwargs:

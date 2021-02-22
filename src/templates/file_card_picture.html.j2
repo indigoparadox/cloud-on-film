@@ -32,18 +32,15 @@
             <!-- button bar -->
             <div class="d-flex flex-column">
                 <div class="d-flex">
+                    {% if nsfw %}
+                    <small class="text-dark m-1 badge badge-danger nsfw">NSFW</small>
+                    {% endif %}
+                </div>
+                <div class="d-flex">
                     <small class="text-bright m-1 badge badge-secondary dimensions">{{ width }}x{{ height }}</small>
                     {% if aspect %}
                     <small class="text-bright m-1 badge badge-success aspect-ratio">{{ aspect }}</small>
                     {% endif %}
-                </div>
-                <div class="d-flex">
-                    {% if nsfw %}
-                    <small class="text-dark m-1 badge badge-danger nsfw">NSFW</small>
-                    {% endif %}
-                    <small class="edit m-1 ml-auto badge badge-primary">
-                        <a href="{{ url_for( 'cloud_edit', item_id=id ) }}" class="text-white m-0" onclick="return editItem( {{ id }} );">Edit</a>
-                    </small>
                 </div>
                 <small class="rating mt-2 text-nowrap">
                 {% for r in range( rating ) %}
