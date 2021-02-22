@@ -66,48 +66,10 @@ function editItem( id ) {
             $(this).fadeIn();
         } );
  
-       let treeLoaded = $.Deferred();
-       let treeLoadFinished = false;
- 
-       $('#form-edit-tree').jstree( {
-            core: {
-                data: {
-                    url: flaskRoot + 'ajax/folders',
-                    data: function( node ) {
-                        return {  id: node.id };
-                    }
-                }
-            }
-        } );
-        $('#form-edit-tree').on( 'loaded.jstree', function( e, treeData ) {
-            // Open the root first.
-            let rootNode = treeData.instance.element.find( '#root' );
-            treeData.instance.open_node( rootNode );
-        } );
-        $('#form-edit-tree').on( 'after_open.jstree', function( e, parentNode ) {
-            if( treeLoadFinished ) {
-                return;
-            }
- 
-            // Iterate through current item's parents starting from the root.
-            let parentIdx = 0;
-            for( parentIdx in itemData['parents'] ) {
-                parentID = itemData['parents'][parentIdx];
-    
-                // Try to find the current parent in the tree's loaded nodes and open it.
-                parentNode.instance.element.find( '#' + parentID ).each( function( i ) {
-                    parentNode.instance.open_node( $(this) );
-                    if( parentIdx == itemData['parents'].length - 1 ) {
-                    // Last parent should be visible, now.
-                    treeLoaded.resolve( parentNode, this );
-                    }
-                } );
-            }
-        } );
- 
         $('#edit-modal').modal( 'show' );
-    
-        $.when( treeLoaded ).done( function( parentNode, node ) {
+        
+        $.when( $('#form-edit-tree').enableBrowserTree( flaskRoot + 'ajax/folders', itemData['parents'] ) )
+        .done( function( parentNode, node ) {
             // All parents are loaded, so select the last one.
             parentNode.instance.deselect_all();
             parentNode.instance.select_node( node, true );

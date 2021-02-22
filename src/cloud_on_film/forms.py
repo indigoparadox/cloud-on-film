@@ -21,6 +21,7 @@ from .fields import \
     SubmitField, \
     LabelField, \
     ProgressField, \
+    BrowserField, \
     COFBaseFormMixin
 
 class NewLibraryForm( FlaskForm, COFBaseFormMixin ):
@@ -42,21 +43,37 @@ class UploadLibraryForm( FlaskForm, COFBaseFormMixin ):
     _form_mode = 'POST'
     _include_scripts_callbacks = [lambda: url_for( 'static', filename='field-progress.js')]
     _form_enctype = 'multipart/form-data'
-    
+
     upload = FileField( 'Library Import File' )
     progress = ProgressField( 'Upload Progress' )
     submit = SubmitField( 'Submit' )
 
-class RenameItemForm( FlaskForm, COFBaseFormMixin ):
+class EditItemIncludesMixin:
+
+    _include_scripts_callbacks = [
+        lambda: url_for( 'static', filename='typeahead.bundle.min.js' ),
+        lambda: url_for( 'static', filename='bootstrap-tagsinput.min.js' ),
+        lambda: url_for( 'static', filename='jstree.min.js' ),
+        lambda: url_for( 'static', filename='field-browser.js' ),
+        lambda: url_for( 'static', filename='edit-item.js' ) ]
+
+    _include_styles_callbacks = [
+        lambda: url_for( 'static', filename='bootstrap-tagsinput.css' ),
+        lambda: url_for( 'static', filename='jstree/style.min.css' ) ]
+
+class RenameItemForm( FlaskForm, COFBaseFormMixin, EditItemIncludesMixin ):
+
+    _form_id = 'form-edit-item'
 
     id = HiddenField( '' )
     name = StringField( 'Name', validators=[DataRequired()] )
-    #nsfw = BooleanField( 'NSFW' )
     tags = StringField( 'Tags' )
-    location = StringField( 'Location', validators=[DataRequired()] )
+    location = BrowserField( 'Location', validators=[DataRequired()] )
     comment = TextAreaField( 'Comment' )
 
-class EditBatchItemForm( FlaskForm, COFBaseFormMixin ):
+class EditBatchItemForm( FlaskForm, COFBaseFormMixin, EditItemIncludesMixin ):
+
+    _form_id = 'form-edit-batch-item'
 
     items = FieldList( FormField( RenameItemForm ) )
 

@@ -380,7 +380,7 @@ class Searcher( object ):
 
             if not hasattr( Picture, _tree_start.children[0] ):
                 raise SearchExecuteException( 'invalid attribute specified' )
-            
+
             if SearchLexerParser.Op.eq == _tree_start.op:
                 return (getattr( Picture, _tree_start.children[0] ) == _tree_start.children[1])
             elif SearchLexerParser.Op.gt == _tree_start.op:

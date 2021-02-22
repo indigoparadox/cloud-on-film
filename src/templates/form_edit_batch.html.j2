@@ -1,14 +1,16 @@
 
 {% from 'macros.html.j2' import show_form %}
 
+<form id="{{ form_edit_batch_id }}" class="{{ form_edit_batch_class }}">
+
 <div class="d-flex flex-row flex-wrap h-100">
-    {% for field in item_form %}
+    {# for field in item_form
     <div class="row">
         {{ field.label }}
     </div>
-    {% endfor %}
+    {% endfor #}
 
-    {% for item_form in edit_form.items %}
+    {% for item_form in form_edit_batch_item.items %}
     <div class="d-flex">
         <div class="preview">
             <!-- TODO: Get tag from plugin? -->
@@ -27,3 +29,5 @@
     </div>
     {% endfor %}
 </div>
+
+</form>

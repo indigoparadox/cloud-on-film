@@ -9,9 +9,7 @@ from sqlalchemy import func
 from sqlalchemy.inspection import inspect
 from sqlalchemy.orm.collections import attribute_mapped_collection
 from sqlalchemy.ext.associationproxy import association_proxy
-from flask import current_app, render_template
 
-from cloud_on_film.forms import RenameItemForm
 from . import db
 
 class HashEnum( Enum ):

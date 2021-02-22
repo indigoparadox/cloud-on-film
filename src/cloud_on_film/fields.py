@@ -1,4 +1,5 @@
 
+from flask.helpers import url_for
 from wtforms.validators import DataRequired, Optional
 from markupsafe import Markup
 from wtforms import \
@@ -9,6 +10,7 @@ from wtforms import \
     HiddenField as _HiddenField, \
     TextAreaField as _TextAreaField, \
     SubmitField as _SubmitField
+import uuid
 
 class COFBaseFieldMixin( object ):
     def process_kwargs( self, kwargs ):
@@ -106,6 +108,48 @@ $().ready( function() {{
 </div>
 '''.format( update_url=field.url )
 
+class BrowserWidget( object ):
+
+    # TODO: Make IDs unique.
+    def __call__(self, field, **kwargs ):
+        return '''
+<div class="w-100 mx-2 d-flex browser-field-{field_uuid}">
+    <input type="text" class="form-control flex-fill" name="{field_name}" id="{field_name}" value="{field_data}" />
+    <button type="button" class="btn btn-secondary dropdown-toggle dropdown-toggle-split" data-toggle="dropdown">
+        <span class="sr-only">Open Tree Browser</span>
+    </button>
+    <div class="dropdown-menu dropdown-menu-right pb-5 w-25 h-50">
+        <div id="{field_name}-tree" class="w-100 h-100 overflow-auto"></div>
+        <div class="m-1 d-flex">
+            <button type="button" class="btn btn-secondary ml-auto">Cancel</button>
+            <button type="button" class="btn btn-primary ml-1">Select Folder</button>
+        </div>
+    </div>
+</div>
+<script type="text/javascript">
+$().ready( function() {{
+
+    $('.browser-field-{field_uuid}').on( 'hide.bs.dropdown', function ( e ) {{
+        if( undefined == e.clickEvent ) {{
+            return true;
+        }}
+        let clickTarget = e.clickEvent.target;
+        if( 0 < $(clickTarget).parents( '.browser-field-{field_uuid} .dropdown-menu' ).length ) {{
+            // Don't close the dropdown by clicking inside the tree.
+            return false;
+        }}
+        return true;
+    }} );
+
+    $('.browser-field-{field_uuid} #{field_name}-tree').enableBrowserTree( "{browser_url}", [1] );
+}} );
+</script>
+'''.format(
+    field_name=field.name,
+    field_data=field.data,
+    browser_url=url_for( 'cloud_folders_ajax' ),
+    field_uuid=str( uuid.uuid1() ) )
+
 #endregion
 
 #region custom_fields
@@ -139,15 +183,29 @@ class LabelField( Field, COFBaseFieldMixin ):
         return None
 
 class BrowserField( Field, COFBaseFieldMixin ):
-    pass
+
+    widget = BrowserWidget()
+
+    def __init__( self, *args, **kwargs ):
+        kwargs = self.process_kwargs( kwargs )
+        #self._form = kwargs['_form']
+        super().__init__( *args, **kwargs )
+
+    def label( self ):
+        return Markup( '<p>{}</p>'.format( self._label ) )
+
+    def _value( self ):
+        return 'qqq'
+
+    def default( self ):
+        return 'xxx'
+
+    def process_formdata( self, valuelist ):
+        return 'rrr'
 
 class ProgressField( Field, COFBaseFieldMixin ):
 
     widget = ProgressWidget()
-
-    class ProgressMeta( object ):
-        def render_field( self, *args, **kwargs ):
-            return ''
 
     def __init__( self, *args, **kwargs ):
         kwargs = self.process_kwargs( kwargs )

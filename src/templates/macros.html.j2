@@ -1,5 +1,9 @@
-{% macro show_form( form_object, id, action='#', method='POST', class='', group_class='form-group', enable_csrf=True, dropdown_caption='More...' ) %}
+{% macro show_form( form_object, id, action='#', method='POST', enctype='', class='', group_class='form-group', enable_csrf=True, dropdown_caption='More...' ) %}
+{% if enctype != '' %}
+<form id="{{ id }}" action="{{ action }}" method="{{ method }}" class="{{ class }}" enctype="{{ enctype }}">
+{% else %}
 <form id="{{ id }}" action="{{ action }}" method="{{ method }}" class="{{ class }}">
+{% endif %}
 {% for field in form_object if 'csrf_token' != field.name and field.type != 'HiddenField' and not field.dropdown %}
 <div class="{{ group_class }}">
 {% if field.type != 'SubmitField' %}
