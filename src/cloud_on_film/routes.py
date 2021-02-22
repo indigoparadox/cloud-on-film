@@ -55,6 +55,8 @@ def url_self( **args ):
 
 current_app.jinja_env.globals.update( url_self=url_self )
 
+# region preview
+
 @current_app.route( '/preview/<int:file_id>' )
 @current_app.route( '/preview/<int:file_id>/<int:width>/<int:height>' )
 def cloud_plugin_preview( file_id, width=160, height=120 ):
@@ -111,6 +113,10 @@ def cloud_plugin_fullsize( file_id ):
     with open( item.absolute_path, 'rb' ) as pic_f:
         return send_file( io.BytesIO( pic_f.read() ), file_type )
 
+# endregion
+
+# region library
+
 @current_app.route( '/libraries/new', methods=['GET', 'POST'] )
 def cloud_libraries_new():
 
@@ -138,21 +144,6 @@ def cloud_libraries_new():
     render.add_widget( form_widget )
 
     return render.render()
-
-@current_app.route( '/edit/<int:item_id>', methods=['GET', 'POST'] )
-def cloud_edit( item_id ):
-
-    render = WidgetRenderer( 'base.html.j2', title='Edit Item' )
-
-    item = Item.secure_query( User.current_uid() ) \
-        .filter( Item.id == item_id ) \
-        .first()
-
-    edit_widget = EditItemFormWidget( item )
-    render.add_widget( edit_widget )
-
-    if 'GET' == request.method:
-        return render.render()
 
 @current_app.route( '/libraries/upload', methods=['GET', 'POST'] )
 @current_app.route( '/libraries/upload/<thread_id>', methods=['GET', 'POST'] )
@@ -262,6 +253,9 @@ def cloud_libraries( machine_name=None, relative_path=None, page=0 ):
             'file_item.html.j2', **l_globals, file_item=file_item,
             page=page, edit_form=edit_form, search_form=search_form )
 
+# endregion
+
+# region search
 
 @current_app.route( '/search/save', methods=['POST'] )
 def cloud_items_search_save():
@@ -406,6 +400,10 @@ def cloud_items_search():
         'libraries.html.j2', items=items, save_search_form=save_search_form,
         page=page, edit_form=edit_form, search_form=search_form )
 
+# endregion
+
+# region ajax_json
+
 @current_app.route( '/ajax/item/save', methods=['POST'] )
 def cloud_item_ajax_save():
 
@@ -481,26 +479,6 @@ def cloud_item_ajax_json( item_id ):
     item_dict['parents'] = parents
 
     return jsonify( item_dict )
-
-@current_app.route( '/ajax/html/items/<int:folder_id>/<int:page>', methods=['GET'] )
-def cloud_items_ajax_json( folder_id, page ):
-
-    current_uid = User.current_uid()
-
-    offset = page * current_app.config['ITEMS_PER_PAGE']
-
-    items = Item.secure_query( current_uid ) \
-        .filter( Item.folder_id == folder_id ) \
-        .order_by( Item.name ) \
-        .offset( offset ) \
-        .limit( current_app.config['ITEMS_PER_PAGE'] ) \
-        .all()
-
-    #return jsonify( [i.to_dict( ignore_keys=['parent', 'folder'] ) for i in items] )
-    return jsonify( [m.library_html() for m in items] )
-
-# region ajax_json
-
 
 @current_app.route( '/ajax/libraries/upload', methods=['GET'] )
 def cloud_ajax_libraries_upload():
@@ -628,6 +606,23 @@ def cloud_items_ajax_search_delete():
 # endregion
 
 # region ajax_html
+
+@current_app.route( '/ajax/html/items/<int:folder_id>/<int:page>', methods=['GET'] )
+def cloud_items_ajax_json( folder_id, page ):
+
+    current_uid = User.current_uid()
+
+    offset = page * current_app.config['ITEMS_PER_PAGE']
+
+    items = Item.secure_query( current_uid ) \
+        .filter( Item.folder_id == folder_id ) \
+        .order_by( Item.name ) \
+        .offset( offset ) \
+        .limit( current_app.config['ITEMS_PER_PAGE'] ) \
+        .all()
+
+    #return jsonify( [i.to_dict( ignore_keys=['parent', 'folder'] ) for i in items] )
+    return jsonify( [m.library_html() for m in items] )
 
 @current_app.route( '/ajax/html/search', methods=['GET'] )
 def cloud_items_ajax_search():
