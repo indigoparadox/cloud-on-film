@@ -1,8 +1,9 @@
 
+import uuid
 from flask.helpers import url_for
 from flask.templating import render_template
-from wtforms.validators import DataRequired, Optional
 from markupsafe import Markup
+from wtforms.validators import DataRequired, Optional
 from wtforms import \
     Field, \
     StringField as _StringField, \
@@ -11,7 +12,6 @@ from wtforms import \
     HiddenField as _HiddenField, \
     TextAreaField as _TextAreaField, \
     SubmitField as _SubmitField
-import uuid
 
 class COFBaseFieldMixin( object ):
     def process_kwargs( self, kwargs ):
@@ -82,7 +82,7 @@ class SubmitField( _SubmitField, COFBaseFieldMixin ):
 #region widgets
 
 class DummyWidget( object ):
-    
+
     '''A convenience widget with no field and just a label.'''
 
     def __init__( self, html_tag='', prefix_label=True ):
@@ -93,6 +93,8 @@ class DummyWidget( object ):
         return ''
 
 class ProgressWidget( object ):
+
+    ''' A widget for displaying a progress bar using AJAX. '''
 
     def __call__( self, field, **kwargs ):
         return '''
@@ -136,7 +138,7 @@ class LabelField( Field, COFBaseFieldMixin ):
         self.filters = []
         self._label = args[0]
         self.meta = LabelField.DummyMeta()
-        super( Field, self ).__init__()
+        super( LabelField, self ).__init__()
 
     def label( self ):
         return Markup( '<p>{}</p>'.format( self._label ) )
@@ -158,9 +160,6 @@ class BrowserField( Field, COFBaseFieldMixin ):
         kwargs = self.process_kwargs( kwargs )
         #self._form = kwargs['_form']
         super().__init__( *args, **kwargs )
-
-    def label( self ):
-        return Markup( '<p>{}</p>'.format( self._label ) )
 
     def _value( self ):
         return 'qqq'
@@ -186,9 +185,6 @@ class ProgressField( Field, COFBaseFieldMixin ):
         else:
             self.url = ''
         super().__init__( *args, **kwargs )
-
-    def label( self ):
-        return Markup( '<p>{}</p>'.format( self._label ) )
 
     def _value( self ):
         return None

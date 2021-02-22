@@ -1,24 +1,23 @@
 
 from enum import Enum
 
-from sqlalchemy.orm import query
 from cloud_on_film.models import Item
-from flask import current_app
 from . import db
 
 #region exceptions
 
 class SearchSyntaxException( Exception ):
-    def __init__( self, *args, **kwargs ):
-        super().__init__( *args, **kwargs )
+    pass
 
 class SearchExecuteException( Exception ):
-    def __init__( self, *args, **kwargs ):
-        super().__init__( *args, **kwargs )
+    pass
 
 #endregion
 
 class SearchLexerParser( object ):
+
+    ''' Given a query string, creates a parse tree to be translated
+    into SQL by the searcher. '''
 
     class Op( Enum ):
         eq = 0
@@ -111,7 +110,7 @@ class SearchLexerParser( object ):
                     raise SearchSyntaxException( 'invalid "%%" in attribute name' )
 
                 else:
-                    # Don't overthink this. We'll just check if the value starts 
+                    # Don't overthink this. We'll just check if the value starts
                     # or ends with % on push to change the op to a LIKE.
                     self.ctok_value += c
 
@@ -195,7 +194,7 @@ class SearchLexerParser( object ):
             elif '(' == c:
                 if str == self.ctok_type:
                     self.ctok_value += c
-                
+
                 elif '' == self.ctok_value:
                     self.start_group()
 
@@ -205,7 +204,7 @@ class SearchLexerParser( object ):
             elif ')' == c:
                 if str == self.ctok_type and self.ctok_quotes:
                     self.ctok_value += c
-                
+
                 elif '' != self.ctok_value and \
                 str == self.ctok_type and \
                 not self.ctok_quotes:
@@ -267,7 +266,7 @@ class SearchLexerParser( object ):
             # Remove this group with only one child.
             parent.children.remove( orphan )
             parent.children.append( orphan.children[0] )
-    
+
         self.head = parent
 
     def push_and( self ):
@@ -296,10 +295,10 @@ class SearchLexerParser( object ):
 
     def push_lte( self ):
         self.last_op = SearchLexerParser.Op.lte
-        
+
     def push_eq( self ):
-        self.last_op = SearchLexerParser.Op.eq    
-    
+        self.last_op = SearchLexerParser.Op.eq
+
     def push_token( self ):
 
         # Change the OP to LIKE if we have a trailing %.
@@ -318,7 +317,7 @@ class SearchLexerParser( object ):
 
         elif None == self.last_op:
             raise SearchSyntaxException( 'missing operator' )
-        
+
         if None != self.last_attrib and \
         None != self.last_value and \
         None != self.last_op:
@@ -343,7 +342,10 @@ class SearchLexerParser( object ):
             t.dump( 1 )
 
 class Searcher( object ):
-    
+
+    ''' Executes the search on the database using the tree created by
+    the lexer. '''
+
     def __init__( self, query_str ):
         self.lexer = SearchLexerParser( query_str )
 
@@ -359,7 +361,7 @@ class Searcher( object ):
             child_filter_list = []
             for c in _tree_start.children:
                 child_filter_list.append( self.search( user_id, c, _query ) )
-            
+
             filter_out = None
             if isinstance( _tree_start, SearchLexerParser.Or ):
                 filter_out = db.or_( *child_filter_list )

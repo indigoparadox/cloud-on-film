@@ -10,6 +10,8 @@ from sqlalchemy.inspection import inspect
 from sqlalchemy.orm.collections import attribute_mapped_collection
 from sqlalchemy.ext.associationproxy import association_proxy
 
+from flask import current_app
+
 from . import db
 
 class HashEnum( Enum ):
@@ -44,8 +46,8 @@ class MaxDepthException( Exception ):
     pass
 
 class DBItemNotFoundException( Exception ):
-    def __init__( self, **kwargs ):
-        #super().__init__( *args, **kwargs )
+    def __init__( self, *args, **kwargs ):
+        super().__init__( *args, **kwargs )
         self.absolute_path = kwargs['absolute_path'] if 'absolute_path' in kwargs else None
         self.folder = kwargs['folder'] if 'folder' in kwargs else None
         self.filename = kwargs['filename'] if 'filename' in kwargs else None
@@ -56,11 +58,14 @@ class DBItemNotFoundException( Exception ):
 
 class JSONItemMixin( object ):
 
-    def to_dict( self, ignore_keys=[], max_depth=-1 ):
+    def to_dict( self, ignore_keys=None, max_depth=-1 ):
         dict_out = {}
 
         if 0 == max_depth:
             raise MaxDepthException
+
+        if not ignore_keys:
+            ignore_keys = []
 
         for key in inspect( self ).attrs.keys():
             if key in ignore_keys:
@@ -78,7 +83,7 @@ class JSONItemMixin( object ):
                             # Translate list of tuples into a dict.
                             dict_out[key] = {}
                             for item in val:
-                                tuple_out = item.to_dict( 
+                                tuple_out = item.to_dict(
                                     ignore_keys=ignore_keys,
                                     max_depth=(max_depth - 1) )
                                 dict_out[key][tuple_out[0]] = tuple_out[1]
@@ -102,8 +107,8 @@ class JSONItemMixin( object ):
                     if hasattr( val[dict_key], 'to_dict' ):
                         dict_out[key][dict_key] = val[dict_key].to_dict()
 
-                        # Meta properties are a tuple with a redundant "key" 
-                        # and "val". Just keep the "val" if this arrangement 
+                        # Meta properties are a tuple with a redundant "key"
+                        # and "val". Just keep the "val" if this arrangement
                         # is detected.
                         if isinstance( dict_out[key][dict_key], tuple ) and \
                         2 == len( dict_out[key][dict_key] ) and \
@@ -124,6 +129,8 @@ class JSONItemMixin( object ):
         return dict_out
 
 class MetaPropertyMixin( object ):
+
+    ''' Common properties ofmetadata key-value pairs. '''
 
     def __str__( self ):
         return self.value
@@ -171,6 +178,9 @@ class User( db.Model, JSONItemMixin ):
 # region library
 
 class LibraryMeta( db.Model, MetaPropertyMixin ):
+
+    ''' A model for storing variable metadata key-value pairs related
+    to Libraries. '''
 
     __tablename__ = 'library_meta'
 
@@ -246,6 +256,9 @@ items_tags = db.Table( 'items_tags', db.metadata,
 
 class TagMeta( db.Model, MetaPropertyMixin ):
 
+    ''' A model for storing variable metadata key-value pairs related
+    to Tags. '''
+
     __tablename__ = 'tag_meta'
 
     id = db.Column( db.Integer, primary_key=True )
@@ -265,7 +278,7 @@ class Tag( db.Model ):
     __tablename__ = 'tags'
 
     id = db.Column( db.Integer, primary_key=True )
-    parent_id = db.Column( 
+    parent_id = db.Column(
         db.Integer, db.ForeignKey( 'tags.id' ), nullable=True )
     parent = db.relationship( 'Tag', remote_side=[id] )
     name = db.Column(
@@ -288,7 +301,7 @@ class Tag( db.Model ):
 
     @property
     def path( self ):
-        
+
         parent_list = []
         tag_iter = self
 
@@ -319,7 +332,9 @@ class Tag( db.Model ):
             if not tag_iter:
                 # Create the missing new tag.
                 tag_iter = Tag( parent_id=tag_parent_id, name=path[0] )
-                current_app.logger.info( 'creating new tag {} under {}'.format( tag_iter.path, parent_path ) )
+                current_app.logger.info(
+                    'creating new tag %s under %s',
+                    tag_iter.path, parent_path )
                 db.session.add( tag_iter )
                 db.session.commit()
 
@@ -338,6 +353,9 @@ class Tag( db.Model ):
 # region folder
 
 class FolderMeta( db.Model ):
+
+    ''' A model for storing variable metadata key-value pairs related
+    to Folders. '''
 
     __tablename__ = 'folder_meta'
 
@@ -386,7 +404,7 @@ class Folder( db.Model, JSONItemMixin ):
         db.select(
             [func.cast( Library.nsfw, db.Integer )],
             Library.id == library_id ).label( 'nsfw' ) )
-        
+
     def __str__( self ):
         return self.name
 
@@ -395,7 +413,7 @@ class Folder( db.Model, JSONItemMixin ):
 
     @property
     def path( self, include_lib=False ):
-        
+
         parent_list = []
         folder_iter = self
 
@@ -433,7 +451,7 @@ class Folder( db.Model, JSONItemMixin ):
 
         path_right = path.split( '/' )
         path_left = []
-        
+
         folder_iter = None
         parent = None
 
@@ -454,22 +472,28 @@ class Folder( db.Model, JSONItemMixin ):
             absolute_path = os.path.join( library.absolute_path, path_right[0] )
             if parent:
                 absolute_path = os.path.join( parent.absolute_path, path_right[0] )
-            
+
             if not os.path.exists( absolute_path ) and not folder_iter:
                 # Folder does not exist on FS or in DB.
-                raise InvalidFolderException( name=path[0], library_id=library.id, absolute_path=absolute_path )
+                raise InvalidFolderException(
+                    name=path[0], library_id=library.id, absolute_path=absolute_path )
 
             elif os.path.exists( absolute_path ) and not folder_iter:
                 # Add folder to DB if it does exist.
-                current_app.logger.info( 'creating missing DB entry for {} under {}...'.format( absolute_path, parent ) )
-                
+                current_app.logger.info(
+                    'creating missing DB entry for {} under {}...'.format(
+                        absolute_path, parent ) )
+
                 # Assume we're under the root by default, but use parent if available.
                 parent_id = None
                 if parent:
                     parent_id = parent.id
 
                 assert( library )
-                folder_iter = Folder( parent_id=parent_id, library_id=library.id, name=path_right[0] )
+                folder_iter = Folder(
+                    parent_id=parent_id,
+                    library_id=library.id,
+                    name=path_right[0] )
                 db.session.add( folder_iter )
                 db.session.commit()
             path_left.append( path_right.pop( 0 ) )
@@ -596,14 +620,19 @@ class Item( db.Model, JSONItemMixin ):
         if tag.parent and \
         not '' == tag.parent.name and \
         not self in tag.parent.files():
-            current_app.logger.info( 'adding parent tag {} to {}...'.format( tag.parent.path, self.absolute_path ) )
+            current_app.logger.info(
+                'adding parent tag %s to %s...',
+                    tag.parent.path, self.absolute_path )
             tag.parent._items.append( self )
         elif tag.parent:
             self._check_tag_heir( tag.parent )
 
-    def fix_tags( self, append=[] ):
+    def fix_tags( self, append=None ):
 
         # TODO
+
+        if not append:
+            append = []
 
         for tag in append:
             self._tags.append( tag )
@@ -635,7 +664,7 @@ class Item( db.Model, JSONItemMixin ):
     @property
     def path( self ):
         return '/'.join( [self.folder.path, self.name] )
-    
+
     @property
     def location( self ):
         return '/'.join( [self.folder.library.machine_name, self.folder.path] )
@@ -723,6 +752,9 @@ class FileExtension( db.Model ):
 
 class PluginMeta( db.Model, MetaPropertyMixin ):
 
+    ''' A model for storing variable metadata key-value pairs related
+    to Plugins. '''
+
     __tablename__ = 'plugin_meta'
 
     id = db.Column( db.Integer, primary_key=True )
@@ -772,7 +804,7 @@ class Plugin( db.Model ):
             plugin_module = importlib.import_module( plugin.module_path )
             plugin_model = getattr( plugin_module, plugin.model_name )
             models.append( plugin_model )
-        
+
         return db.with_polymorphic( Item, models )
 
 # endregion

@@ -1,6 +1,6 @@
 
 from collections import namedtuple
-from flask import render_template, url_for
+from flask import render_template
 
 from cloud_on_film.forms import EditBatchItemForm, RenameItemForm
 
@@ -72,7 +72,7 @@ class FormWidget( object ):
         #if hasattr( form, '_form_id' ) and not 'form_id' in self.kwargs:
         self.kwargs[self.form_pfx + '_id'] = self.form_id
 
-        if not 'form_class' in self.kwargs:
+        if 'form_class' not in self.kwargs:
             self.kwargs[self.form_pfx + '_class'] = self.default_classes
 
         # Aggregate classes from form and kwargs.
@@ -81,19 +81,22 @@ class FormWidget( object ):
         if hasattr( form, '_form_class' ) and 'form_class' in self.kwargs:
             self.kwargs[self.form_pfx + '_class'] += form._form_class
 
-        if hasattr( form, '_form_method' ) and not 'form_method' in self.kwargs:
+        if hasattr( form, '_form_method' ) and 'form_method' not in self.kwargs:
             self.kwargs[self.form_pfx + '_method'] = form._form_method
-        elif not 'form_method' in self.kwargs:
+        elif 'form_method' not in self.kwargs:
             self.kwargs[self.form_pfx + '_method'] = 'GET'
 
         # Use callbacks as url_for() has troubles in early execution.
-        if hasattr( form, '_include_scripts_callbacks' ) and not 'include_scripts' in self.kwargs:
-            self.kwargs['include_scripts'] = [s() for s in form._include_scripts_callbacks]
+        if hasattr( form, '_include_scripts_callbacks' ) and \
+        'include_scripts' not in self.kwargs:
+            self.kwargs['include_scripts'] = \
+                [s() for s in form._include_scripts_callbacks]
 
-        if hasattr( form, '_include_styles_callbacks' ) and not 'include_styles' in self.kwargs:
+        if hasattr( form, '_include_styles_callbacks' ) and \
+        'include_styles' not in self.kwargs:
             self.kwargs['include_styles'] = [s() for s in form._include_styles_callbacks]
 
-        if hasattr( form, '_form_enctype' ) and not 'form_enctype' in self.kwargs:
+        if hasattr( form, '_form_enctype' ) and 'form_enctype' not in self.kwargs:
             self.kwargs['form_enctype'] = form._form_enctype
 
         self.kwargs[self.form_pfx] = form

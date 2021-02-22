@@ -112,7 +112,7 @@ class Picture( Item ):
                 (self.height.expression == self.width, 1),
             ], else_=0 ).label( 'aspect' ) )
 
-    def to_dict( self, ignore_keys=[], max_depth=-1 ):
+    def to_dict( self, ignore_keys=None, max_depth=-1 ):
         dict_out = super().to_dict( ignore_keys, max_depth )
 
         status_out = 'ok'
@@ -120,7 +120,7 @@ class Picture( Item ):
         try:
             type_out = self.check_image_type()
         except ImageTypeException as e:
-            status = 'error'
+            status_out = 'error'
             type_out = e.image_type
 
         dict_out['check'] = {
@@ -169,7 +169,7 @@ class Picture( Item ):
         if not os.path.exists( current_app.config['THUMBNAIL_PATH'] ):
             os.makedirs( current_app.config['THUMBNAIL_PATH'] )
 
-        thumb_path = os.path.join( 
+        thumb_path = os.path.join(
             current_app.config['THUMBNAIL_PATH'],
             '{}_{}x{}.jpg'.format( self.hash, size[0], size[1] ) )
 
