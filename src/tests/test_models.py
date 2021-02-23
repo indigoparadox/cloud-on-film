@@ -39,33 +39,34 @@ class TestModels( TestCase ):
         lib_test = Library.secure_query( self.user_id ) \
             .filter( Library.machine_name == 'testing_library' ) \
             .first()
-        assert( lib_test.machine_name == 'testing_library' )
+        self.assertEqual( lib_test.machine_name, 'testing_library' )
 
     def test_library_enumerate_all( self ):
         current_app.logger.debug( 'testing library_enumerate_all...' )
         libs = Library.enumerate_all( self.user_id )
-        assert( 2 == len( libs ) )
-        assert( 'testing_library' == libs[0].machine_name )
-        assert( 'testing_library' == str( libs[0] ) )
+        self.assertEqual( 2, len( libs ) )
+        self.assertEqual( 'testing_library', libs[0].machine_name )
+        self.assertEqual( 'testing_library', str( libs[0] ) )
 
     def test_folder_from_path( self ):
         current_app.logger.debug( 'testing folder_from_path...' )
         folder_test = Folder.from_path(
             self.lib.id, 'Foo Files 1/Foo Files 2', self.user_id )
-        assert( folder_test.name == 'Foo Files 2' )
-        assert( str( folder_test ) == 'Foo Files 2' )
-        assert( folder_test.id == 2 )
-        assert( folder_test.path == 'Foo Files 1/Foo Files 2' )
-        assert( folder_test.path != 'xxx/Foo Files 2' )
-        assert( folder_test.path != 'Foo Files 1/xxx' )
+        self.assertEqual( folder_test.name, 'Foo Files 2' )
+        self.assertEqual( str( folder_test ), 'Foo Files 2' )
+        self.assertEqual( folder_test.id, 2 )
+        self.assertEqual( folder_test.path, 'Foo Files 1/Foo Files 2' )
+        self.assertNotEqual( folder_test.path, 'xxx/Foo Files 2' )
+        self.assertNotEqual( folder_test.path, 'Foo Files 1/xxx' )
 
     def test_create_folder_from_path( self ):
         current_app.logger.debug( 'testing creating via folder_from_path...' )
         folder_test = Folder.from_path(
             self.lib.id, 'Foo Files 1/Foo Files 2/Foo Files 3/Foo Files 4',
             self.user_id )
-        assert( folder_test.path == 'Foo Files 1/Foo Files 2/Foo Files 3/Foo Files 4' )
-        assert( folder_test.name == 'Foo Files 4' )
+        self.assertEqual( 
+            folder_test.path, 'Foo Files 1/Foo Files 2/Foo Files 3/Foo Files 4' )
+        self.assertEqual( folder_test.name, 'Foo Files 4' )
 
     def test_file_from_path( self ):
 
@@ -73,10 +74,10 @@ class TestModels( TestCase ):
 
         file1 = Picture.from_path(
             self.lib.id, 'testing/random320x240.png', self.user_id )
-        assert( file1.name == 'random320x240.png' )
-        assert( file1.name != 'xxx.py' )
-        assert( file1.name != 'xxx.png' )
-        assert( file1.size == 461998 )
+        self.assertEqual( file1.name, 'random320x240.png' )
+        self.assertNotEqual( file1.name, 'xxx.py' )
+        self.assertNotEqual( file1.name, 'xxx.png' )
+        self.assertEqual( file1.size, 461998 )
 
     def test_item_tags( self ):
 
@@ -90,8 +91,8 @@ class TestModels( TestCase ):
             .filter( Picture.width == 100 ) \
             .all()
 
-        assert( 1 == len( files_test ) )
-        assert( tag in files_test[0].tags )
+        self.assertEqual( 1, len( files_test ) )
+        self.assertIn( tag, files_test[0].tags )
 
     def test_query_width( self ):
 
@@ -103,9 +104,9 @@ class TestModels( TestCase ):
             .filter( Picture.width == 100 ) \
             .all()
 
-        assert( 1 == len( files_test ) )
-        assert( 'random100x100.png' == files_test[0].name )
-        assert( 100 == files_test[0].width )
+        self.assertEqual( 1, len( files_test ) )
+        self.assertEqual( 'random100x100.png', files_test[0].name )
+        self.assertEqual( 100, files_test[0].width )
 
     def test_import( self ):
 
@@ -127,34 +128,34 @@ class TestModels( TestCase ):
             .filter( Picture.width == 100 ) \
             .first()
 
-        assert( tag_testing_img in file_test.tags )
-        assert( 100 == file_test.width )
-        assert( 100 == file_test.height )
-        assert( 1 == file_test.aspect )
-        assert( not file_test.nsfw )
-        assert( 0 == file_test.rating )
+        self.assertIn( tag_testing_img, file_test.tags )
+        self.assertEqual( 100, file_test.width )
+        self.assertEqual( 100, file_test.height )
+        self.assertEqual( 1, file_test.aspect )
+        self.assertFalse( file_test.nsfw )
+        self.assertEqual( 0, file_test.rating )
 
         file_test = Item.secure_query( self.user_id ) \
             .filter( Picture.width == 500 ) \
             .first()
 
-        assert( tag_testing_img in file_test.tags )
-        assert( 500 == file_test.width )
-        assert( 500 == file_test.height )
-        assert( 1 == file_test.aspect )
-        assert( not file_test.nsfw )
-        assert( 3 == file_test.rating )
+        self.assertIn( tag_testing_img, file_test.tags )
+        self.assertEqual( 500, file_test.width )
+        self.assertEqual( 500, file_test.height )
+        self.assertEqual( 1, file_test.aspect )
+        self.assertFalse( file_test.nsfw )
+        self.assertEqual( 3, file_test.rating )
 
         file_test = Item.secure_query( self.user_id ) \
             .filter( Picture.aspect == 10 ) \
             .first()
 
-        assert( not tag_testing_img in file_test.tags )
-        assert( 640 == file_test.width )
-        assert( 400 == file_test.height )
-        assert( 10 == file_test.aspect )
-        assert( not file_test.nsfw )
-        assert( 0 == file_test.rating )
+        self.assertNotIn( tag_testing_img, file_test.tags )
+        self.assertEqual( 640, file_test.width )
+        self.assertEqual( 400, file_test.height )
+        self.assertEqual( 10, file_test.aspect )
+        self.assertFalse( file_test.nsfw )
+        self.assertEqual( 0, file_test.rating )
 
     def test_nsfw( self ):
 
@@ -166,7 +167,7 @@ class TestModels( TestCase ):
             .filter( Picture.nsfw == 1 ) \
             .first()
 
-        assert( file_test.nsfw )
+        self.assertTrue( file_test.nsfw )
 
     def test_aspect( self ):
 
@@ -178,22 +179,22 @@ class TestModels( TestCase ):
             .filter( Picture.aspect == 4 ) \
             .first()
 
-        assert( 4 == file_test.aspect )
-        assert( 'random320x240.png' == file_test.name )
+        self.assertEqual( 4, file_test.aspect )
+        self.assertEqual( 'random320x240.png', file_test.name )
 
         file_test = Item.secure_query( self.user_id ) \
             .filter( Picture.width == 100 ) \
             .first()
 
-        assert( 1 == file_test.aspect )
-        assert( 'random100x100.png' == file_test.name )
+        self.assertEqual( 1, file_test.aspect )
+        self.assertEqual( 'random100x100.png', file_test.name )
 
         file_test = Item.secure_query( self.user_id ) \
             .filter( Picture.aspect == 10 ) \
             .first()
 
-        assert( 10 == file_test.aspect )
-        assert( 'random640x400.png' == file_test.name )
+        self.assertEqual( 10, file_test.aspect )
+        self.assertEqual( 'random640x400.png', file_test.name )
 
     def test_rating( self ):
 
@@ -205,17 +206,17 @@ class TestModels( TestCase ):
             .filter( Picture.rating > 1 ) \
             .all()
 
-        assert( 1 == len( files_test ) )
-        assert( 4 == files_test[0].rating )
-        assert( 'random100x100.png' == files_test[0].name )
+        self.assertEqual( 1, len( files_test ) )
+        self.assertEqual( 4, files_test[0].rating )
+        self.assertEqual( 'random100x100.png', files_test[0].name )
 
         files_test = Item.secure_query( self.user_id ) \
             .filter( Picture.rating == 1 ) \
             .all()
 
-        assert( 1 == len( files_test ) )
-        assert( 1 == files_test[0].rating )
-        assert( 'random500x500.png' == files_test[0].name )
+        self.assertEqual( 1, len( files_test ) )
+        self.assertEqual( 1, files_test[0].rating )
+        self.assertEqual( 'random500x500.png', files_test[0].name )
 
 if '__main__' == __name__:
     unittest.main()

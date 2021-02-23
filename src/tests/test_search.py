@@ -1,14 +1,10 @@
 
 import os
 import sys
-sys.path.insert( 0, os.path.dirname( os.path.dirname( __file__) ) )
-import unittest
-from flask import current_app
 from flask_testing import TestCase
-from data_helper import DataHelper
+sys.path.insert( 0, os.path.dirname( os.path.dirname( __file__) ) )
+from tests.data_helper import DataHelper
 from cloud_on_film import create_app, db
-from cloud_on_film.models import Library, Folder, Item, Tag
-from cloud_on_film.importing import picture
 from cloud_on_film.search import Searcher
 
 class TestSearch( TestCase ):
@@ -23,7 +19,7 @@ class TestSearch( TestCase ):
     def setUp( self ):
         db.create_all()
 
-        self.user_id = 0 # TODO: current_uid
+        self.user_id = 0
         DataHelper.create_folders( self )
         DataHelper.create_libraries( self, db )
         DataHelper.create_data_folders( self, db )
@@ -41,8 +37,9 @@ class TestSearch( TestCase ):
         search_test.lexer.dump()
         res = search_test.search( self.user_id ).all()
 
-        assert( 1 == len( res ) )
-        assert( [10 == i.aspect for i in res] )
+        self.assertEqual( 1, len( res ) )
+        for item in res:
+            self.assertEqual( 10, item.aspect )
 
     def test_search_and( self ):
 
@@ -53,9 +50,10 @@ class TestSearch( TestCase ):
         search_test.lexer.dump()
         res = search_test.search( self.user_id ).all()
 
-        assert( 1 == len( res ) )
-        assert( [not i.nsfw for i in res] )
-        assert( [4 == i.rating for i in res] )
+        self.assertEqual( 1, len( res ) )
+        for item in res:
+            self.assertFalse( item.nsfw )
+            self.assertEqual( 4, item.rating )
         
     def test_search_gt( self ):
 
@@ -66,8 +64,9 @@ class TestSearch( TestCase ):
         search_test.lexer.dump()
         res = search_test.search( self.user_id ).all()
 
-        assert( 1 == len( res ) )
-        assert( [1 < i.rating for i in res] )
+        self.assertEqual( 1, len( res ) )
+        for item in res:
+            self.assertLess( 1, item.rating )
 
     def test_search_gte( self ):
 
@@ -86,9 +85,10 @@ class TestSearch( TestCase ):
             elif 1 == i.rating:
                 found_one = True
 
-        assert( 2 == len( res ) )
-        assert( [not i.nsfw for i in res] )
-        assert( found_one and found_four )
+        self.assertEqual( 2, len( res ) )
+        for item in res:
+            self.assertFalse( item.nsfw )
+        self.assertTrue( found_one and found_four )
 
     def test_search_like( self ):
 
@@ -107,8 +107,8 @@ class TestSearch( TestCase ):
             elif 10 == i.aspect:
                 found_ten = True
 
-        assert( found_ten and found_four )
-        assert( 2 == len( res ) )
+        self.assertTrue( found_ten and found_four )
+        self.assertEqual( 2, len( res ) )
 
     def test_search_or( self ):
 
@@ -119,9 +119,9 @@ class TestSearch( TestCase ):
         search_test.lexer.dump()
         res = search_test.search( self.user_id ).all()
 
-        assert( 2 == len( res ) )
+        self.assertEqual( 2, len( res ) )
         for item in res:
-            assert( 100 == item.width or 500 == item.width )
+            self.assertIn( item.width, [100, 500] )
 
     def test_search_not( self ):
 
@@ -133,4 +133,4 @@ class TestSearch( TestCase ):
         res = search_test.search( self.user_id ).all()
 
         for item in res:
-            assert( 500 != item.width )
+            self.assertNotEqual( 500, item.width )
