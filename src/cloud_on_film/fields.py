@@ -15,11 +15,21 @@ from wtforms import \
 
 class COFBaseFieldMixin( object ):
     def process_kwargs( self, kwargs ):
+
         self.dropdown = False
         if 'dropdown' in kwargs:
             if kwargs['dropdown']:
                 self.dropdown = True 
             del kwargs['dropdown']
+
+        self.url = ''
+        if 'url_callback' in kwargs:
+            self.url = kwargs['url_callback']()
+            del kwargs['url_callback']
+        elif 'url' in kwargs:
+            self.url = kwargs['url']
+            del kwargs['url']
+
         return kwargs
 
 class COFBaseFormMixin( object ):
@@ -120,8 +130,27 @@ class BrowserWidget( object ):
         return render_template( 'field-tree.html.j2',
             field_name=field.name,
             field_data=field.data,
-            browser_url=url_for( 'cloud_folders_ajax' ),
+            browser_url=field.url,
             field_uuid=str( uuid.uuid1() ) )
+
+class TagsWidget( object ):
+
+    def __call__(self, field, **kwargs ):
+        return '''
+<input type="text" data-role="tagsinput"
+    'class="{classes}" id="{id}" name="{name}" value="{value}" />
+<script type="text/javascript">
+$().ready( function() {{
+    $('#{id}').enableTags( "{tags_url}" );
+}} );
+</script>
+'''.format(
+            classes=kwargs['class_'] if 'class_' in kwargs else field.name,
+            id=kwargs['id'] if 'id' in kwargs else field.name,
+            name=field.name,
+            value=field.data if hasattr( field, 'data' ) else '',
+            tags_url=field.url
+        )
 
 #endregion
 
@@ -161,7 +190,6 @@ class BrowserField( Field, COFBaseFieldMixin ):
 
     def __init__( self, *args, **kwargs ):
         kwargs = self.process_kwargs( kwargs )
-        #self._form = kwargs['_form']
         super().__init__( *args, **kwargs )
 
     def _value( self ):
@@ -179,14 +207,6 @@ class ProgressField( Field, COFBaseFieldMixin ):
 
     def __init__( self, *args, **kwargs ):
         kwargs = self.process_kwargs( kwargs )
-        if 'url_callback' in kwargs:
-            self.url = kwargs['url_callback']()
-            del kwargs['url_callback']
-        elif 'url' in kwargs:
-            self.url = kwargs['url']
-            del kwargs['url']
-        else:
-            self.url = ''
         super().__init__( *args, **kwargs )
 
     def _value( self ):
@@ -197,6 +217,23 @@ class ProgressField( Field, COFBaseFieldMixin ):
 
     def process_formdata( self, valuelist ):
         return None
+
+class TagsField( Field, COFBaseFieldMixin ):
+
+    widget = TagsWidget()
+
+    def __init__( self, *args, **kwargs ):
+        kwargs = self.process_kwargs( kwargs )
+        super().__init__( *args, **kwargs )
+
+    def _value( self ):
+        return 'qqq'
+
+    def default( self ):
+        return 'xxx'
+
+    def process_formdata( self, valuelist ):
+        return 'rrr'
 
 #endregion
 

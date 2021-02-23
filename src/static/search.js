@@ -1,34 +1,21 @@
 
 var searchSubmitTimer = null;
 
-function onSearchSubmit() {
-    $('#search-query #page').val( page.toString() );
-    return $('#search-query').serialize();
-}
+(function( $ ) {
 
-function searchArgs() {
-    return 'query=' + $('#search-query #query').val() + '&page=' + page.toString();
-}
-
-function enableSearchScroll() {
-    scrollURL = flaskRoot + 'ajax/html/search';
-    scrollArgsCallback = searchArgs;
-    scrollMethod = 'GET';
-}
-
-function searchSubmit() {
+$.fn.searchSubmitAJAX = function() {
+    
     console.log( 'submitting search...' );
     page = 0; // Starting a new search.
-    $('#search-query #page').val( page.toString() );
+
+    let formUUID = $(this).parents( 'form' ).attr( 'data-form-uuid' );
+    let queryText = $('#' + formUUID + '-query').val();
+
+    $('.search-query .page').val( page.toString() );
     $.ajax( {
-        url: flaskRoot + 'ajax/html/search',
-        /* data: {
-            'tags': $('#modal-input-tags > input').tagsinput( 'items' )
-        }, */
-        data: $('#search-query').serialize(),
-        type: 'POST',
+        url: flaskRoot + 'ajax/html/search?query=' + encodeURIComponent( queryText ),
+        type: 'GET',
         success: function( data ) {
-            console.log( data );
 
             clearDynamicPage();
 
@@ -39,7 +26,10 @@ function searchSubmit() {
             }
 
             recreateItemSpacers();
-            enableSearchScroll();
+            scrollURL = flaskRoot + 'ajax/html/search';
+            scrollArgsCallback = searchArgs;
+            scrollArgsCaller = this;
+            scrollMethod = 'GET';
     
             // Re-enable scrolling after get is finished.
             /* if( 0 < data.length ) {
@@ -51,14 +41,33 @@ function searchSubmit() {
     } );
 }
 
+}( jQuery ));
+
+/* function onSearchSubmit() {
+    $('.search-query .page').val( page.toString() );
+    return $('#search-query').serialize();
+} */
+
+function searchArgs( element ) {
+    return 'query=' + $(element).val() + '&page=' + page.toString();
+}
+
+var searchCallerElement = null;
+
 $(document).ready( function() {
-    $('#search-query #query').on( 'keyup', function( e ) {
+    $('.search-query .query').on( 'keyup', function( e ) {
         if( null != searchSubmitTimer ) {
             window.clearTimeout( searchSubmitTimer );
             searchSubmitTimer = null;
         }
 
-        searchSubmitTimer = window.setTimeout( searchSubmit, 3000 );
+        // Need a wrapper to remember which form we're coming from.
+        let searchCaller = function() {
+            $(searchCallerElement).searchSubmitAJAX();
+        };
+        searchCallerElement = this;
+
+        searchSubmitTimer = window.setTimeout( searchCaller, 1500 );
     } );
 } );
 

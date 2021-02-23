@@ -3,6 +3,7 @@ import json
 import os
 import mimetypes
 import io
+import uuid
 from flask import \
     render_template, \
     request, \
@@ -41,6 +42,7 @@ from .widgets import \
     WidgetRenderer
 from . import csrf
 
+current_app.jinja_env.globals.update( uuid=lambda: str( uuid.uuid1() ) )
 current_app.jinja_env.globals.update( user_current_uid=User.current_uid )
 current_app.jinja_env.globals.update( folder_from_path=Folder.from_path )
 current_app.jinja_env.globals.update( library_enumerate_all=Library.enumerate_all )
@@ -148,6 +150,7 @@ def cloud_libraries_upload( thread_id='' ):
 
     title = 'Upload Library Data'
     progress = 0
+    form = None
 
     if 'POST' == request.method:
 
@@ -175,7 +178,7 @@ def cloud_libraries_upload( thread_id='' ):
             progress = threads[thread_id].progress if thread_id in threads else 0
 
     render = WidgetRenderer( title=title, progress=progress )
-    form_widget = FormWidget( form=form )
+    form_widget = FormWidget( form=form, form_pfx='form' )
     render.add_widget( form_widget )
 
     return render.render()
@@ -330,7 +333,6 @@ def cloud_items_search_saved( search_id ):
 
     search_form = SearchQueryForm( request.args, csrf_enabled=False )
     save_search_form = SaveSearchForm( request.form )
-    edit_form = EditItemForm()
 
     page = int( request.args['page'] ) if 'page' in request.args else 0
     offset = page * current_app.config['ITEMS_PER_PAGE']
@@ -349,7 +351,7 @@ def cloud_items_search_saved( search_id ):
 
     return render_template(
         'libraries.html.j2', items=items, save_search_form=save_search_form,
-        page=page, edit_form=edit_form, search_form=search_form )
+        page=page, search_form=search_form )
 
 @current_app.route( '/search' )
 def cloud_items_search():
@@ -637,11 +639,9 @@ def cloud_items_ajax_search_delete():
 @current_app.route( '/ajax/html/items/<int:folder_id>/<int:page>', methods=['GET'] )
 def cloud_items_ajax_json( folder_id, page ):
 
-    current_uid = User.current_uid()
-
     offset = page * current_app.config['ITEMS_PER_PAGE']
 
-    items = Item.secure_query( current_uid ) \
+    items = Item.secure_query( User.current_uid() ) \
         .filter( Item.folder_id == folder_id ) \
         .order_by( Item.name ) \
         .offset( offset ) \
@@ -654,24 +654,26 @@ def cloud_items_ajax_json( folder_id, page ):
 @current_app.route( '/ajax/html/search', methods=['GET'] )
 def cloud_items_ajax_search():
 
-    current_uid = User.current_uid()
-
     search_form = SearchQueryForm( request.args, csrf_enabled=False )
 
     if not search_form.validate():
         return jsonify( { 'submit_status': 'error', 'fields': search_form.errors } )
 
-    page = int( search_form.page.data )
+    page = 0
+    try:
+        page = int( search_form.page.data )
+    except ValueError:
+        pass
+
     query_str = search_form.query.data
     offset = page * current_app.config['ITEMS_PER_PAGE']
-    limit = current_app.config['ITEMS_PER_PAGE']
 
     searcher = Searcher( query_str )
     searcher.lexer.lex()
-    query = searcher.search( current_uid ) \
+    query = searcher.search( User.current_uid() ) \
         .order_by( Item.name ) \
         .offset( offset ) \
-        .limit( limit )
+        .limit( current_app.config['ITEMS_PER_PAGE'] )
 
     return jsonify( [m.library_html() for m in query.all()] )
 

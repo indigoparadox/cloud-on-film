@@ -1,5 +1,4 @@
 
-var tagnames;
 var scrollingEnabled = true;
 var storeScrolling = false;
 var selectedItems = [];
@@ -29,7 +28,7 @@ $().ready( function() {
       }
    } );
 
-   $('#form-edit-checked-items').on( 'click', function( e ) {
+   $('#form-edit-checked-items .edit').on( 'click', function( e ) {
 
       // Grab the next [loadIncrement] columns and append them to the table.
       $.get( flaskRoot + 'ajax/html/batch?item_ids=' + selectedItems.join() ).done( function( data ) {
@@ -40,6 +39,88 @@ $().ready( function() {
 
       e.preventDefault();
       return false;
+   } );
+
+   $('#form-edit-checked-items .move').on( 'click', function( e ) {
+
+      $('#move-batch-modal').modal( 'show' );
+      $('#move-batch-tree').enableBrowserTree( 
+         "{{ url_for( 'cloud_folders_ajax' ) }}",
+         '#move-batch-input'
+      );
+      
+      e.preventDefault();
+      return false;
+   } );
+
+   $('#form-edit-checked-items .move').on( 'click', function( e ) {
+
+      $('#move-batch-modal').modal( 'show' );
+      $('#move-batch-tree').enableBrowserTree( 
+         "{{ url_for( 'cloud_folders_ajax' ) }}",
+         '#move-batch-input'
+      );
+      
+      e.preventDefault();
+      return false;
+   } );
+
+   $('#form-edit-checked-items .tag').enableTags( flaskRoot + 'ajax/tags.json' );
+
+   $(window).on( 'scroll', function( e ) {
+      let bottomPosition = $(document).height() - (3 * $(window).height());
+
+      if( $(window).scrollTop() < bottomPosition || !scrollingEnabled ) {
+         // We're not at the bottom or scrolling is disabled.
+         return;
+      }
+
+      // Disable scrolling until get is finished.
+      scrollingEnabled = false;
+
+      // Store the new postion for reuse on page load.
+      if( storeScrolling ) {
+         window.sessionStorage.setItem( folderID.toString + '/scroll', $(window).scrollTop() );
+      }
+
+      /* if( 'search' == op ) {
+         query_str = '?csrf_token=' + csrfToken + '&keywords=' + encodeURI( keywords );
+      } */
+
+      page += 1;
+      let pageRE = new RegExp( '%page%', 'g' );
+      let folderIDRE = new RegExp( '%folder%', 'g' );
+      let loadURL = scrollURL.replace( pageRE, page.toString() ).replace( folderIDRE, folderID.toString() );
+      let scrollObject = {
+         url: loadURL,
+         method: scrollMethod
+      };
+      if( 'POST' == scrollMethod ) {
+         scrollObject.data = scrollDataCallback( scrollArgsCaller );
+      } else {
+         scrollObject.url += '?' + scrollArgsCallback( scrollArgsCaller );
+      }
+
+      $('#editModal').on( 'hidden.bs.modal', function( e ) {
+         $('#modal-input-move').jstree().destroy();
+         $('#modal-input-move').empty();
+      } );
+
+      // Grab the next [loadIncrement] columns and append them to the table.
+      $.ajax( scrollObject ).done( function( data ) {
+         for( var i = 0 ; data.length > i ; i++ ) {
+            let element = $(data[i]);
+            $('#folder-items').append( element );
+            element.enableThumbnailCard();
+         }
+
+         recreateItemSpacers();
+
+         // Re-enable scrolling after get is finished.
+         if( 0 < data.length ) {
+            scrollingEnabled = true;
+         }
+      } );
    } );
 } );
 
@@ -87,66 +168,8 @@ $.fn.enableThumbnailCard = function() {
          } else {
             $('#form-edit-checked-items').slideDown();
          }
-
-         console.log( selectedItems );
       } );
 }
-
-$(window).on( 'scroll', function( e ) {
-   let bottomPosition = $(document).height() - (3 * $(window).height());
-
-   if( $(window).scrollTop() < bottomPosition || !scrollingEnabled ) {
-      // We're not at the bottom or scrolling is disabled.
-      return;
-   }
-
-   // Disable scrolling until get is finished.
-   scrollingEnabled = false;
-
-   // Store the new postion for reuse on page load.
-   if( storeScrolling ) {
-      window.sessionStorage.setItem( folderID.toString + '/scroll', $(window).scrollTop() );
-   }
-
-   /* if( 'search' == op ) {
-      query_str = '?csrf_token=' + csrfToken + '&keywords=' + encodeURI( keywords );
-   } */
-
-   page += 1;
-   let pageRE = new RegExp( '%page%', 'g' );
-   let folderIDRE = new RegExp( '%folder%', 'g' );
-   let loadURL = scrollURL.replace( pageRE, page.toString() ).replace( folderIDRE, folderID.toString() );
-   let scrollObject = {
-      url: loadURL,
-      method: scrollMethod
-   };
-   if( 'POST' == scrollMethod ) {
-      scrollObject.data = scrollDataCallback();
-   } else {
-      scrollObject.url += '?' + scrollArgsCallback();
-   }
-
-   $('#editModal').on( 'hidden.bs.modal', function( e ) {
-      $('#modal-input-move').jstree().destroy();
-      $('#modal-input-move').empty();
-   } );
-
-   // Grab the next [loadIncrement] columns and append them to the table.
-   $.ajax( scrollObject ).done( function( data ) {
-      for( var i = 0 ; data.length > i ; i++ ) {
-         let element = $(data[i]);
-         $('#folder-items').append( element );
-         element.enableThumbnailCard();
-      }
-
-      recreateItemSpacers();
-
-      // Re-enable scrolling after get is finished.
-      if( 0 < data.length ) {
-         scrollingEnabled = true;
-      }
-   } );
-} );
 
 }( jQuery ));
 

@@ -65,7 +65,11 @@ class FormWidget( object ):
         self.form_id =  kwargs['id'] if 'id' in kwargs else \
             form._form_id if hasattr( form, '_form_id' ) else \
             'form'
-        self.form_pfx = self.form_id.replace( '-', '_' )
+        if 'form_pfx' in kwargs:
+            self.form_pfx = kwargs['form_pfx']
+            del kwargs['form_pfx']
+        else:
+            self.form_pfx = self.form_id.replace( '-', '_' )
 
         self.kwargs = {'form_{}'.format( k ): v for k, v in kwargs.items()}
 

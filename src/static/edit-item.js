@@ -1,30 +1,6 @@
 
 (function( $ ) {
 
-$().ready( function() {
-
-    // Setup tags autocomplete.
-    tagnames = new Bloodhound( {
-    datumTokenizer: function( d ) {
-        var tokens = d.name.split( /[\s\/]+/ );
-        //console.log( tokens );
-        return tokens;
-    },
-    queryTokenizer: Bloodhound.tokenizers.whitespace,
-    prefetch: {
-        url: flaskRoot + 'ajax/tags.json',
-            filter: function( list ) {
-                return $.map( list, function( tagname ) {
-                    return { name: tagname }; 
-                } );
-            }
-        }
-    } );
-
-    tagnames.clearPrefetchCache();
-    tagnames.initialize();
-} );
-
 }( jQuery ));
 
 function editItem( id ) {
@@ -32,29 +8,12 @@ function editItem( id ) {
     $.getJSON( flaskRoot + 'ajax/item/' + id.toString() + '/json',
     function( itemData ) {
        console.log( itemData );
-       
-        $('#form-edit #tags').tagsinput( {
-            tagClass: function( name ) {
-                return 'bg-dark';
-            },
-            typeaheadjs: {
-                name: 'tagnames',
-                displayKey: 'name',
-                valueKey: 'name',
-                source: tagnames.ttAdapter()
-            }
-        } );
  
        $('#form-edit #id').val( id );
        $('#form-edit-type').text( itemData['check']['type'] );
        $('#form-edit-type').attr( 'class',
             'ok' == itemData['check']['status'] ? 
             'text-success' : 'text-danger' );
-        $('#form-edit #tags').tagsinput( 'removeAll' );
-        for( const tag_idx in itemData['tags'] ) {
-            $('#form-edit #tags').tagsinput(
-                'add', itemData['tags'][tag_idx] );
-        }
         $('#form-edit #name').val( itemData['name'] );
         $('#form-edit #comment').val( itemData['comment'] );
         let img_preview_tag = $('<img src="' + flaskRoot + 'preview/' +

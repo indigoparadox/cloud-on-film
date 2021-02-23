@@ -8,13 +8,15 @@ var page = {{ page }};
 {% if this_folder is defined and this_folder %}
 var folderID = {{ this_folder.id }};
 var scrollURL = flaskRoot + 'ajax/html/items/%folder%/%page%';
-var scrollArgsCallback = null;
+var scrollArgsCallback = function() { return ''; };
+var scrollArgsCaller = null;
 var scrollDataCallback = null;
 var scrollMethod = 'GET';
 {% else %}
 var folderID = -1;
 var scrollURL =  flaskRoot + 'ajax/html/search';
 var scrollArgsCallback = searchArgs;
+var scrollArgsCaller = null;
 var scrollDataCallback = null;
 var scrollMethod = 'GET';
 {% endif %}
@@ -27,6 +29,7 @@ var scrollMethod = 'GET';
 <script src="{{ url_for( 'static', filename='featherlight.gallery.min.js' ) }}"></script>
 <script src="{{ url_for( 'static', filename='libraries.js' ) }}"></script>
 <script src="{{ url_for( 'static', filename='field-browser.js' ) }}"></script>
+<script src="{{ url_for( 'static', filename='field-tags.js' ) }}"></script>
 <script src="{{ url_for( 'static', filename='edit-item.js' ) }}"></script>
 {% endblock %}
 
@@ -39,6 +42,24 @@ var scrollMethod = 'GET';
 {% endblock %}
 
 {% block modals %}
+<div class="modal fade" id="move-batch-modal" role="dialog">
+<div class="modal-dialog modal-sm modal-dialog-centered">
+   <div class="modal-content bg-dark">
+      <div class="modal-header">
+         <h5 class="modal-title">Edit</h5>
+      </div>
+      <div class="modal-body">
+         <input type="text" id="move-batch-input" class="form-control" name="location" />
+         <div id="move-batch-tree"></div>
+      </div>
+      <div class="modal-footer">
+         <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+         <button type="button" class="btn btn-primary" onclick="return saveRename()">Save Changes</button>
+      </div>
+   </div>
+</div>
+</div>
+
 <div class="modal fade" id="edit-batch-modal" role="dialog">
 <div class="modal-dialog modal-lg modal-dialog-centered">
    <div class="modal-content bg-dark">
@@ -48,7 +69,7 @@ var scrollMethod = 'GET';
       <div class="modal-body">
       </div>
       <div class="modal-footer">
-         <button type="button" class="btn btn-secondary" data-dismiss="modal" onclick="return saveRename()">Cancel</button>
+         <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
          <button type="button" class="btn btn-primary" onclick="return saveRename()">Save Changes</button>
       </div>
    </div>
@@ -57,9 +78,27 @@ var scrollMethod = 'GET';
 {% endblock %}
 
 {% block sidebar %}
-<div style="display: none" id="form-edit-checked-items">
-<button class="btn btn-primary">Edit</button>
+<div style="display: none" id="form-edit-checked-items" class="w-100 row m-0 p-0">
+   <span class="tag-wrapper col-6 col-md-2 p-1 text-nowrap">
+      <button class="btn btn-light w-100 edit">Edit</button>
+   </span>
+   <span class="tag-wrapper col-6 col-md-2 p-1 text-nowrap">
+      <button class="btn btn-light w-100 move">Move</button>
+   </span>
+   <span class="tag-wrapper col-6 col-md-3 p-1 text-nowrap">
+      <input type="text" class="form-control w-100 tag" name="tag" />
+   </span>
+   <span class="tag-wrapper col-3 col-md-2 p-1 text-nowrap">
+      <button class="btn btn-light w-100 add-tag">Add</button>
+   </span>
+   <span class="tag-wrapper col-3 col-md-2 p-1 text-nowrap">
+      <button class="btn btn-light w-100 remove-tag">Remove</button>
+   </span>
 </div>
+
+<script type="text/javascript">
+/*$.ready( function() { */
+</script>
 {% endblock %}
 
 {% from 'macros.html.j2' import show_form %}
@@ -67,7 +106,7 @@ var scrollMethod = 'GET';
 {% block sidebar_collapsed %}
 <li class="nav-item">
    {# h-50 and d-flex keep groups v-aligned inside of menus. #}
-   {{ show_form( search_form, id="search-query", class="form-inline", group_class="form-group h-50 d-flex", method='GET', action=url_for( 'cloud_items_search' ), enable_csrf=False ) }}
+   {{ show_form( search_form, class="search-query form-inline", group_class="form-group h-50 d-flex", method='GET', action=url_for( 'cloud_items_search' ), enable_csrf=False ) }}
 </li>
 {% endblock %}
 
@@ -76,7 +115,7 @@ var scrollMethod = 'GET';
 {% if save_search_form is defined %}
 <div class="row">
    <div id="save-search-wrapper" class="bg-secondary col-9 p-4 mx-auto my-3 rounded">
-      {{ show_form( save_search_form, id="save-search-query", action=url_for( 'cloud_items_search_save' ) ) }}
+      {{ show_form( save_search_form, class="save-search-query", action=url_for( 'cloud_items_search_save' ) ) }}
    </div>
 </div>
 {% endif %}

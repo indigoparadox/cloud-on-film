@@ -17,6 +17,7 @@ from .fields import \
     LabelField, \
     ProgressField, \
     BrowserField, \
+    TagsField, \
     COFBaseFormMixin
 
 class NewLibraryForm( FlaskForm, COFBaseFormMixin ):
@@ -50,6 +51,7 @@ class EditItemIncludesMixin:
         lambda: url_for( 'static', filename='bootstrap-tagsinput.min.js' ),
         lambda: url_for( 'static', filename='jstree.min.js' ),
         lambda: url_for( 'static', filename='field-browser.js' ),
+        lambda: url_for( 'static', filename='field-tags.js' ),
         lambda: url_for( 'static', filename='edit-item.js' ) ]
 
     _include_styles_callbacks = [
@@ -62,8 +64,11 @@ class EditItemForm( FlaskForm, COFBaseFormMixin, EditItemIncludesMixin ):
 
     id = HiddenField( '' )
     name = StringField( 'Name', validators=[DataRequired()] )
-    tags = StringField( 'Tags' )
-    location = BrowserField( 'Location', validators=[DataRequired()] )
+    tags = TagsField( 'Tags',
+        url_callback=lambda: url_for( 'cloud_tags_ajax' ) )
+    location = BrowserField( 'Location',
+        validators=[DataRequired()],
+        url_callback=lambda: url_for( 'cloud_folders_ajax' ) )
     comment = TextAreaField( 'Comment' )
 
 class EditBatchItemForm( FlaskForm, COFBaseFormMixin, EditItemIncludesMixin ):
