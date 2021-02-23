@@ -1,14 +1,18 @@
 
+{% if not field_style is defined %}
+{% set field_style = 'max-height: 16rem; max-width: 412px' %}
+{% endif %}
+
 <div class="w-100 mx-2 d-flex flex-wrap browser-field-{{ field_uuid }}">
     <div class="d-flex w-100">
-        <input type="text" class="form-control flex-fill" name="{{ field_name }}" id="{{ field_name }}" value="{{ field_data }}" />
+        <input type="text" class="form-control flex-fill text-location-field" name="{{ field_name }}" value="{{ field_data }}" />
         <button type="button" class="btn btn-secondary dropdown-toggle dropdown-toggle-split"
             data-toggle="collapse" data-target="#tree-collapse-{{ field_uuid }}">
             <span class="sr-only">Open Tree Browser</span>
         </button>
     </div>
     <div id="tree-collapse-{{ field_uuid }}" class="collapse w-100">
-        <div id="{{ field_name }}-tree" class="w-100 overflow-auto"></div>
+        <div class="w-100 overflow-auto tree-location-field" style="{{ field_style }}"></div>
         <div class="d-flex">
             <button type="button" class="btn btn-secondary ml-auto">Cancel</button>
             <button type="button" class="btn btn-primary ml-1">Select Folder</button>
@@ -17,6 +21,15 @@
 </div>
 <script type="text/javascript">
 $().ready( function() {
-    $('.browser-field-{{ field_uuid }} #{{ field_name }}-tree').enableBrowserTree( "{{ browser_url }}", [1] );
+    $.when( $('.browser-field-{{ field_uuid }} .tree-location-field').enableBrowserTree(
+        "{{ browser_url }}",
+        '.browser-field-{{ field_uuid }} .text-location-field' ) )
+    .done( function( parentNode, node ) {
+        // All parents are loaded, so select the last one.
+        parentNode.instance.deselect_all();
+        parentNode.instance.select_node( node, true );
+        console.assert( 1 == parentNode.instance.get_selected( true ).length );
+        //treeLoadFinished = true;
+    } );
 } );
 </script>

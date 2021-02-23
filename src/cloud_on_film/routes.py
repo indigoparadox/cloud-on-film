@@ -447,8 +447,6 @@ def cloud_item_ajax_save():
             else:
                 return jsonify( {'submit_status': 'error', 'errors': ['Invalid save path specified.'] } )
 
-    print( current_path.absolute_path )
-
     #db.session.commit()
 
     # Return the modified item.
@@ -556,6 +554,39 @@ def cloud_folders_ajax():
 
     return jsonify( json_out )
 
+@current_app.route( '/ajax/folder/id_path', methods=['POST'] )
+def cloud_ajax_folder_id_path():
+
+    ''' Given a relative path starting with a Library machine_name,
+    return a list of numeric IDs starting with that' Library's ID. '''
+
+    path = request.form['path']
+
+    path = path.split( '/' )
+    library_name = path[0]
+    path.pop( 0 )
+    path = '/'.join( path )
+
+    library = Library.secure_query( User.current_uid() ) \
+        .filter( Library.machine_name == library_name ) \
+        .first()
+
+    if not library:
+        abort( 404 )
+
+    folder = Folder.from_path( library.id, path, User.current_uid() )
+
+    if not folder:
+        abort( 404 )
+
+    id_path = []
+    while folder:
+        id_path.insert( 0, 'folder-{}'.format( folder.id ) )
+        folder = folder.parent
+    id_path.insert( 0, 'library-{}'.format( library.id ) )
+
+    return jsonify( id_path )
+
 @current_app.route( '/ajax/tags.json')
 def cloud_tags_ajax():
     # TODO: Omit empty tags.
@@ -654,8 +685,6 @@ def cloud_items_ajax_batch():
     item_ids = [int( i.split( '-' )[-1] ) for i in request.args['item_ids'].split( ',' )]
 
     #edit_form = EditBatchItemForm()
-
-    print( item_ids )
 
     #page = int( search_form.page.data )
     #offset = page * current_app.config['ITEMS_PER_PAGE']

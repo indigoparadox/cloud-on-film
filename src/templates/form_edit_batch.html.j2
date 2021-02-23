@@ -19,20 +19,19 @@
         <div class="flex-fill d-flex flex-wrap">
             {% for field in item_form
                 if field.type != 'HiddenField'
-                if field.type != 'TextAreaField'
                 and not 'csrf_token' in field.name|string  %}
-            <div class="col-lg-4">
+            <div class="col-lg-6">
                 {{ field.label }}
                 {{ field( class_='form-control mx-2' ) }}
             </div>
             {% endfor %}
-            {% for field in item_form
-                if field.type == 'TextAreaField' %}
-            <div class="col-lg">
+            {# for field in item_form
+                if field.type == 'TextAreaField' }
+            <div class="col-lg-6">
                 {{ field.label }}
                 {{ field( class_='form-control mx-2' ) }}
             </div>
-            {% endfor %}
+            { endfor #}
         </div>
     </div>
     {% endfor %}
