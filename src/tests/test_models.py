@@ -4,10 +4,9 @@ import sys
 sys.path.insert( 0, os.path.dirname( os.path.dirname( __file__) ) )
 import unittest
 import json
-import shutil
 from flask import current_app
 from flask_testing import TestCase
-from data_helper import DataHelper
+from tests.data_helper import DataHelper
 from cloud_on_film import create_app, db
 from cloud_on_film.models import Library, Folder, Item, Tag
 from cloud_on_film.importing import picture
@@ -64,7 +63,7 @@ class TestModels( TestCase ):
         folder_test = Folder.from_path(
             self.lib.id, 'Foo Files 1/Foo Files 2/Foo Files 3/Foo Files 4',
             self.user_id )
-        self.assertEqual( 
+        self.assertEqual(
             folder_test.path, 'Foo Files 1/Foo Files 2/Foo Files 3/Foo Files 4' )
         self.assertEqual( folder_test.name, 'Foo Files 4' )
 

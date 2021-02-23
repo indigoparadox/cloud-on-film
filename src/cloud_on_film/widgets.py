@@ -2,7 +2,7 @@
 from collections import namedtuple
 from flask import render_template
 
-from cloud_on_film.forms import EditBatchItemForm, RenameItemForm
+from cloud_on_film.forms import EditBatchItemForm, EditItemForm
 
 class WidgetRenderer( object ):
 
@@ -101,33 +101,11 @@ class FormWidget( object ):
 
         self.kwargs[self.form_pfx] = form
 
-class EditItemFormWidget( FormWidget ):
-
-    ItemData = namedtuple( 'item_data', ['id', 'name', 'comment', 'tags', 'location'] )
-
-    template_name = 'form_edit.html.j2'
-
-    def __init__( self, item=None, form=None, **kwargs ):
-
-        self.kwargs = {}
-
-        if form:
-            assert( RenameItemForm == type( form ) )
-        else:
-            form = RenameItemForm()
-
-        super().__init__( form, **kwargs )
-
-        if item:
-            self.kwargs[self.form_pfx].id.data = item.id
-            self.kwargs[self.form_pfx].name.data = item.name
-            self.kwargs[self.form_pfx].comment.data = item.comment
-            self.kwargs[self.form_pfx].tags.data = ','.join( [t.path for t in item.tags] )
-            self.kwargs[self.form_pfx].location.data = item.location
-
 class EditBatchItemFormWidget( FormWidget ):
 
     template_name = 'form_edit_batch.html.j2'
+
+    ItemData = namedtuple( 'item_data', ['id', 'name', 'comment', 'tags', 'location'] )
 
     def __init__( self, items_list, form=None, **kwargs ):
 
@@ -136,7 +114,7 @@ class EditBatchItemFormWidget( FormWidget ):
         if form:
             assert( EditBatchItemForm == type( form ) )
         else:
-            form = EditBatchItemForm( data={'items': [EditItemFormWidget.ItemData(
+            form = EditBatchItemForm( data={'items': [EditBatchItemFormWidget.ItemData(
                 i.id,
                 i.name,
                 i.comment,

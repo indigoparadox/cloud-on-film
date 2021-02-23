@@ -3,11 +3,6 @@ from flask import url_for
 from flask_wtf import FlaskForm
 from wtforms import \
     StringField as _StringField, \
-    FileField as _FileField, \
-    BooleanField as _BooleanField, \
-    HiddenField as _HiddenField, \
-    TextAreaField as _TextAreaField, \
-    SubmitField as _SubmitField, \
     FormField, \
     FieldList
 from wtforms.validators import DataRequired
@@ -61,7 +56,7 @@ class EditItemIncludesMixin:
         lambda: url_for( 'static', filename='bootstrap-tagsinput.css' ),
         lambda: url_for( 'static', filename='jstree/style.min.css' ) ]
 
-class RenameItemForm( FlaskForm, COFBaseFormMixin, EditItemIncludesMixin ):
+class EditItemForm( FlaskForm, COFBaseFormMixin, EditItemIncludesMixin ):
 
     _form_id = 'form-edit-item'
 
@@ -75,7 +70,7 @@ class EditBatchItemForm( FlaskForm, COFBaseFormMixin, EditItemIncludesMixin ):
 
     _form_id = 'form-edit-batch-item'
 
-    items = FieldList( FormField( RenameItemForm ) )
+    items = FieldList( FormField( EditItemForm ) )
 
 class SaveSearchForm( FlaskForm, COFBaseFormMixin ):
 
@@ -94,5 +89,6 @@ class SearchQueryForm( FlaskForm, COFBaseFormMixin ):
 class SearchDeleteForm( FlaskForm, COFBaseFormMixin ):
     
     id = HiddenField( '' )
-    prompt = LabelField( 'Are you sure you wish to delete this saved search? This action cannot be undone.')
+    prompt = LabelField(
+        'Are you sure you wish to delete this saved search? This action cannot be undone.')
     delete = SubmitField( 'Delete' )

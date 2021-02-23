@@ -3,8 +3,6 @@ import json
 import os
 import mimetypes
 import io
-from shutil import ignore_patterns
-from collections import namedtuple
 from flask import \
     render_template, \
     request, \
@@ -30,18 +28,17 @@ from .models import \
 from .forms import \
     NewLibraryForm, \
     UploadLibraryForm, \
-    RenameItemForm, \
     SearchQueryForm, \
     SaveSearchForm, \
-    SearchDeleteForm, \
-    EditBatchItemForm
+    EditItemForm, \
+    SearchDeleteForm
 
 from .importing import start_import_thread, threads
 from .search import Searcher
 from .widgets import \
-    EditBatchItemFormWidget, FormWidget, \
-    WidgetRenderer, \
-    EditItemFormWidget
+    EditBatchItemFormWidget, \
+    FormWidget, \
+    WidgetRenderer
 from . import csrf
 
 current_app.jinja_env.globals.update( user_current_uid=User.current_uid )
@@ -149,26 +146,26 @@ def cloud_libraries_new():
 @current_app.route( '/libraries/upload/<thread_id>', methods=['GET', 'POST'] )
 def cloud_libraries_upload( thread_id='' ):
 
-    #form = UploadLibraryForm( request.form )
-
     title = 'Upload Library Data'
     progress = 0
 
-    #if 'POST' == request.method and thread_id:
-    #    return jsonify( { 'filename': threads[thread_id].filename,
-    #        'progress': int( threads[thread_id].progress ) } )
+    if 'POST' == request.method:
 
-    #elif 'POST' == request.method and \
-    #form.validate_on_submit() and not thread_id:
-    #    pictures = \
-    #        json.loads( request.files['upload'].read().decode( 'utf-8' ) )
-    #    thread_id = start_import_thread( pictures )
-    #    return redirect( url_for( 'cloud_libraries_upload', id=thread_id ) )
+        form = UploadLibraryForm( request.form )
+        if form.validate_on_submit():
+            pictures = \
+                json.loads( request.files['upload'].read().decode( 'utf-8' ) )
+            thread_id = start_import_thread( pictures )
+            return redirect(
+                url_for( 'cloud_libraries_upload' ) + '?thread_id=thread_id' )
 
-    if 'GET' == request.method:
-        thread_id = int( request.args['thread_id'] ) if 'thread_id' in request.args else None
+    elif 'GET' == request.method:
+        thread_id = int( request.args['thread_id'] ) \
+            if 'thread_id' in request.args else None
         form = UploadLibraryForm()
-        form.progress.url = url_for( 'cloud_ajax_libraries_upload' ) + '?thread_id=' + str( thread_id )
+        form.progress.url = \
+            url_for( 'cloud_ajax_libraries_upload' ) + \
+            '?thread_id=' + str( thread_id )
         
         title = 'Uploading thread #{}'.format( thread_id )
         # XXX: DEBUG
@@ -176,9 +173,6 @@ def cloud_libraries_upload( thread_id='' ):
             progress = 33
         else:
             progress = threads[thread_id].progress if thread_id in threads else 0
-
-    #return render_template( 'form_libraries_upload.html.j2',
-    #    title=title, form=form, id=thread_id, progress=progress )
 
     render = WidgetRenderer( title=title, progress=progress )
     form_widget = FormWidget( form=form )
@@ -191,7 +185,7 @@ def cloud_libraries_upload( thread_id='' ):
 @current_app.route( '/libraries/<string:machine_name>/<path:relative_path>/<int:page>' )
 def cloud_libraries( machine_name=None, relative_path=None, page=0 ):
 
-    edit_form = RenameItemForm( request.form )
+    edit_form = EditItemForm( request.form )
     search_form = SearchQueryForm( request.form )
 
     l_globals = {
@@ -289,7 +283,7 @@ def cloud_items_search_save():
         return redirect( url_for( 'cloud_items_search_saved', search_id=search.id ) )
 
     else:
-        if save_search_form.search.data:
+        if save_search_form.query.data:
             for field, errors in save_search_form.errors.items():
                 for error in errors:
                     flash( error, 'error')
@@ -336,7 +330,7 @@ def cloud_items_search_saved( search_id ):
 
     search_form = SearchQueryForm( request.args, csrf_enabled=False )
     save_search_form = SaveSearchForm( request.form )
-    edit_form = RenameItemForm()
+    edit_form = EditItemForm()
 
     page = int( request.args['page'] ) if 'page' in request.args else 0
     offset = page * current_app.config['ITEMS_PER_PAGE']
@@ -364,7 +358,7 @@ def cloud_items_search():
 
     search_form = SearchQueryForm( request.args, csrf_enabled=False )
     save_search_form = SaveSearchForm( request.form )
-    edit_form = RenameItemForm( request.form )
+    edit_form = EditItemForm( request.form )
 
     page = 0
     if (search_form.search.data or \
@@ -409,7 +403,7 @@ def cloud_item_ajax_save():
 
     current_uid = User.current_uid()
 
-    save_form = RenameItemForm( request.form )
+    save_form = EditItemForm( request.form )
     if not save_form.validate():
         return jsonify( { 'submit_status': 'error', 'fields': save_form.errors } )
 
@@ -445,7 +439,9 @@ def cloud_item_ajax_save():
                     .filter( Folder.parent_id == current_path.id ) \
                     .first()
             else:
-                return jsonify( {'submit_status': 'error', 'errors': ['Invalid save path specified.'] } )
+                return jsonify(
+                    {'submit_status': 'error', 'errors':
+                        ['Invalid save path specified.'] } )
 
     #db.session.commit()
 

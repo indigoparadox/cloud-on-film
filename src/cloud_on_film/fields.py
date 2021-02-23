@@ -23,6 +23,9 @@ class COFBaseFieldMixin( object ):
         return kwargs
 
 class COFBaseFormMixin( object ):
+
+    errors = {}
+
     def has_dropdowns( self ):
         dropdowns = False
         for key in self._fields:
