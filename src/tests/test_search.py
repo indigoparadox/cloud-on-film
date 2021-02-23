@@ -2,6 +2,7 @@
 import os
 import sys
 from flask_testing import TestCase
+
 sys.path.insert( 0, os.path.dirname( os.path.dirname( __file__) ) )
 from tests.data_helper import DataHelper
 from cloud_on_film import create_app, db
@@ -134,3 +135,15 @@ class TestSearch( TestCase ):
 
         for item in res:
             self.assertNotEqual( 500, item.width )
+
+    def test_search_in( self ):
+
+        DataHelper.create_data_items( self, db )
+
+        search_test = Searcher( '("Sub Test Tag 3"@tags)' )
+        search_test.lexer.lex()
+        search_test.lexer.dump()
+        res = search_test.search( self.user_id ).all()
+
+        self.assertEqual( 1, len( res ) )
+        self.assertEqual( 'random100x100.png', res[0].name )

@@ -1,16 +1,16 @@
 
 import os
 import sys
-sys.path.insert( 0, os.path.dirname( os.path.dirname( __file__) ) )
 import unittest
 import json
 from flask import current_app
 from flask_testing import TestCase
+
+sys.path.insert( 0, os.path.dirname( os.path.dirname( __file__) ) )
 from tests.data_helper import DataHelper
 from cloud_on_film import create_app, db
 from cloud_on_film.models import Library, Folder, Item, Tag
 from cloud_on_film.importing import picture
-from cloud_on_film.search import Searcher
 
 class TestModels( TestCase ):
 

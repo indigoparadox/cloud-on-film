@@ -26,7 +26,7 @@ class SearchLexerParser( object ):
         lt = 3
         gte = 4
         lte = 5
-        has = 6
+        in = 6
         like = 7
 
     class Node( object ):
@@ -170,6 +170,19 @@ class SearchLexerParser( object ):
                 else:
                     raise SearchSyntaxException( 'stray "=" detected' )
 
+            elif '@' == c:
+                if str == self.ctok_type and self.ctok_quotes:
+                    self.ctok_value += c
+
+                elif str == self.ctok_type:
+                    if None != self.last_value:
+                        raise SearchSyntaxException( 'stray "@" detected' )
+                    self.push_token()
+                    self.push_in()
+
+                else:
+                    raise SearchSyntaxException( 'stray "@" detected' )
+
             elif '>' == c:
                 if str == self.ctok_type and self.ctok_quotes:
                     self.ctok_value += c
@@ -310,6 +323,9 @@ class SearchLexerParser( object ):
     def push_gt( self ):
         self.last_op = SearchLexerParser.Op.gt
 
+    def push_in( self ):
+        self.last_op = SearchLexerParser.Op.in
+
     def push_lt( self ):
         self.last_op = SearchLexerParser.Op.lt
 
@@ -423,5 +439,7 @@ class Searcher( object ):
                 return (getattr( Picture, _tree_start.children[0] ) != _tree_start.children[1])
             elif SearchLexerParser.Op.like == _tree_start.op:
                 return (getattr( Picture, _tree_start.children[0] ).like( _tree_start.children[1] ))
+            elif SearchLexerParser.Op.in == _tree_start.op:
+                return (getattr( Picture, _tree_start.children[0] ).in_( _tree_start.children[1] ))
 
         return _query

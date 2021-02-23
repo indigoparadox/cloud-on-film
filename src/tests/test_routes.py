@@ -4,6 +4,7 @@ import sys
 import unittest
 import json
 from flask_testing import TestCase
+
 sys.path.insert( 0, os.path.dirname( os.path.dirname( __file__) ) )
 from tests.data_helper import DataHelper
 from cloud_on_film import create_app, db
