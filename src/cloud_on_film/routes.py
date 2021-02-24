@@ -336,7 +336,7 @@ def cloud_items_search_delete( search_id ):
 @libraries.route( '/search/saved/<int:search_id>' )
 def cloud_items_search_saved( search_id ):
 
-    search_form = SearchQueryForm( request.args, csrf_enabled=False )
+    search_form = SearchQueryForm( request.args )
     save_search_form = SaveSearchForm( request.form )
 
     current_uid = User.current_uid()

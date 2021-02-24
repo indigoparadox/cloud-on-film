@@ -1,5 +1,10 @@
 ---
 secret_key: development
-db_uri: sqlite:///test.db
-image_folders:
-   - /home/user/Pictures
+sqlalchemy_database_uri: sqlite:///test.db
+thumbnail_path:
+items_per_page: 20
+allowed_previews:
+- 160, 120
+- 360, 270
+- 230, 172
+sqlalchemy_track_modifications: false
