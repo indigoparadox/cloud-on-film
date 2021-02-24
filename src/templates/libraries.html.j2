@@ -96,9 +96,11 @@ $().ready( function() {
 
    $('#form-edit-checked-items .move').on( 'click', function( e ) {
 
+      // TODO: Save the last selected location in session?
+      $('#move-batch-input').val( 'Public Media' );
       $('#move-batch-modal').modal( 'show' );
       $('#move-batch-tree').enableBrowserTree( 
-         "{{ url_for( 'ajax.folders' ) }}",
+         "{{ url_for( 'ajax.list_folders' ) }}",
          '#move-batch-input'
       );
       
@@ -107,7 +109,7 @@ $().ready( function() {
    } );
 
    $('#form-edit-checked-items .tag').enableTags( 
-      "{{ url_for( 'ajax.tags' ) }}" );
+      "{{ url_for( 'ajax.list_tags' ) }}" );
 
 } );
 </script>

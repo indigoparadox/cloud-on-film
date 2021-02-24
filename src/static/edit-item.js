@@ -5,7 +5,9 @@
 
 function editItem( id ) {
 
-    $.getJSON( flaskRoot + 'ajax/item/' + id.toString() + '/json',
+    // XXX: This needs to be fixed for single-item edit modal.
+
+    $.getJSON( flaskRoot + 'ajax/get/item/' + id.toString(),
     function( itemData ) {
        console.log( itemData );
  
@@ -27,8 +29,10 @@ function editItem( id ) {
  
         $('#edit-modal').modal( 'show' );
         
-        $.when( $('#form-edit-tree').enableBrowserTree( flaskRoot + 'ajax/folders', itemData['parents'] ) )
-        .done( function( parentNode, node ) {
+        // XXX
+        $.when( $('#form-edit-tree').enableBrowserTree(
+            flaskRoot + 'ajax/folders', itemData['parents'] )
+        ).done( function( parentNode, node ) {
             // All parents are loaded, so select the last one.
             parentNode.instance.deselect_all();
             parentNode.instance.select_node( node, true );

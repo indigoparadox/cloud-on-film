@@ -433,6 +433,23 @@ class Folder( db.Model, JSONItemMixin ):
     def absolute_path( self ):
         return '/'.join( [self.library.absolute_path, self.path] )
 
+    @property
+    def machine_path( self ):
+
+        parent_list = []
+        folder_iter = self
+
+        parent_list.insert( 0, folder_iter.library.machine_name )
+
+        # Traverse the folder's parents upwards.
+        while isinstance( folder_iter, Folder ):
+            parent_list.insert( 1, folder_iter.id )
+            folder_iter = db.session.query( Folder ) \
+                .filter( Folder.id == folder_iter.parent_id ) \
+                .first()
+
+        return parent_list
+
     @staticmethod
     def from_path( library_id, path, user_id ):
 
@@ -667,7 +684,7 @@ class Item( db.Model, JSONItemMixin ):
 
     @property
     def location( self ):
-        return '/'.join( [self.folder.library.machine_name, self.folder.path] )
+        return '/'.join( [self.folder.library.display_name, self.folder.path] )
 
     @property
     def absolute_path( self ):

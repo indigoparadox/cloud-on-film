@@ -8,9 +8,8 @@ $.fn.enableBrowserTree = function( nodesURL, textInput ) {
     let treeControl = this;
 
     $.ajax( {
-        url: flaskRoot + 'ajax/folder/id_path',
-        data: {'path': $(textInput).val()},
-        type: 'POST',
+        url: flaskRoot + 'ajax/get/machine_path/' + $(textInput).val() + '?format=jstree',
+        type: 'GET',
         success: function( parents ) {
 
             $(treeControl).jstree( {

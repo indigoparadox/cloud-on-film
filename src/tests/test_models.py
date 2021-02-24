@@ -93,6 +93,15 @@ class TestModels( TestCase ):
         self.assertEqual( 1, len( files_test ) )
         self.assertIn( tag, files_test[0].tags )
 
+    def test_item_machine_path( self ):
+
+        DataHelper.create_data_items( self, db )
+
+        file1 = Item.from_path(
+            self.lib.id, 'testing/random320x240.png', self.user_id )
+        
+        self.assertEqual( file1.machine_path, ['testing_library', 3] )
+
     def test_query_width( self ):
 
         DataHelper.create_data_items( self, db )

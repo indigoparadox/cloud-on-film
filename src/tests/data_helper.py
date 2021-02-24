@@ -120,9 +120,6 @@ class DataHelper( object ):
         file_test = Picture.from_path(
             test_class.lib.id, 'testing/random640x400.png', test_class.user_id )
 
-        #file_test = Picture.from_path(
-        #    self.lib.id, 'testing/random640x480.png', self.user_id )
-
         file_test = Picture.from_path(
             test_class.nsfw_lib.id, 'foo_folder/random640x480.png', test_class.user_id )
 

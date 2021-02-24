@@ -60,10 +60,10 @@ class EditItemForm( FlaskForm, COFBaseFormMixin, EditItemIncludesMixin ):
     id = HiddenField( '' )
     name = StringField( 'Name', validators=[DataRequired()] )
     tags = TagsField( 'Tags',
-        url_callback=lambda: url_for( 'ajax.tags' ) )
+        url_callback=lambda: url_for( 'ajax.list_tags' ) )
     location = BrowserField( 'Location',
         validators=[DataRequired()],
-        url_callback=lambda: url_for( 'ajax.folders' ) )
+        url_callback=lambda: url_for( 'ajax.list_folders' ) )
     comment = TextAreaField( 'Comment' )
 
 class EditBatchItemForm( FlaskForm, COFBaseFormMixin, EditItemIncludesMixin ):

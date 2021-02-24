@@ -419,82 +419,6 @@ def cloud_items_search():
 
 # region ajax_json
 
-@libraries.route( '/ajax/item/save', methods=['POST'] )
-def cloud_item_ajax_save():
-
-    current_uid = User.current_uid()
-
-    save_form = EditItemForm( request.form )
-    if not save_form.validate():
-        return jsonify( { 'submit_status': 'error', 'fields': save_form.errors } )
-
-    item = Item.secure_query( current_uid ) \
-        .filter( Item.id == save_form.id.data ) \
-        .first()
-    if not item:
-        abort( 403 )
-
-    # Translate tags data.
-    new_tags = request.form['tags'].split( ',' )
-    item.tags = [Tag.from_path( t ) for t in new_tags]
-
-    # Translate location data.
-    new_location = request.form['location'].split( '/' )
-    current_path = None
-    for path_id in new_location:
-        if path_id.startswith( 'library-' ):
-            library_id = path_id.split( '-' )[1]
-            current_path = Library.secure_query( current_uid ) \
-                .filter( Library.id == library_id ) \
-                .first()
-        elif path_id.startswith( 'folder-' ):
-            folder_id = path_id.split( '-' )[1]
-            if isinstance( current_path, Library ):
-                current_path = Folder.secure_query( current_uid ) \
-                    .filter( Folder.id == folder_id ) \
-                    .filter( Folder.library_id == current_path.id ) \
-                    .first()
-            elif isinstance( current_path, Folder ):
-                current_path = Folder.secure_query( current_uid ) \
-                    .filter( Folder.id == folder_id ) \
-                    .filter( Folder.parent_id == current_path.id ) \
-                    .first()
-            else:
-                return jsonify(
-                    {'submit_status': 'error', 'errors':
-                        ['Invalid save path specified.'] } )
-
-    #db.session.commit()
-
-    # Return the modified item.
-    item_dict = item.to_dict( ignore_keys=['parent', 'folder'] )
-    return jsonify( item_dict )
-
-@libraries.route( '/ajax/item/<int:item_id>/json', methods=['GET'] )
-def cloud_item_ajax_json( item_id ):
-
-    current_uid = User.current_uid()
-
-    item = Item.secure_query( current_uid ) \
-        .filter( Item.id == item_id ) \
-        .first()
-
-    if not item:
-        abort( 403 )
-
-    item_dict = item.to_dict( ignore_keys=['parent', 'folder'] )
-
-    parents = []
-    parent_iter = item.folder
-    while parent_iter:
-        parents.append( 'folder-{}'.format( parent_iter.id ) )
-        parent_iter = parent_iter.parent
-    parents.reverse()
-    parents.insert( 0, 'library-{}'.format( item.library_id ) )
-    item_dict['parents'] = parents
-
-    return jsonify( item_dict )
-
 @current_app.route( '/ajax/libraries/upload', methods=['GET'] )
 def cloud_ajax_libraries_upload():
 
@@ -509,52 +433,6 @@ def cloud_ajax_libraries_upload():
         progress = threads[thread_id].progress if thread_id in threads else 0
     
     return jsonify( {'progress': progress} )
-
-@libraries.route( '/ajax/folder/id_path', methods=['POST'] )
-def cloud_ajax_folder_id_path():
-
-    ''' Given a relative path starting with a Library machine_name,
-    return a list of numeric IDs starting with that' Library's ID. '''
-
-    path = request.form['path']
-    library = None
-
-    if path:
-        path = path.split( '/' )
-        library_name = path[0]
-        path.pop( 0 )
-        path = '/'.join( path )
-
-        library = Library.secure_query( User.current_uid() ) \
-            .filter( Library.machine_name == library_name ) \
-            .first()
-    else:
-        library = Library.secure_query( User.current_uid() ) \
-            .first()
-
-    if not library:
-        abort( 404 )
-
-    try:
-        # A path was provided, so try to find the DB folder for it.
-        folder = Folder.from_path( library.id, path, User.current_uid() )
-
-        if not folder:
-            abort( 404 )
-
-    except LibraryRootException:
-        # No parent folder exists.
-        folder = None
-
-    # Build the path by iterating upwards from the found folder.
-    # Skip if no fullder due to LibraryRootException above.
-    id_path = []
-    while folder:
-        id_path.insert( 0, 'folder-{}'.format( folder.id ) )
-        folder = folder.parent
-    id_path.insert( 0, 'library-{}'.format( library.id ) )
-
-    return jsonify( id_path )
 
 @libraries.route( '/tags/<path:path>' )
 def cloud_tags( path ):
