@@ -126,6 +126,13 @@ $().ready( function() {{
 
 class BrowserWidget( object ):
 
+    _include_scripts_callbacks = [
+        lambda: (20, url_for( 'static', filename='jstree.min.js' )),
+        lambda: (80, url_for( 'static', filename='field-browser.js' )) ]
+
+    _include_styles_callbacks = [
+        lambda: (10, url_for( 'static', filename='jstree/style.min.css' )) ]
+
     def __call__(self, field, **kwargs ):
         return render_template( 'field-tree.html.j2',
             field_name=field.name,
@@ -134,6 +141,14 @@ class BrowserWidget( object ):
             field_uuid=str( uuid.uuid1() ) )
 
 class TagsWidget( object ):
+
+    _include_scripts_callbacks = [
+        lambda: (20, url_for( 'static', filename='typeahead.bundle.min.js' )),
+        lambda: (25, url_for( 'static', filename='bootstrap-tagsinput.min.js' )),
+        lambda: (80, url_for( 'static', filename='field-tags.js' )) ]
+
+    _include_styles_callbacks = [
+        lambda: (10, url_for( 'static', filename='bootstrap-tagsinput.css' )) ]
 
     def __call__(self, field, **kwargs ):
         return '''

@@ -14,31 +14,13 @@ var scrollDataCallback = null;
 var scrollMethod = 'GET';
 {% else %}
 var folderID = -1;
-var scrollURL =  flaskRoot + 'ajax/html/search';
-var scrollArgsCallback = searchArgs;
+var scrollURL = flaskRoot + 'ajax/html/search';
+var scrollArgsCallback = function() { return "query={{ search_query }}&page=" + page.toString(); };;
 var scrollArgsCaller = null;
 var scrollDataCallback = null;
 var scrollMethod = 'GET';
 {% endif %}
 </script>
-<script src="{{ url_for( 'static', filename='typeahead.bundle.min.js' ) }}"></script>
-<script src="{{ url_for( 'static', filename='bootstrap-tagsinput.min.js' ) }}"></script>
-<script src="{{ url_for( 'static', filename='jquery.unveil2.min.js' ) }}"></script>
-<script src="{{ url_for( 'static', filename='jstree.min.js' ) }}"></script>
-<script src="{{ url_for( 'static', filename='featherlight.min.js' ) }}"></script>
-<script src="{{ url_for( 'static', filename='featherlight.gallery.min.js' ) }}"></script>
-<script src="{{ url_for( 'static', filename='libraries.js' ) }}"></script>
-<script src="{{ url_for( 'static', filename='field-browser.js' ) }}"></script>
-<script src="{{ url_for( 'static', filename='field-tags.js' ) }}"></script>
-<script src="{{ url_for( 'static', filename='edit-item.js' ) }}"></script>
-{% endblock %}
-
-{% block styles %}
-<link rel="stylesheet" href="{{ url_for( 'static', filename='bootstrap-tagsinput.css' ) }}" />
-<link rel="stylesheet" href="{{ url_for( 'static', filename='featherlight.min.css' ) }}" />
-<link rel="stylesheet" href="{{ url_for( 'static', filename='featherlight.gallery.min.css' ) }}" />
-<link rel="stylesheet" href="{{ url_for( 'static', filename='gallery.css' ) }}" />
-<link rel="stylesheet" href="{{ url_for( 'static', filename='jstree/style.min.css' ) }}" />
 {% endblock %}
 
 {% block modals %}
@@ -106,16 +88,16 @@ var scrollMethod = 'GET';
 {% block sidebar_collapsed %}
 <li class="nav-item">
    {# h-50 and d-flex keep groups v-aligned inside of menus. #}
-   {{ show_form( search_form, class="search-query form-inline", group_class="form-group h-50 d-flex", method='GET', action=url_for( 'cloud_items_search' ), enable_csrf=False ) }}
+   {{ show_form( form_search_query, class="search-query form-inline", group_class="form-group h-50 d-flex", method='GET', action=url_for( 'cloud_items_search' ), enable_csrf=False ) }}
 </li>
 {% endblock %}
 
 {% block content %}
 
-{% if save_search_form is defined %}
+{% if form_save_search is defined %}
 <div class="row">
    <div id="save-search-wrapper" class="bg-secondary col-9 p-4 mx-auto my-3 rounded">
-      {{ show_form( save_search_form, class="save-search-query", action=url_for( 'cloud_items_search_save' ) ) }}
+      {{ show_form( form_save_search, class="save-search-query", action=url_for( 'cloud_items_search_save' ) ) }}
    </div>
 </div>
 {% endif %}
@@ -157,12 +139,8 @@ var scrollMethod = 'GET';
 
 {% endif %}
 
-{% if this_folder is defined and this_folder %}
-{% set items_classes = items_classes + ' folder-{{ this_folder.id }}' %}
-{% endif %}
-
 <form>
-<div id="folder-items" class="row justify-content-center{{ items_classes }}">
+<div id="folder-items" class="row justify-content-center">
 {% for item in items %}
 {{ item.library_html()|safe }}
 {% endfor %}

@@ -24,14 +24,13 @@ class TestSearch( TestCase ):
         DataHelper.create_folders( self )
         DataHelper.create_libraries( self, db )
         DataHelper.create_data_folders( self, db )
+        DataHelper.create_data_items( self, db )
 
     def tearDown( self ):
         db.session.remove()
         db.drop_all()
 
     def test_search_eq( self ):
-
-        DataHelper.create_data_items( self, db )
 
         search_test = Searcher( 'aspect=10' )
         search_test.lexer.lex()
@@ -43,8 +42,6 @@ class TestSearch( TestCase ):
             self.assertEqual( 10, item.aspect )
 
     def test_search_and( self ):
-
-        DataHelper.create_data_items( self, db )
 
         search_test = Searcher( '&((rating=4)(nsfw=0))' )
         search_test.lexer.lex()
@@ -58,8 +55,6 @@ class TestSearch( TestCase ):
         
     def test_search_gt( self ):
 
-        DataHelper.create_data_items( self, db )
-
         search_test = Searcher( '(rating>1)' )
         search_test.lexer.lex()
         search_test.lexer.dump()
@@ -70,8 +65,6 @@ class TestSearch( TestCase ):
             self.assertLess( 1, item.rating )
 
     def test_search_gte( self ):
-
-        DataHelper.create_data_items( self, db )
 
         search_test = Searcher( 'rating>=1' )
         search_test.lexer.lex()
@@ -93,8 +86,6 @@ class TestSearch( TestCase ):
 
     def test_search_like( self ):
 
-        DataHelper.create_data_items( self, db )
-
         search_test = Searcher( 'name=%random640%' )
         search_test.lexer.lex()
         search_test.lexer.dump()
@@ -113,8 +104,6 @@ class TestSearch( TestCase ):
 
     def test_search_or( self ):
 
-        DataHelper.create_data_items( self, db )
-
         search_test = Searcher( '|((width=100)(width=500))' )
         search_test.lexer.lex()
         search_test.lexer.dump()
@@ -126,8 +115,6 @@ class TestSearch( TestCase ):
 
     def test_search_not( self ):
 
-        DataHelper.create_data_items( self, db )
-
         search_test = Searcher( '!(width=500)' )
         search_test.lexer.lex()
         search_test.lexer.dump()
@@ -138,12 +125,10 @@ class TestSearch( TestCase ):
 
     def test_search_in( self ):
 
-        DataHelper.create_data_items( self, db )
-
         search_test = Searcher( '("Sub Test Tag 3"@tags)' )
         search_test.lexer.lex()
         search_test.lexer.dump()
         res = search_test.search( self.user_id ).all()
 
-        self.assertEqual( 1, len( res ) )
-        self.assertEqual( 'random100x100.png', res[0].name )
+        #self.assertEqual( 1, len( res ) )
+        self.assertEqual( ['random100x100.png'], [r.name for r in res] )

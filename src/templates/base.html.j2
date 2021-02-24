@@ -23,9 +23,8 @@
     {% for script_iter in include_scripts %}
     <script src="{{ script_iter }}"></script>
     {% endfor %}
-    {% else %}
-    {% block scripts %}{% endblock %}
     {% endif %}
+    {% block scripts %}{% endblock %}
     {% if include_styles is defined %}
     {% for style_iter in include_styles %}
     <link rel="stylesheet" href="{{ style_iter }}" />

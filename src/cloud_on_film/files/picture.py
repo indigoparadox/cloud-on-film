@@ -136,8 +136,12 @@ class Picture( Item ):
         ImageTypeException if they do not match. '''
 
         start_bytes = None
-        with open( self.absolute_path, 'rb' ) as image_file_handle:
-            start_bytes = image_file_handle.read( 3 )
+        try:
+            with open( self.absolute_path, 'rb' ) as image_file_handle:
+                start_bytes = image_file_handle.read( 3 )
+        except FileNotFoundError as e:
+            current_app.logger.error( 'while checking type: %s', e )
+            raise ImageTypeException( 'missing' )
 
         image_type = None
         if MAGIC_JPEG == start_bytes:

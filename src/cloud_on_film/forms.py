@@ -47,16 +47,11 @@ class UploadLibraryForm( FlaskForm, COFBaseFormMixin ):
 class EditItemIncludesMixin:
 
     _include_scripts_callbacks = [
-        lambda: url_for( 'static', filename='typeahead.bundle.min.js' ),
-        lambda: url_for( 'static', filename='bootstrap-tagsinput.min.js' ),
-        lambda: url_for( 'static', filename='jstree.min.js' ),
-        lambda: url_for( 'static', filename='field-browser.js' ),
-        lambda: url_for( 'static', filename='field-tags.js' ),
-        lambda: url_for( 'static', filename='edit-item.js' ) ]
+        lambda: (80, url_for( 'static', filename='edit-item.js' )) ]
 
     _include_styles_callbacks = [
-        lambda: url_for( 'static', filename='bootstrap-tagsinput.css' ),
-        lambda: url_for( 'static', filename='jstree/style.min.css' ) ]
+        lambda: (10, url_for( 'static', filename='bootstrap-tagsinput.css' )),
+        lambda: (10, url_for( 'static', filename='jstree/style.min.css' )) ]
 
 class EditItemForm( FlaskForm, COFBaseFormMixin, EditItemIncludesMixin ):
 
@@ -79,11 +74,21 @@ class EditBatchItemForm( FlaskForm, COFBaseFormMixin, EditItemIncludesMixin ):
 
 class SaveSearchForm( FlaskForm, COFBaseFormMixin ):
 
+    _form_id = 'form-save-search'
+
+    _include_scripts_callbacks = [
+        lambda: (90, url_for( 'static', filename='search.js' )) ]
+
     query = _StringField( 'Search String', validators=[DataRequired()] )
     name = StringField( 'Search Name', validators=[DataRequired()] )
     save = SubmitField( 'Save Search' )
     
 class SearchQueryForm( FlaskForm, COFBaseFormMixin ):
+
+    _form_id = 'form-search-query'
+
+    _include_scripts_callbacks = [
+        lambda: (90, url_for( 'static', filename='search.js' )) ]
 
     query = _StringField( '', validators=[DataRequired()] )
     search = SubmitField( 'Search' )

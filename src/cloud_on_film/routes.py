@@ -37,8 +37,10 @@ from .forms import \
 from .importing import start_import_thread, threads
 from .search import Searcher
 from .widgets import \
-    EditBatchItemFormWidget, \
-    FormWidget, \
+    EditBatchItemFormWidget, EditItemFormWidget, \
+    FormWidget, LibraryRenderer, \
+    SearchFormWidget, \
+    SavedSearchFormWidget, \
     WidgetRenderer
 from . import csrf
 
@@ -183,21 +185,20 @@ def cloud_libraries_upload( thread_id='' ):
 
     return render.render()
 
-@current_app.route( '/libraries/<string:machine_name>' )
-@current_app.route( '/libraries/<string:machine_name>/<path:relative_path>' )
-@current_app.route( '/libraries/<string:machine_name>/<path:relative_path>/<int:page>' )
-def cloud_libraries( machine_name=None, relative_path=None, page=0 ):
+@current_app.route( '/libraries/<string:machine_name>', methods=['GET'] )
+@current_app.route( '/libraries/<string:machine_name>/<path:relative_path>', methods=['GET'] )
+def cloud_libraries( machine_name=None, relative_path=None ):
 
-    edit_form = EditItemForm( request.form )
-    search_form = SearchQueryForm( request.form )
+    page = int( request.args['page'] ) if 'page' in request.args and request.args['page'] else 0
+    offset = page * current_app.config['ITEMS_PER_PAGE']
 
-    l_globals = {
-        'library_name': machine_name,
-        'title': os.path.basename(relative_path )
-            if relative_path else machine_name,
-        'categories': request.args.get( 'categories' )
-            if request.args.get( 'categories' ) in ['tags', 'folders']
-                else 'folders' }
+    renderer = LibraryRenderer( page=page )
+
+    # These forms will never be handled by this route, so they don't need
+    # to collect POSTs.
+    search_form = SearchQueryForm()
+    search_widget = SearchFormWidget( form=search_form )
+    renderer.add_widget( search_widget )
 
     current_uid = User.current_uid()
 
@@ -215,7 +216,6 @@ def cloud_libraries( machine_name=None, relative_path=None, page=0 ):
         if not folder:
             abort( 404 )
 
-        offset = page * current_app.config['ITEMS_PER_PAGE']
         items = Item.secure_query( current_uid ) \
             .filter( Item.folder_id == folder.id ) \
             .order_by( Item.name ) \
@@ -223,21 +223,31 @@ def cloud_libraries( machine_name=None, relative_path=None, page=0 ):
             .limit( current_app.config['ITEMS_PER_PAGE'] ) \
             .all()
 
-        return render_template(
-            'libraries.html.j2', **l_globals, folders=folder.children,
-            items=items, items_classes=' pictures', page=page, current_uid=current_uid,
-            this_folder=folder, edit_form=edit_form, search_form=search_form )
+        renderer.kwargs['this_folder'] = folder
+        renderer.kwargs['items'] = items
+        renderer.kwargs['folders'] = folder.children
+
+        return renderer.render()
 
     except LibraryRootException as e:
         # Show the root of the given library ID.
-        return render_template(
-            'libraries.html.j2', **l_globals, folders=library.children,
-            pictures=[], page=page, this_folder=None, current_uid=current_uid,
-            edit_form=edit_form, search_form=search_form )
+
+        items = Item.secure_query( current_uid ) \
+            .filter( Item.folder_id == None ) \
+            .order_by( Item.name ) \
+            .offset( offset ) \
+            .limit( current_app.config['ITEMS_PER_PAGE'] ) \
+            .all()
+
+        renderer.kwargs['items'] = items
+        renderer.kwargs['folders'] = library.children
+
+        return renderer.render()
 
     except InvalidFolderException as e:
 
         # Try to see if this is a valid file and display it if so.
+
         file_item = Item.secure_query( current_uid ) \
             .filter( Item.folder_id == e.parent_id ) \
             .filter( Item.name == e.name ) \
@@ -246,8 +256,9 @@ def cloud_libraries( machine_name=None, relative_path=None, page=0 ):
         if not file_item:
             abort( 404 )
 
+        # TODO: Individual file display.
         return render_template(
-            'file_item.html.j2', **l_globals, file_item=file_item,
+            'file_item.html.j2', file_item=file_item,
             page=page, edit_form=edit_form, search_form=search_form )
 
 # endregion
@@ -323,6 +334,9 @@ def cloud_items_search_delete( search_id ):
 @current_app.route( '/search/saved/<int:search_id>' )
 def cloud_items_search_saved( search_id ):
 
+    search_form = SearchQueryForm( request.args, csrf_enabled=False )
+    save_search_form = SaveSearchForm( request.form )
+
     current_uid = User.current_uid()
     search = SavedSearch.secure_query( current_uid ) \
         .filter( SavedSearch.id == search_id ) \
@@ -330,9 +344,6 @@ def cloud_items_search_saved( search_id ):
 
     if not search:
         abort( 404 )
-
-    search_form = SearchQueryForm( request.args, csrf_enabled=False )
-    save_search_form = SaveSearchForm( request.form )
 
     page = int( request.args['page'] ) if 'page' in request.args else 0
     offset = page * current_app.config['ITEMS_PER_PAGE']
@@ -345,56 +356,56 @@ def cloud_items_search_saved( search_id ):
         .limit( limit ) \
         .all()
 
+    renderer = LibraryRenderer( items=items, page=page )
+
     search_form.query.data = search.query
     save_search_form.query.data = search_form.query.data
     save_search_form.name.data = search.display_name
 
-    return render_template(
-        'libraries.html.j2', items=items, save_search_form=save_search_form,
-        page=page, search_form=search_form )
+    save_search_widget = SavedSearchFormWidget( form=save_search_form )
+    renderer.add_widget( save_search_widget )
 
-@current_app.route( '/search' )
+    search_widget = SearchFormWidget( form=search_form )
+    renderer.add_widget( search_widget )
+
+    return renderer.render()
+
+@current_app.route( '/search', methods=['GET'] )
 def cloud_items_search():
+
+    page = int( request.args['page'] ) if 'page' in request.args and request.args['page'] else 0
+    offset = page * current_app.config['ITEMS_PER_PAGE']
 
     current_uid = User.current_uid()
 
     search_form = SearchQueryForm( request.args, csrf_enabled=False )
-    save_search_form = SaveSearchForm( request.form )
-    edit_form = EditItemForm( request.form )
+    
+    renderer = LibraryRenderer( page=page )
 
-    page = 0
-    if (search_form.search.data or \
-    save_search_form.save.data) and \
-    (search_form.validate() or \
-    save_search_form.validate()):
-        page = int( search_form.page.data ) if search_form.page.data else 0
+    search_form_widget = SearchFormWidget( search_form )
+    renderer.add_widget( search_form_widget )
+
+    if search_form.validate():
         query_str = search_form.query.data
-        offset = page * current_app.config['ITEMS_PER_PAGE']
-        limit = current_app.config['ITEMS_PER_PAGE']
-
+        
         searcher = Searcher( query_str )
         searcher.lexer.lex()
         items = searcher.search( current_uid ) \
             .order_by( Item.name ) \
             .offset( offset ) \
-            .limit( limit ) \
+            .limit( current_app.config['ITEMS_PER_PAGE'] ) \
             .all()
 
-        save_search_form.query.data = search_form.query.data
+        search_form.query.data = search_form.query.data
+
+        renderer.kwargs['items'] = items
 
     else:
-        if (search_form.search.data or \
-        search_form.save.data):
-            for field, errors in search_form.errors.items():
-                for error in errors:
-                    flash( error, 'error')
-        items = []
+        for field, errors in search_form.errors.items():
+            for error in errors:
+                flash( error, 'error')
 
-    #return jsonify( [m.library_html() for m in query.all()] )
-
-    return render_template(
-        'libraries.html.j2', items=items, save_search_form=save_search_form,
-        page=page, edit_form=edit_form, search_form=search_form )
+    return renderer.render()
 
 # endregion
 

@@ -1,7 +1,7 @@
 
 from enum import Enum
 
-from cloud_on_film.models import Item
+from cloud_on_film.models import Item, Tag
 from . import db
 
 #region exceptions
@@ -26,7 +26,7 @@ class SearchLexerParser( object ):
         lt = 3
         gte = 4
         lte = 5
-        in = 6
+        in_ = 6
         like = 7
 
     class Node( object ):
@@ -100,11 +100,10 @@ class SearchLexerParser( object ):
 
             if "'" == c or '"' == c:
                 if not self.is_value_pending():
-                    self.ctok_type = str
                     self.ctok_quotes = True
 
-                elif str == self.ctok_type:
-                    self.push_token()
+                elif self.ctok_quotes:
+                    self.ctok_quotes = False
 
                 else:
                     raise SearchSyntaxException( 'invalid \'"\' or "\'" detected' )
@@ -119,7 +118,7 @@ class SearchLexerParser( object ):
                     self.ctok_value += c
 
             elif '!' == c:
-                if str == self.ctok_type:
+                if self.ctok_quotes:
                     self.ctok_value += c
 
                 elif not self.is_value_pending():
@@ -132,7 +131,7 @@ class SearchLexerParser( object ):
                     raise SearchSyntaxException( 'stray "!" detected' )
 
             elif '&' == c:
-                if str == self.ctok_type:
+                if self.ctok_quotes:
                     self.ctok_value += c
 
                 elif not self.is_value_pending():
@@ -145,7 +144,7 @@ class SearchLexerParser( object ):
                     raise SearchSyntaxException( 'stray "&" detected' )
 
             elif '|' == c:
-                if str == self.ctok_type:
+                if self.ctok_quotes:
                     self.ctok_value += c
 
                 elif not self.is_value_pending():
@@ -158,7 +157,7 @@ class SearchLexerParser( object ):
                     raise SearchSyntaxException( 'stray "|" detected' )
 
             elif '=' == c:
-                if str == self.ctok_type and self.ctok_quotes:
+                if self.ctok_quotes:
                     self.ctok_value += c
 
                 elif str == self.ctok_type:
@@ -171,7 +170,7 @@ class SearchLexerParser( object ):
                     raise SearchSyntaxException( 'stray "=" detected' )
 
             elif '@' == c:
-                if str == self.ctok_type and self.ctok_quotes:
+                if self.ctok_quotes:
                     self.ctok_value += c
 
                 elif str == self.ctok_type:
@@ -183,8 +182,12 @@ class SearchLexerParser( object ):
                 else:
                     raise SearchSyntaxException( 'stray "@" detected' )
 
+            elif ' ' == c:
+                if self.ctok_quotes:
+                    self.ctok_value += c
+
             elif '>' == c:
-                if str == self.ctok_type and self.ctok_quotes:
+                if self.ctok_quotes:
                     self.ctok_value += c
 
                 elif str == self.ctok_type and \
@@ -203,7 +206,7 @@ class SearchLexerParser( object ):
                     raise SearchSyntaxException( 'stray ">" detected' )
 
             elif '<' == c:
-                if str == self.ctok_type and self.ctok_quotes:
+                if self.ctok_quotes:
                     self.ctok_value += c
 
                 elif str == self.ctok_type and \
@@ -222,7 +225,7 @@ class SearchLexerParser( object ):
                     raise SearchSyntaxException( 'stray "<" detected' )
 
             elif '(' == c:
-                if str == self.ctok_type:
+                if self.ctok_quotes:
                     self.ctok_value += c
 
                 elif '' == self.ctok_value:
@@ -232,7 +235,7 @@ class SearchLexerParser( object ):
                     raise SearchSyntaxException( 'stray "("' )
 
             elif ')' == c:
-                if str == self.ctok_type and self.ctok_quotes:
+                if self.ctok_quotes:
                     self.ctok_value += c
 
                 elif '' != self.ctok_value and \
@@ -324,7 +327,7 @@ class SearchLexerParser( object ):
         self.last_op = SearchLexerParser.Op.gt
 
     def push_in( self ):
-        self.last_op = SearchLexerParser.Op.in
+        self.last_op = SearchLexerParser.Op.in_
 
     def push_lt( self ):
         self.last_op = SearchLexerParser.Op.lt
@@ -422,8 +425,13 @@ class Searcher( object ):
             # TODO: Get plugin model or something.
             from cloud_on_film.files.picture import Picture
 
-            if not hasattr( Picture, _tree_start.children[0] ):
-                raise SearchExecuteException( 'invalid attribute specified' )
+            if SearchLexerParser.Op.in_ == _tree_start.op:
+                # Special ops that use the attrib postfix.
+                if not hasattr( Picture, _tree_start.children[1] ):
+                    raise SearchExecuteException( 'invalid attribute "{}" specified'.format( _tree_start.children[1] ) )
+
+            elif not hasattr( Picture, _tree_start.children[0] ):
+                raise SearchExecuteException( 'invalid attribute "{}" specified'.format( _tree_start.children[0] ) )
 
             if SearchLexerParser.Op.eq == _tree_start.op:
                 return (getattr( Picture, _tree_start.children[0] ) == _tree_start.children[1])
@@ -439,7 +447,9 @@ class Searcher( object ):
                 return (getattr( Picture, _tree_start.children[0] ) != _tree_start.children[1])
             elif SearchLexerParser.Op.like == _tree_start.op:
                 return (getattr( Picture, _tree_start.children[0] ).like( _tree_start.children[1] ))
-            elif SearchLexerParser.Op.in == _tree_start.op:
-                return (getattr( Picture, _tree_start.children[0] ).in_( _tree_start.children[1] ))
+            elif SearchLexerParser.Op.in_ == _tree_start.op:
+                #if 'tags' == _tree_start.children[1]:
+                #    _tree_start.children = (Tag.from_path(_tree_start.children[1] ), 'tag_ids')
+                return getattr( Picture, _tree_start.children[1] ).any( name=_tree_start.children[0] )
 
         return _query
