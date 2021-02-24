@@ -236,7 +236,7 @@ class Picture( Item ):
         self_dict = self.to_dict( ignore_keys=['folder', '_meta', '_tags'] )
 
         self_dict['classes'] = ''
-        self_dict['fullsize_page'] = url_for( 'cloud_libraries',
+        self_dict['fullsize_page'] = url_for( 'libraries.cloud_libraries',
             machine_name=self.folder.library.machine_name,
             relative_path=None ) + '/' + self.path
         self_dict['classes'] += ' nsfw' if self.nsfw else ''

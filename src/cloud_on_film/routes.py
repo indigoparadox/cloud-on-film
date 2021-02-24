@@ -5,6 +5,7 @@ import mimetypes
 import io
 import uuid
 from flask import \
+    Blueprint, \
     render_template, \
     request, \
     current_app, \
@@ -45,12 +46,14 @@ from .widgets import \
     SavedSearchFormWidget, WidgetRenderer
 from . import csrf
 
-current_app.jinja_env.globals.update( uuid=lambda: str( uuid.uuid1() ) )
-current_app.jinja_env.globals.update( user_current_uid=User.current_uid )
-current_app.jinja_env.globals.update( folder_from_path=Folder.from_path )
-current_app.jinja_env.globals.update( library_enumerate_all=Library.enumerate_all )
-current_app.jinja_env.globals.update( tag_enumerate_roots=Tag.enumerate_roots )
-current_app.jinja_env.globals.update( saved_search_enumerate_user=SavedSearch.enumerate_user )
+libraries = Blueprint( 'libraries', __name__ )
+
+libraries.add_app_template_global( lambda: str( uuid.uuid1() ), name='uuid' )
+libraries.add_app_template_global( User.current_uid, name='user_current_uid' )
+libraries.add_app_template_global( Folder.from_path, name='folder_from_path' )
+libraries.add_app_template_global( Library.enumerate_all, name='library_enumerate_all' )
+libraries.add_app_template_global( Tag.enumerate_roots, name='tag_enumerate_roots' )
+libraries.add_app_template_global( SavedSearch.enumerate_user, name='saved_search_enumerate_user' )
 
 def url_self( **args ):
     return url_for( request.endpoint, **dict( request.view_args, **args ) )
@@ -59,8 +62,8 @@ current_app.jinja_env.globals.update( url_self=url_self )
 
 # region preview
 
-@current_app.route( '/preview/<int:file_id>' )
-@current_app.route( '/preview/<int:file_id>/<int:width>/<int:height>' )
+@libraries.route( '/preview/<int:file_id>' )
+@libraries.route( '/preview/<int:file_id>/<int:width>/<int:height>' )
 def cloud_plugin_preview( file_id, width=160, height=120 ):
 
     '''Generate a preview thumbnail to be called by a tag src attribute on gallery pages.'''
@@ -91,7 +94,7 @@ def cloud_plugin_preview( file_id, width=160, height=120 ):
         return send_file( io.BytesIO( pic_f.read() ),
             mimetypes.guess_type( file_path )[0] )
 
-@current_app.route( '/fullsize/<int:file_id>' )
+@libraries.route( '/fullsize/<int:file_id>' )
 def cloud_plugin_fullsize( file_id ):
 
     current_uid = User.current_uid()
@@ -119,7 +122,7 @@ def cloud_plugin_fullsize( file_id ):
 
 # region library
 
-@current_app.route( '/libraries/new', methods=['GET', 'POST'] )
+@libraries.route( '/libraries/new', methods=['GET', 'POST'] )
 def cloud_libraries_new():
 
     form = NewLibraryForm( request.form )
@@ -146,8 +149,8 @@ def cloud_libraries_new():
     
     return render.render()
 
-@current_app.route( '/libraries/upload', methods=['GET', 'POST'] )
-@current_app.route( '/libraries/upload/<thread_id>', methods=['GET', 'POST'] )
+@libraries.route( '/libraries/upload', methods=['GET', 'POST'] )
+@libraries.route( '/libraries/upload/<thread_id>', methods=['GET', 'POST'] )
 def cloud_libraries_upload( thread_id='' ):
 
     title = 'Upload Library Data'
@@ -162,14 +165,14 @@ def cloud_libraries_upload( thread_id='' ):
                 json.loads( request.files['upload'].read().decode( 'utf-8' ) )
             thread_id = start_import_thread( pictures )
             return redirect(
-                url_for( 'cloud_libraries_upload' ) + '?thread_id=thread_id' )
+                url_for( 'libraries.cloud_libraries_upload' ) + '?thread_id=thread_id' )
 
     elif 'GET' == request.method:
         thread_id = int( request.args['thread_id'] ) \
             if 'thread_id' in request.args else None
         form = UploadLibraryForm()
         form.progress.url = \
-            url_for( 'cloud_ajax_libraries_upload' ) + \
+            url_for( 'libraries.cloud_ajax_libraries_upload' ) + \
             '?thread_id=' + str( thread_id )
         
         title = 'Uploading thread #{}'.format( thread_id )
@@ -184,8 +187,8 @@ def cloud_libraries_upload( thread_id='' ):
 
     return render.render()
 
-@current_app.route( '/libraries/<string:machine_name>', methods=['GET'] )
-@current_app.route( '/libraries/<string:machine_name>/<path:relative_path>', methods=['GET'] )
+@libraries.route( '/libraries/<string:machine_name>', methods=['GET'] )
+@libraries.route( '/libraries/<string:machine_name>/<path:relative_path>', methods=['GET'] )
 def cloud_libraries( machine_name=None, relative_path=None ):
 
     page = int( request.args['page'] ) if 'page' in request.args and request.args['page'] else 0
@@ -264,7 +267,7 @@ def cloud_libraries( machine_name=None, relative_path=None ):
 
 # region search
 
-@current_app.route( '/search/save', methods=['POST'] )
+@libraries.route( '/search/save', methods=['POST'] )
 def cloud_items_search_save():
 
     current_uid = User.current_uid()
@@ -293,7 +296,7 @@ def cloud_items_search_save():
             flash( 'Created search #{}.'.format( search.id ) )
 
 
-        return redirect( url_for( 'cloud_items_search_saved', search_id=search.id ) )
+        return redirect( url_for( 'libraries.cloud_items_search_saved', search_id=search.id ) )
 
     else:
         if save_search_form.query.data:
@@ -301,11 +304,11 @@ def cloud_items_search_save():
                 for error in errors:
                     flash( error, 'error')
 
-        return redirect( url_for( 'cloud_items_search',
+        return redirect( url_for( 'libraries.cloud_items_search',
             name=save_search_form.name.data,
             query=save_search_form.query.data ) )
 
-@current_app.route( '/search/delete/<int:search_id>', methods=['GET', 'POST'] )
+@libraries.route( '/search/delete/<int:search_id>', methods=['GET', 'POST'] )
 def cloud_items_search_delete( search_id ):
 
     search = SavedSearch.secure_query( User.current_uid() ) \
@@ -328,9 +331,9 @@ def cloud_items_search_delete( search_id ):
         db.session.delete( search )
         db.session.commit()
 
-        return redirect( url_for( 'cloud_root' ) )
+        return redirect( url_for( 'libraries.cloud_root' ) )
 
-@current_app.route( '/search/saved/<int:search_id>' )
+@libraries.route( '/search/saved/<int:search_id>' )
 def cloud_items_search_saved( search_id ):
 
     search_form = SearchQueryForm( request.args, csrf_enabled=False )
@@ -370,7 +373,7 @@ def cloud_items_search_saved( search_id ):
 
     return renderer.render()
 
-@current_app.route( '/search', methods=['GET'] )
+@libraries.route( '/search', methods=['GET'] )
 def cloud_items_search():
 
     page = int( request.args['page'] ) \
@@ -416,7 +419,7 @@ def cloud_items_search():
 
 # region ajax_json
 
-@current_app.route( '/ajax/item/save', methods=['POST'] )
+@libraries.route( '/ajax/item/save', methods=['POST'] )
 def cloud_item_ajax_save():
 
     current_uid = User.current_uid()
@@ -467,7 +470,7 @@ def cloud_item_ajax_save():
     item_dict = item.to_dict( ignore_keys=['parent', 'folder'] )
     return jsonify( item_dict )
 
-@current_app.route( '/ajax/item/<int:item_id>/json', methods=['GET'] )
+@libraries.route( '/ajax/item/<int:item_id>/json', methods=['GET'] )
 def cloud_item_ajax_json( item_id ):
 
     current_uid = User.current_uid()
@@ -507,7 +510,7 @@ def cloud_ajax_libraries_upload():
     
     return jsonify( {'progress': progress} )
 
-@current_app.route( '/ajax/folders' )
+@libraries.route( '/ajax/folders' )
 def cloud_folders_ajax():
 
     current_uid = User.current_uid()
@@ -569,7 +572,7 @@ def cloud_folders_ajax():
 
     return jsonify( json_out )
 
-@current_app.route( '/ajax/folder/id_path', methods=['POST'] )
+@libraries.route( '/ajax/folder/id_path', methods=['POST'] )
 def cloud_ajax_folder_id_path():
 
     ''' Given a relative path starting with a Library machine_name,
@@ -615,14 +618,14 @@ def cloud_ajax_folder_id_path():
 
     return jsonify( id_path )
 
-@current_app.route( '/ajax/tags.json')
+@libraries.route( '/ajax/tags.json' )
 def cloud_tags_ajax():
     # TODO: Omit empty tags.
     tags = db.session.query( Tag ).filter( Tag.name != '' ).all()
     tag_list = [t.path for t in tags]
     return jsonify( tag_list )
 
-@current_app.route( '/tags/<path:path>' )
+@libraries.route( '/tags/<path:path>' )
 def cloud_tags( path ):
 
     current_uid = User.current_uid()
@@ -666,7 +669,7 @@ def cloud_items_ajax_search_delete():
 
 # region ajax_html
 
-@current_app.route( '/ajax/html/items/<int:folder_id>/<int:page>', methods=['GET'] )
+@libraries.route( '/ajax/html/items/<int:folder_id>/<int:page>', methods=['GET'] )
 def cloud_items_ajax_json( folder_id, page ):
 
     offset = page * current_app.config['ITEMS_PER_PAGE']
@@ -681,7 +684,7 @@ def cloud_items_ajax_json( folder_id, page ):
     #return jsonify( [i.to_dict( ignore_keys=['parent', 'folder'] ) for i in items] )
     return jsonify( [m.library_html() for m in items] )
 
-@current_app.route( '/ajax/html/search', methods=['GET'] )
+@libraries.route( '/ajax/html/search', methods=['GET'] )
 def cloud_items_ajax_search():
 
     search_form = SearchQueryForm( request.args, csrf_enabled=False )
@@ -707,7 +710,7 @@ def cloud_items_ajax_search():
 
     return jsonify( [m.library_html() for m in query.all()] )
 
-@current_app.route( '/ajax/html/batch', methods=['GET'] )
+@libraries.route( '/ajax/html/batch', methods=['GET'] )
 def cloud_items_ajax_batch():
 
     item_ids = [int( i.split( '-' )[-1] ) for i in request.args['item_ids'].split( ',' )]
@@ -730,6 +733,6 @@ def cloud_items_ajax_batch():
 
 # endregion
 
-@current_app.route( '/' )
+@libraries.route( '/' )
 def cloud_root():
     return render_template( 'root.html.j2' )

@@ -46,6 +46,8 @@ def create_app( config=None ):
 
         db.create_all()
 
+        app.register_blueprint( routes.libraries )
+
         # TODO: Installer.
         import cloud_on_film.files.picture
 

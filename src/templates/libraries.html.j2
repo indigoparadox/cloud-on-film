@@ -98,7 +98,7 @@ $().ready( function() {
 
       $('#move-batch-modal').modal( 'show' );
       $('#move-batch-tree').enableBrowserTree( 
-         "{{ url_for( 'cloud_folders_ajax' ) }}",
+         "{{ url_for( 'libraries.cloud_folders_ajax' ) }}",
          '#move-batch-input'
       );
       
@@ -107,7 +107,7 @@ $().ready( function() {
    } );
 
    $('#form-edit-checked-items .tag').enableTags( 
-      "{{ url_for( 'cloud_tags_ajax' ) }}" );
+      "{{ url_for( 'libraries.cloud_tags_ajax' ) }}" );
 
 } );
 </script>
@@ -147,11 +147,11 @@ $().ready( function() {
          {% if this_folder %}
          <li class="libraries-folder libraries-parent-folder">
          {% if this_folder.parent %}
-         <a href="{{ url_for( 'cloud_libraries', machine_name=this_folder.library.machine_name, relative_path=None ) }}/{{ this_folder.parent.path }}">
+         <a href="{{ url_for( 'libraries.cloud_libraries', machine_name=this_folder.library.machine_name, relative_path=None ) }}/{{ this_folder.parent.path }}">
          ..
          </a>
          {% else %}
-         <a href="{{ url_for( 'cloud_libraries', machine_name=this_folder.library.machine_name, relative_path=None ) }}">
+         <a href="{{ url_for( 'libraries.cloud_libraries', machine_name=this_folder.library.machine_name, relative_path=None ) }}">
          ..
          </a>
          {% endif %}
@@ -159,7 +159,7 @@ $().ready( function() {
          {% endif %}
          {% for item in folders %}
          <li class="libraries-folder">
-         <a href="{{ url_for( 'cloud_libraries', machine_name=item.library.machine_name, relative_path=None ) }}/{{ item.path }}">
+         <a href="{{ url_for( 'libraries.cloud_libraries', machine_name=item.library.machine_name, relative_path=None ) }}/{{ item.path }}">
          {{ item.name }}
          </a></li>
          {% endfor %}

@@ -60,10 +60,10 @@ class EditItemForm( FlaskForm, COFBaseFormMixin, EditItemIncludesMixin ):
     id = HiddenField( '' )
     name = StringField( 'Name', validators=[DataRequired()] )
     tags = TagsField( 'Tags',
-        url_callback=lambda: url_for( 'cloud_tags_ajax' ) )
+        url_callback=lambda: url_for( 'libraries.cloud_tags_ajax' ) )
     location = BrowserField( 'Location',
         validators=[DataRequired()],
-        url_callback=lambda: url_for( 'cloud_folders_ajax' ) )
+        url_callback=lambda: url_for( 'libraries.cloud_folders_ajax' ) )
     comment = TextAreaField( 'Comment' )
 
 class EditBatchItemForm( FlaskForm, COFBaseFormMixin, EditItemIncludesMixin ):
@@ -75,7 +75,7 @@ class EditBatchItemForm( FlaskForm, COFBaseFormMixin, EditItemIncludesMixin ):
 class SaveSearchForm( FlaskForm, COFBaseFormMixin ):
 
     _form_id = 'form-save-search'
-    _form_action_callback = lambda s: url_for( 'cloud_items_search_save' )
+    _form_action_callback = lambda s: url_for( 'libraries.cloud_items_search_save' )
 
     _include_scripts_callbacks = [
         lambda: (90, url_for( 'static', filename='search.js' )) ]
@@ -90,7 +90,7 @@ class SearchQueryForm( FlaskForm, COFBaseFormMixin ):
         csrf = False
 
     _form_id = 'form-search-query'
-    _form_action_callback = lambda s: url_for( 'cloud_items_search' )
+    _form_action_callback = lambda s: url_for( 'libraries.cloud_items_search' )
     _form_method = 'GET'
 
     _include_scripts_callbacks = [
