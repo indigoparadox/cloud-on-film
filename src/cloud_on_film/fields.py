@@ -35,6 +35,12 @@ class COFBaseFieldMixin( object ):
 class COFBaseFormMixin( object ):
 
     errors = {}
+    _form_action_callback = lambda s: '#'
+    _form_group_class = ''
+    _form_class = ''
+    _form_id = ''
+    _form_method = 'POST'
+    _form_enctype = ''
 
     def has_dropdowns( self ):
         dropdowns = False

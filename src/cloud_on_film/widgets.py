@@ -1,12 +1,14 @@
 
+import uuid
 from urllib.parse import quote
 from collections import namedtuple
-from flask import render_template
+from flask import render_template, render_template_string
 from flask.helpers import url_for
-from wtforms.fields.core import Field
-from wtforms.form import Form
 
 from cloud_on_film.forms import EditBatchItemForm, EditItemForm, SaveSearchForm, SearchQueryForm
+
+class WidgetRenderException( Exception ):
+    pass
 
 # region renderers
 
@@ -15,14 +17,16 @@ class WidgetRenderer( object ):
     ''' Provides a uniform means of gluing together forms/scripts/styles and
     ensuring they are included in the correct aread of the base template. '''
 
-    def __init__( self, template='base.html.j2', **kwargs ):
-        self.template = template
+    template_name = None
+    template_string = None
+
+    def __init__( self, **kwargs ):
+        if 'template_name' in kwargs:
+            self.template_name = kwargs['template_name']
+        elif 'template_string' in kwargs:
+            self.template_string = kwargs['template_string']
         self.kwargs = kwargs
         self.widgets = []
-
-        self.is_base = False
-        if 'base.html.j2' == template:
-            self.is_base = True
 
     def add_kwarg( self, key, value, kwargs ):
 
@@ -45,29 +49,26 @@ class WidgetRenderer( object ):
             kwargs[key] = value
 
         else:
-            raise Exception( 'unreconcilable kwargs detected ({})'.format( key ) )
+            raise WidgetRenderException(
+                'unreconcilable kwargs detected ({})'.format( key ) )
 
         return kwargs
 
-    def render_kwargs( self ):
+    def render_kwargs( self, **kwargs ):
 
         ''' Dynamically build a list of kwargs to pass to the template,
         based on renderer and widget properties. '''
 
-        kwargs = self.kwargs.copy()
+        if not kwargs:
+            kwargs = self.kwargs.copy()
+
         for widget in self.widgets:
             for key in widget.kwargs:
                 kwargs = self.add_kwarg( key, widget.kwargs[key], kwargs )
 
-            if self.is_base:
-                if not 'include_content' in kwargs:
-                    kwargs['include_content'] = widget.template_name
-
-        return kwargs
-
-    def render( self ):
-
-        kwargs = self.render_kwargs()
+            #if self.is_base:
+            #    if not 'include_content' in kwargs:
+            #        kwargs['include_content'] = widget.template_name
 
         if 'include_scripts' in kwargs:
             kwargs['include_scripts'] = sorted( kwargs['include_scripts'],
@@ -79,24 +80,64 @@ class WidgetRenderer( object ):
                 key=lambda script: script[0] )
             kwargs['include_styles'] = [s[1] for s in kwargs['include_styles']]
 
-        return render_template( self.template, **kwargs )
+        return kwargs
+
+    def render( self, **kwargs ):
+
+        if not kwargs:
+            kwargs = self.render_kwargs()
+
+        if 'template_name' in kwargs and kwargs['template_name']:
+            return render_template( kwargs['template_name'], **kwargs )
+        elif 'template_string' in kwargs and kwargs['template_string']:
+            return render_template_string( kwargs['template_string'], **kwargs )
+        else:
+            raise Exception( 'no template specified' )
 
     def add_widget( self, widget ):
         self.widgets.append( widget )
         widget.on_added( self )
 
+class FormRenderer( WidgetRenderer ):
+
+    def __init__( self, form_widget, use_base=True, **kwargs ):
+
+        self.use_base = use_base
+
+        super().__init__( **kwargs )
+
+        self.add_widget( form_widget )
+        self.form = form_widget
+
+    def render( self, **kwargs ):
+
+        form_key = self.form.form_pfx
+
+        template_string = r"{% from 'macros.html.j2' import show_form %}" + \
+            r"{{ show_form( " + form_key + r" ) }}"
+
+        if not kwargs:
+            kwargs = self.render_kwargs()
+
+        if self.use_base:
+            kwargs['template_name'] = 'base.html.j2'
+            kwargs['content'] = render_template_string(
+                template_string, **kwargs )
+
+        return super().render( **kwargs )
+
 class LibraryRenderer( WidgetRenderer ):
 
     def __init__( self, **kwargs ):
-        super().__init__( template='libraries.html.j2', **kwargs )
+        super().__init__( template_name='libraries.html.j2', **kwargs )
 
-    def render_kwargs( self ):
+    def render_kwargs( self, **kwargs ):
 
         eif_id = EditItemForm._form_id.replace( '-', '_' )
         if eif_id not in self.kwargs:
-            self.add_widget( EditItemFormWidget() )
+            self.add_widget( EditItemFormWidget( EditItemForm() ) )
 
-        kwargs = super().render_kwargs()
+        kwargs = self.kwargs.copy()
 
         library_scripts = [
             (10, url_for( 'static', filename='jquery.unveil2.min.js' )),
@@ -114,6 +155,8 @@ class LibraryRenderer( WidgetRenderer ):
 
         kwargs = self.add_kwarg( 'include_styles', library_styles, kwargs )
 
+        kwargs = super().render_kwargs( **kwargs )
+
         return kwargs
 
 # endregion
@@ -122,16 +165,21 @@ class LibraryRenderer( WidgetRenderer ):
 
 class FormWidget( object ):
 
-    template_name = 'form_generic.html.j2'
+    template_name = None
     default_classes = "w-100"
+    form_type = None
 
     def __init__( self, form=None, **kwargs ):
 
         if not hasattr( self, 'kwargs' ):
             self.kwargs = {}
 
+        if self.form_type:
+            if form:
+                assert( isinstance( form, self.form_type ) )
+
         # Try kwargs, form in order for form ID/prefix, else just use 'form'.
-        self.form_id =  kwargs['id'] if 'id' in kwargs else \
+        self.form_id = kwargs['id'] if 'id' in kwargs else \
             form._form_id if hasattr( form, '_form_id' ) else \
             'form'
         if 'form_pfx' in kwargs:
@@ -140,33 +188,14 @@ class FormWidget( object ):
         else:
             self.form_pfx = self.form_id.replace( '-', '_' )
 
-        self.kwargs = {'form_{}'.format( k ): v for k, v in kwargs.items()}
-
-        #if hasattr( form, '_form_id' ) and not 'form_id' in self.kwargs:
-        self.kwargs[self.form_pfx + '_id'] = self.form_id
-
-        if 'form_class' not in self.kwargs:
-            self.kwargs[self.form_pfx + '_class'] = self.default_classes
-
-        # Aggregate classes from form and kwargs.
-        #if hasattr( form, '_form_class' ) and not 'form_class' in self.kwargs:
-        #    self.kwargs[self.form_pfx + '_class'] = form._form_class
-        if hasattr( form, '_form_class' ) and 'form_class' in self.kwargs:
-            self.kwargs[self.form_pfx + '_class'] += form._form_class
-
-        if hasattr( form, '_form_method' ) and 'form_method' not in self.kwargs:
-            self.kwargs[self.form_pfx + '_method'] = form._form_method
-        elif 'form_method' not in self.kwargs:
-            self.kwargs[self.form_pfx + '_method'] = 'GET'
-
         self.add_form_scripts( form )
 
         if hasattr( form, '_include_styles_callbacks' ) and \
         'include_styles' not in self.kwargs:
             self.kwargs['include_styles'] = [s() for s in form._include_styles_callbacks]
 
-        if hasattr( form, '_form_enctype' ) and 'form_enctype' not in self.kwargs:
-            self.kwargs['form_enctype'] = form._form_enctype
+        #if hasattr( form, '_form_enctype' ) and 'form_enctype' not in self.kwargs:
+        #    self.kwargs['form_enctype'] = form._form_enctype
 
         self.kwargs[self.form_pfx] = form
         self.form = form
@@ -179,7 +208,8 @@ class FormWidget( object ):
         # Use callbacks as url_for() has troubles in early execution.
         if hasattr( form, '_include_scripts_callbacks' ):
             self.kwargs['include_scripts'] += \
-                [s() for s in form._include_scripts_callbacks if s() not in self.kwargs['include_scripts']]
+                [s() for s in form._include_scripts_callbacks \
+                    if s() not in self.kwargs['include_scripts']]
 
         if hasattr( form, '_fields' ):
             for field in form._fields:
@@ -194,18 +224,12 @@ class FormWidget( object ):
 class EditItemFormWidget( FormWidget ):
 
     template_name = 'form_edit.html.j2'
-
-    def __init__( self, form=None, **kwargs ):
-        if form:
-            assert( EditItemForm == type( form ) )
-        else:
-            form = EditItemForm()
-
-        super().__init__( form, **kwargs )
+    form_type = EditItemForm
 
 class EditBatchItemFormWidget( FormWidget ):
 
     template_name = 'form_edit_batch.html.j2'
+    form_type = EditBatchItemForm
 
     ItemData = namedtuple( 'item_data', ['id', 'name', 'comment', 'tags', 'location'] )
 
@@ -229,8 +253,11 @@ class EditBatchItemFormWidget( FormWidget ):
 class SearchFormWidget( FormWidget ):
 
     template_name = 'form_search.html.j2'
+    form_type = SearchQueryForm
 
     def on_added( self, renderer ):
+        self.form._form_group_class = 'form-group h-50 d-flex'
+        self.form._form_class = 'form-inline'
         if 'search_query' not in renderer.kwargs:
             renderer.kwargs['search_query'] = \
                 quote( self.form.query.data ) if self.form.query.data else ''
@@ -238,5 +265,6 @@ class SearchFormWidget( FormWidget ):
 class SavedSearchFormWidget( FormWidget ):
 
     template_name = 'form_search.html.j2'
+    form_type = SaveSearchForm
 
 # endregion

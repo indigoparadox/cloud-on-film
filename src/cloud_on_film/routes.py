@@ -37,11 +37,12 @@ from .forms import \
 from .importing import start_import_thread, threads
 from .search import Searcher
 from .widgets import \
-    EditBatchItemFormWidget, EditItemFormWidget, \
-    FormWidget, LibraryRenderer, \
+    EditBatchItemFormWidget, \
+    FormRenderer, \
+    FormWidget, \
+    LibraryRenderer, \
     SearchFormWidget, \
-    SavedSearchFormWidget, \
-    WidgetRenderer
+    SavedSearchFormWidget, WidgetRenderer
 from . import csrf
 
 current_app.jinja_env.globals.update( uuid=lambda: str( uuid.uuid1() ) )
@@ -140,10 +141,9 @@ def cloud_libraries_new():
             flash( e )
             db.session.rollback()
 
-    render = WidgetRenderer( title='New Library' )
     form_widget = FormWidget( form=form, id='form-library-new', method='POST' )
-    render.add_widget( form_widget )
-
+    render = FormRenderer( form_widget, title='New Library' )
+    
     return render.render()
 
 @current_app.route( '/libraries/upload', methods=['GET', 'POST'] )
@@ -179,9 +179,8 @@ def cloud_libraries_upload( thread_id='' ):
         else:
             progress = threads[thread_id].progress if thread_id in threads else 0
 
-    render = WidgetRenderer( title=title, progress=progress )
     form_widget = FormWidget( form=form, form_pfx='form' )
-    render.add_widget( form_widget )
+    render = FormRenderer( form_widget, title=title, progress=progress )
 
     return render.render()
 
@@ -345,7 +344,8 @@ def cloud_items_search_saved( search_id ):
     if not search:
         abort( 404 )
 
-    page = int( request.args['page'] ) if 'page' in request.args else 0
+    page = int( request.args['page'] ) \
+        if 'page' in request.args and request.args['page'] else 0
     offset = page * current_app.config['ITEMS_PER_PAGE']
     limit = current_app.config['ITEMS_PER_PAGE']
     searcher = Searcher( search.query )
@@ -373,21 +373,26 @@ def cloud_items_search_saved( search_id ):
 @current_app.route( '/search', methods=['GET'] )
 def cloud_items_search():
 
-    page = int( request.args['page'] ) if 'page' in request.args and request.args['page'] else 0
+    page = int( request.args['page'] ) \
+        if 'page' in request.args and request.args['page'] else 0
     offset = page * current_app.config['ITEMS_PER_PAGE']
 
     current_uid = User.current_uid()
 
-    search_form = SearchQueryForm( request.args, csrf_enabled=False )
-    
+    save_search_form = SaveSearchForm( request.args, csrf_enabled=False )
+    search_form = SearchQueryForm( request.args )
+
     renderer = LibraryRenderer( page=page )
 
     search_form_widget = SearchFormWidget( search_form )
     renderer.add_widget( search_form_widget )
 
+    save_search_form_widget = SavedSearchFormWidget( save_search_form )
+    renderer.add_widget( save_search_form_widget )
+
     if search_form.validate():
         query_str = search_form.query.data
-        
+
         searcher = Searcher( query_str )
         searcher.lexer.lex()
         items = searcher.search( current_uid ) \
@@ -526,7 +531,7 @@ def cloud_folders_ajax():
             .order_by( Folder.name ) \
             .first()
         if not folder_parent:
-            abort( 403 )
+            abort( 404 )
         folders = folder_parent.children
     else:
         # Get the tree started and iterate through the library's root folders.
@@ -539,7 +544,7 @@ def cloud_folders_ajax():
             .order_by( Library.display_name ) \
             .all()
         if 0 == len( libraries ):
-            abort( 403 )
+            abort( 404 )
         for library in libraries:
             json_out.append(
                 {
@@ -553,6 +558,7 @@ def cloud_folders_ajax():
                 .order_by( Folder.name ) \
                 .all()
 
+    # Convert all the folders on the list to a format palatable to jsTree.
     json_out += [{
         'id': 'folder-{}'.format( f.id ),
         'parent': 'folder-{}'.format( folder_id ) \
@@ -570,24 +576,37 @@ def cloud_ajax_folder_id_path():
     return a list of numeric IDs starting with that' Library's ID. '''
 
     path = request.form['path']
+    library = None
 
-    path = path.split( '/' )
-    library_name = path[0]
-    path.pop( 0 )
-    path = '/'.join( path )
+    if path:
+        path = path.split( '/' )
+        library_name = path[0]
+        path.pop( 0 )
+        path = '/'.join( path )
 
-    library = Library.secure_query( User.current_uid() ) \
-        .filter( Library.machine_name == library_name ) \
-        .first()
+        library = Library.secure_query( User.current_uid() ) \
+            .filter( Library.machine_name == library_name ) \
+            .first()
+    else:
+        library = Library.secure_query( User.current_uid() ) \
+            .first()
 
     if not library:
         abort( 404 )
 
-    folder = Folder.from_path( library.id, path, User.current_uid() )
+    try:
+        # A path was provided, so try to find the DB folder for it.
+        folder = Folder.from_path( library.id, path, User.current_uid() )
 
-    if not folder:
-        abort( 404 )
+        if not folder:
+            abort( 404 )
 
+    except LibraryRootException:
+        # No parent folder exists.
+        folder = None
+
+    # Build the path by iterating upwards from the found folder.
+    # Skip if no fullder due to LibraryRootException above.
     id_path = []
     while folder:
         id_path.insert( 0, 'folder-{}'.format( folder.id ) )
@@ -698,7 +717,7 @@ def cloud_items_ajax_batch():
     #page = int( search_form.page.data )
     #offset = page * current_app.config['ITEMS_PER_PAGE']
     limit = current_app.config['ITEMS_PER_PAGE']
-    render = WidgetRenderer( 'form_edit_batch.html.j2' )
+    render = WidgetRenderer( template_name='form_edit_batch.html.j2' )
 
     items = Item.secure_query( User.current_uid() ) \
         .filter( Item.id.in_( item_ids ) ) \

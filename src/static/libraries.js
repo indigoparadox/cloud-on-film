@@ -28,45 +28,6 @@ $().ready( function() {
       }
    } );
 
-   $('#form-edit-checked-items .edit').on( 'click', function( e ) {
-
-      // Grab the next [loadIncrement] columns and append them to the table.
-      $.get( flaskRoot + 'ajax/html/batch?item_ids=' + selectedItems.join() ).done( function( data ) {
-         $('#edit-batch-modal .modal-body').empty();
-         $('#edit-batch-modal .modal-body').append( data );
-         $('#edit-batch-modal').modal( 'show' );
-      } );
-
-      e.preventDefault();
-      return false;
-   } );
-
-   $('#form-edit-checked-items .move').on( 'click', function( e ) {
-
-      $('#move-batch-modal').modal( 'show' );
-      $('#move-batch-tree').enableBrowserTree( 
-         "{{ url_for( 'cloud_folders_ajax' ) }}",
-         '#move-batch-input'
-      );
-      
-      e.preventDefault();
-      return false;
-   } );
-
-   $('#form-edit-checked-items .move').on( 'click', function( e ) {
-
-      $('#move-batch-modal').modal( 'show' );
-      $('#move-batch-tree').enableBrowserTree( 
-         "{{ url_for( 'cloud_folders_ajax' ) }}",
-         '#move-batch-input'
-      );
-      
-      e.preventDefault();
-      return false;
-   } );
-
-   $('#form-edit-checked-items .tag').enableTags( flaskRoot + 'ajax/tags.json' );
-
    $(window).on( 'scroll', function( e ) {
       let bottomPosition = $(document).height() - (3 * $(window).height());
 

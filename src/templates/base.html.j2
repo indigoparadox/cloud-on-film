@@ -137,7 +137,7 @@
         {% if include_content is defined %}
         {% include include_content %}
         {% else %}
-        {% block content %}{% endblock %}
+        {% block content %}{{ content | safe }}{% endblock %}
         {% endif %}
 
     </div> <!-- /container -->

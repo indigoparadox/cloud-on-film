@@ -79,7 +79,37 @@ var scrollMethod = 'GET';
 </div>
 
 <script type="text/javascript">
-/*$.ready( function() { */
+$().ready( function() {
+
+   $('#form-edit-checked-items .edit').on( 'click', function( e ) {
+
+      // Grab the next [loadIncrement] columns and append them to the table.
+      $.get( flaskRoot + 'ajax/html/batch?item_ids=' + selectedItems.join() ).done( function( data ) {
+         $('#edit-batch-modal .modal-body').empty();
+         $('#edit-batch-modal .modal-body').append( data );
+         $('#edit-batch-modal').modal( 'show' );
+      } );
+
+      e.preventDefault();
+      return false;
+   } );
+
+   $('#form-edit-checked-items .move').on( 'click', function( e ) {
+
+      $('#move-batch-modal').modal( 'show' );
+      $('#move-batch-tree').enableBrowserTree( 
+         "{{ url_for( 'cloud_folders_ajax' ) }}",
+         '#move-batch-input'
+      );
+      
+      e.preventDefault();
+      return false;
+   } );
+
+   $('#form-edit-checked-items .tag').enableTags( 
+      "{{ url_for( 'cloud_tags_ajax' ) }}" );
+
+} );
 </script>
 {% endblock %}
 
@@ -88,7 +118,7 @@ var scrollMethod = 'GET';
 {% block sidebar_collapsed %}
 <li class="nav-item">
    {# h-50 and d-flex keep groups v-aligned inside of menus. #}
-   {{ show_form( form_search_query, class="search-query form-inline", group_class="form-group h-50 d-flex", method='GET', action=url_for( 'cloud_items_search' ), enable_csrf=False ) }}
+   {{ show_form( form_search_query ) }}
 </li>
 {% endblock %}
 
@@ -97,7 +127,7 @@ var scrollMethod = 'GET';
 {% if form_save_search is defined %}
 <div class="row">
    <div id="save-search-wrapper" class="bg-secondary col-9 p-4 mx-auto my-3 rounded">
-      {{ show_form( form_save_search, class="save-search-query", action=url_for( 'cloud_items_search_save' ) ) }}
+      {{ show_form( form_save_search ) }}
    </div>
 </div>
 {% endif %}

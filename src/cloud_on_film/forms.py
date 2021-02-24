@@ -75,6 +75,7 @@ class EditBatchItemForm( FlaskForm, COFBaseFormMixin, EditItemIncludesMixin ):
 class SaveSearchForm( FlaskForm, COFBaseFormMixin ):
 
     _form_id = 'form-save-search'
+    _form_action_callback = lambda s: url_for( 'cloud_items_search_save' )
 
     _include_scripts_callbacks = [
         lambda: (90, url_for( 'static', filename='search.js' )) ]
@@ -85,7 +86,12 @@ class SaveSearchForm( FlaskForm, COFBaseFormMixin ):
     
 class SearchQueryForm( FlaskForm, COFBaseFormMixin ):
 
+    class Meta:
+        csrf = False
+
     _form_id = 'form-search-query'
+    _form_action_callback = lambda s: url_for( 'cloud_items_search' )
+    _form_method = 'GET'
 
     _include_scripts_callbacks = [
         lambda: (90, url_for( 'static', filename='search.js' )) ]
