@@ -170,8 +170,7 @@ $().ready( function() {{
             id=kwargs['id'] if 'id' in kwargs else field.name,
             name=field.name,
             value=field.data if hasattr( field, 'data' ) else '',
-            tags_url=field.url
-        )
+            tags_url=field.url )
 
 #endregion
 

@@ -214,11 +214,7 @@ class Picture( Item ):
             db.session.add( picture )
             db.session.commit()
 
-        meta_test = False
-        try:
-            meta_test = picture.meta['width']
-            meta_test = picture.meta['height']
-        except KeyError as e:
+        if 'width' not in picture.meta or 'height' not in picture.meta:
             with Image.open( picture.absolute_path ) as im:
                 print( im.size )
                 picture.meta['width'] = im.size[0]

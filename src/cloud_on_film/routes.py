@@ -510,68 +510,6 @@ def cloud_ajax_libraries_upload():
     
     return jsonify( {'progress': progress} )
 
-@libraries.route( '/ajax/folders' )
-def cloud_folders_ajax():
-
-    current_uid = User.current_uid()
-
-    folder_id = request.args.get( 'id' )
-    if folder_id.startswith( 'folder-' ):
-        folder_id = folder_id.split( '-' )[1]
-    if None != folder_id:
-        try:
-            folder_id = None if '#' == folder_id else int( folder_id )
-        except ValueError as e:
-            abort( 404 )
-
-    json_out = []
-    folders = []
-    query = Folder.secure_query( current_uid )
-    if folder_id:
-        # The tree already has this folder, so iterate through its children.
-        folder_parent = query \
-            .filter( Folder.id == folder_id ) \
-            .order_by( Folder.name ) \
-            .first()
-        if not folder_parent:
-            abort( 404 )
-        folders = folder_parent.children
-    else:
-        # Get the tree started and iterate through the library's root folders.
-        json_out += [{
-            'id': 'root',
-            'parent': '#',
-            'text': 'root'
-        }]
-        libraries = Library.secure_query( current_uid ) \
-            .order_by( Library.display_name ) \
-            .all()
-        if 0 == len( libraries ):
-            abort( 404 )
-        for library in libraries:
-            json_out.append(
-                {
-                    'id': 'library-{}'.format( library.id ),
-                    'parent': 'root',
-                    'text': library.display_name
-                }
-            )
-            folders += query.filter( Folder.parent_id == None ) \
-                .filter( Folder.library_id == library.id ) \
-                .order_by( Folder.name ) \
-                .all()
-
-    # Convert all the folders on the list to a format palatable to jsTree.
-    json_out += [{
-        'id': 'folder-{}'.format( f.id ),
-        'parent': 'folder-{}'.format( folder_id ) \
-            if folder_id else 'library-{}'.format( f.library_id ),
-        'text': f.name,
-        'children': 0 < len( f.children )
-    } for f in folders]
-
-    return jsonify( json_out )
-
 @libraries.route( '/ajax/folder/id_path', methods=['POST'] )
 def cloud_ajax_folder_id_path():
 
@@ -617,13 +555,6 @@ def cloud_ajax_folder_id_path():
     id_path.insert( 0, 'library-{}'.format( library.id ) )
 
     return jsonify( id_path )
-
-@libraries.route( '/ajax/tags.json' )
-def cloud_tags_ajax():
-    # TODO: Omit empty tags.
-    tags = db.session.query( Tag ).filter( Tag.name != '' ).all()
-    tag_list = [t.path for t in tags]
-    return jsonify( tag_list )
 
 @libraries.route( '/tags/<path:path>' )
 def cloud_tags( path ):

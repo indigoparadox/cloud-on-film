@@ -98,7 +98,7 @@ $().ready( function() {
 
       $('#move-batch-modal').modal( 'show' );
       $('#move-batch-tree').enableBrowserTree( 
-         "{{ url_for( 'libraries.cloud_folders_ajax' ) }}",
+         "{{ url_for( 'ajax.folders' ) }}",
          '#move-batch-input'
       );
       
@@ -107,7 +107,7 @@ $().ready( function() {
    } );
 
    $('#form-edit-checked-items .tag').enableTags( 
-      "{{ url_for( 'libraries.cloud_tags_ajax' ) }}" );
+      "{{ url_for( 'ajax.tags' ) }}" );
 
 } );
 </script>

@@ -25,6 +25,8 @@ class TestRoutes( TestCase ):
     def setUp( self ):
         db.create_all()
 
+        self.maxDiff = None
+
         self.user_id = 0
         DataHelper.create_folders( self )
         DataHelper.create_libraries( self, db )
@@ -75,15 +77,56 @@ class TestRoutes( TestCase ):
         items = json.loads( res.data )
         self.assertEqual( 1, len( items ) )
 
-    def test_ajax_tags( self ):
+    def test_ajax_tags_show_empty( self ):
 
-        res = self.client.get( '/ajax/tags.json' )
+        res = self.client.get( '/ajax/tags?show_empty=true' )
 
-        id_path = json.loads( res.data )
-        self.assertEqual( id_path, [
+        tag_list = json.loads( res.data )
+        self.assertEqual( tag_list, [
             'IFDY',
-            'IFDY/Test Tag 1',
-            'IFDY/Test Tag 2',
             'IFDY/NSFW Test Tag 1',
             'IFDY/Test Tag 1/Sub Test Tag 3',
-            'IFDY/Test Tag 2/Test Tag 1'] )
+            'IFDY/Test Tag 1',
+            'IFDY/Test Tag 2/Test Tag 1',
+            'IFDY/Test Tag 2'] )
+
+    def test_ajax_tags( self ):
+
+        res = self.client.get( '/ajax/tags' )
+
+        tag_list = json.loads( res.data )
+        self.assertEqual( tag_list, [
+            'IFDY/Test Tag 1/Sub Test Tag 3'] )
+
+    def test_ajax_folders_base( self ):
+
+        res = self.client.get( '/ajax/folders' )
+
+        folders = json.loads( res.data )
+
+        self.assertEqual( 
+            folders, [
+                {'id': 'root', 'parent': '#', 'text': 'root'},
+                {'id': 'library-2', 'parent': 'root', 'text': 'NSFW Library'},
+                {'id': 'library-1', 'parent': 'root', 'text': 'Testing Library'},
+                {'children': False, 'id': 'folder-4', 'parent': 'library-2',
+                    'text': 'foo_folder'},
+                {'children': True, 'id': 'folder-1', 'parent': 'library-1',
+                    'text': 'Foo Files 1'},
+                {'children': False, 'id': 'folder-3', 'parent': 'library-1',
+                    'text': 'testing'}] )
+
+    def test_ajax_folders_sub( self ):
+
+        res = self.client.get( '/ajax/folders?id=library-1' )
+
+        folders = json.loads( res.data )
+
+        self.assertEqual( 
+            folders, [
+                {'id': 'library-1', 'parent': 'root', 'text': 'Testing Library'},
+                {'children': True, 'id': 'folder-1', 'parent': 'library-1',
+                    'text': 'Foo Files 1'},
+                {'children': False, 'id': 'folder-3', 'parent': 'library-1',
+                    'text': 'testing'}
+            ] )

@@ -43,10 +43,13 @@ def create_app( config=None ):
 
     with app.app_context():
         from . import routes
+        from . import routes
+        from cloud_on_film.blueprints.ajax import ajax
 
         db.create_all()
 
         app.register_blueprint( routes.libraries )
+        app.register_blueprint( ajax )
 
         # TODO: Installer.
         import cloud_on_film.files.picture
