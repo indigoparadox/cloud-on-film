@@ -68,14 +68,14 @@ def folders():
 
     # Fetch the requested nodes. Start with siblings for continuity.
     if Folder == comparator:
-
         # The tree already has this folder, so iterate through its children.
-        folder_parent = Folder.secure_query( User.current_uid() ) \
-            .filter( Folder.children.any( id=folder_or_lib_id ) ) \
-            .order_by( Folder.name ) \
-            .first_or_404()
-        folders_out = folder_parent.children
-
+        folders_out += Folder.secure_query( User.current_uid() ) \
+        .filter( db.or_(
+            Folder.parent_id == folder_or_lib_id
+        ) ) \
+        .order_by( Folder.name ) \
+        .all()
+        
     else:
         libraries_query = Library.secure_query( current_uid ) \
             .order_by( Library.display_name )

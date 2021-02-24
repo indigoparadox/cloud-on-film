@@ -130,3 +130,13 @@ class TestRoutes( TestCase ):
                 {'children': False, 'id': 'folder-3', 'parent': 'library-1',
                     'text': 'testing'}
             ] )
+
+    def test_ajax_folders_leaf( self ):
+
+        res = self.client.get( '/ajax/folders?id=folder-3' )
+
+        folders = json.loads( res.data )
+
+        self.assertEqual( 
+            folders, [
+            ] )
