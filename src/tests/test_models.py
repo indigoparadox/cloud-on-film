@@ -99,8 +99,8 @@ class TestModels( TestCase ):
 
         file1 = Item.from_path(
             self.lib.id, 'testing/random320x240.png', self.user_id )
-        
-        self.assertEqual( file1.machine_path, ['testing_library', 3] )
+
+        self.assertEqual( file1.folder.machine_path, ['testing_library', 3] )
 
     def test_query_width( self ):
 

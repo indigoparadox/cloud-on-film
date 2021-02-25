@@ -75,7 +75,7 @@ class EditBatchItemForm( FlaskForm, COFBaseFormMixin, EditItemIncludesMixin ):
 class SaveSearchForm( FlaskForm, COFBaseFormMixin ):
 
     _form_id = 'form-save-search'
-    _form_action_callback = lambda s: url_for( 'libraries.cloud_items_search_save' )
+    _form_action_callback = lambda s: url_for( 'libraries.save_search' )
 
     _include_scripts_callbacks = [
         lambda: (90, url_for( 'static', filename='search.js' )) ]
@@ -108,3 +108,4 @@ class SearchDeleteForm( FlaskForm, COFBaseFormMixin ):
     prompt = LabelField(
         'Are you sure you wish to delete this saved search? This action cannot be undone.')
     delete = SubmitField( 'Delete' )
+    delete = SubmitField( 'Cancel' )

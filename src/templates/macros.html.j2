@@ -21,11 +21,9 @@
         {% for field in form_object if field.type == 'HiddenField' %}
             {{ field( id=form_uuid + '-' + field.name, class_=field.name ) }}
         {% endfor %}
-        {% if enable_csrf %}
         {% for field in form_object if 'csrf_token' == field.name %}
             {{ field }}
         {% endfor %}
-        {% endif %}
     </div>
     {% if form_object.has_dropdowns() %}
     <div class="form-group">

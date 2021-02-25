@@ -267,8 +267,8 @@ def cloud_libraries( machine_name=None, relative_path=None ):
 
 # region search
 
-@libraries.route( '/search/save', methods=['POST'] )
-def cloud_items_search_save():
+@libraries.route( '/save/search', methods=['POST'] )
+def save_search():
 
     current_uid = User.current_uid()
 
@@ -308,8 +308,8 @@ def cloud_items_search_save():
             name=save_search_form.name.data,
             query=save_search_form.query.data ) )
 
-@libraries.route( '/search/delete/<int:search_id>', methods=['GET', 'POST'] )
-def cloud_items_search_delete( search_id ):
+@libraries.route( '/delete/search/<int:search_id>', methods=['GET', 'POST'] )
+def delete_search( search_id ):
 
     search = SavedSearch.secure_query( User.current_uid() ) \
         .filter( SavedSearch.id == search_id ) \
@@ -325,11 +325,14 @@ def cloud_items_search_delete( search_id ):
 
     elif 'POST' == request.method:
         delete = SearchDeleteForm( request.form )
-        if not delete.validate():
-            abort( 404 )
+        assert( int( delete.id.data ) == int( search_id ) )
+        if not delete.validate() or not delete.delete.data:
+            return redirect( url_for( 'libraries.cloud_root' ) )
 
         db.session.delete( search )
         db.session.commit()
+
+        flash( 'Search #{} has been deleted.'.format( search_id ) )
 
         return redirect( url_for( 'libraries.cloud_root' ) )
 
@@ -382,7 +385,7 @@ def cloud_items_search():
 
     current_uid = User.current_uid()
 
-    save_search_form = SaveSearchForm( request.args, csrf_enabled=False )
+    save_search_form = SaveSearchForm( request.args )
     search_form = SearchQueryForm( request.args )
 
     renderer = LibraryRenderer( page=page )

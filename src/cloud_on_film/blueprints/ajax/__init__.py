@@ -77,7 +77,7 @@ def list_folders():
         ) ) \
         .order_by( Folder.name ) \
         .all()
-        
+
     else:
         libraries_query = Library.secure_query( current_uid ) \
             .order_by( Library.display_name )
@@ -134,7 +134,7 @@ def get_machine_path( library_name, relative_path=None ):
     library = Library.secure_query( User.current_uid() ) \
         .filter( Library.display_name == library_name ) \
         .first_or_404()
-    
+
     try:
         # A path was provided, so try to find the DB folder for it.
         folder = Folder.from_path( library.id, relative_path, User.current_uid() )

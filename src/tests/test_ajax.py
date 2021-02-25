@@ -10,7 +10,7 @@ sys.path.insert( 0, os.path.dirname( os.path.dirname( __file__) ) )
 from tests.data_helper import DataHelper
 from cloud_on_film import create_app, db
 
-class TestRoutes( TestCase ):
+class TestAJAX( TestCase ):
 
     SQLALCHEMY_DATABASE_URI = 'sqlite:///'
     SQLALCHEMY_TRACK_MODIFICATIONS = False
@@ -36,27 +36,6 @@ class TestRoutes( TestCase ):
     def tearDown( self ):
         db.session.remove()
         db.drop_all()
-
-    def test_libraries_root( self ):
-
-        res = self.client.get( '/libraries/testing_library' )
-
-        library_script_stanzas = [
-            '<script src="/static/jquery.unveil2.min.js"></script>',
-            '<script src="/static/featherlight.min.js"></script>',
-            '<script src="/static/featherlight.gallery.min.js"></script>',
-            '<script src="/static/libraries.js"></script>',
-            '<script src="/static/field-tags.js"></script>',
-            '<script src="/static/field-browser.js"></script>',
-            '<script src="/static/edit-item.js"></script>',
-            '<script src="/static/search.js"></script>',
-            '<link rel="stylesheet" href="/static/featherlight.min.css" />',
-            '<link rel="stylesheet" href="/static/featherlight.gallery.min.css" />',
-            '<link rel="stylesheet" href="/static/gallery.css" />' ]
-
-        for stanza in library_script_stanzas:
-            stanza = re.escape( stanza )
-            self.assertRegex( res.data.decode( 'utf-8' ), stanza )
 
     def test_ajax_get_item( self ):
 

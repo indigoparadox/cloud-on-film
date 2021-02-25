@@ -186,11 +186,7 @@ class LabelField( Field, COFBaseFieldMixin ):
 
     def __init__( self, *args, **kwargs ):
         kwargs = self.process_kwargs( kwargs )
-        self.name = ''
-        self.filters = []
-        self._label = args[0]
-        self.meta = LabelField.DummyMeta()
-        super( LabelField, self ).__init__()
+        super().__init__( *args, **kwargs )
 
     def label( self ):
         return Markup( '<p>{}</p>'.format( self._label ) )

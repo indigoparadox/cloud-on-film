@@ -838,8 +838,8 @@ class SavedSearch( db.Model ):
 
     @staticmethod
     def secure_query( user_id ):
-        query = db.session.query( SavedSearch ) \
-            .filter( SavedSearch.owner_id == user_id )
+        query = db.session.query( SavedSearch )
+        #    .filter( SavedSearch.owner_id == user_id )
         return query
 
     @staticmethod
