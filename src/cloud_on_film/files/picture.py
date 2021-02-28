@@ -167,6 +167,9 @@ class Picture( Item ):
                 errno.ENOENT, os.strerror(errno.ENOENT), self.absolute_path )
         return img_out
 
+    def thumbnail_mime( self ):
+        return 'image/jpeg'
+
     def thumbnail_path( self, size ):
 
         # Safety checks should be performed by the caller.

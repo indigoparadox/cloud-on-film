@@ -10,7 +10,6 @@ from flask import \
     request, \
     current_app, \
     flash, \
-    send_file, \
     abort, \
     redirect, \
     url_for, \
@@ -59,66 +58,6 @@ def url_self( **args ):
     return url_for( request.endpoint, **dict( request.view_args, **args ) )
 
 current_app.jinja_env.globals.update( url_self=url_self )
-
-# region preview
-
-@libraries.route( '/preview/<int:file_id>' )
-@libraries.route( '/preview/<int:file_id>/<int:width>/<int:height>' )
-def cloud_plugin_preview( file_id, width=160, height=120 ):
-
-    '''Generate a preview thumbnail to be called by a tag src attribute on gallery pages.'''
-
-    current_uid = User.current_uid()
-
-    allowed_resolutions = [
-        tuple( [int( i ) for i in r.split( ',' )] )
-            for r in current_app.config['ALLOWED_PREVIEWS']]
-
-    if not (width, height) in allowed_resolutions:
-        abort( 404 )
-
-    item = Item.secure_query( current_uid ) \
-        .filter( Item.id == file_id ).first()
-
-    # Safety checks.
-    if not item:
-        abort( 403 )
-
-    #p = importlib.import_module(
-    #    '.plugins.{}.files'.format( item.filetype ), 'cloud_on_film' )
-    #file_path = p.generate_thumbnail( file_id, (160, 120) )
-
-    file_path = item.thumbnail_path( (width, height) )
-
-    with open( file_path, 'rb' ) as pic_f:
-        return send_file( io.BytesIO( pic_f.read() ),
-            mimetypes.guess_type( file_path )[0] )
-
-@libraries.route( '/fullsize/<int:file_id>' )
-def cloud_plugin_fullsize( file_id ):
-
-    current_uid = User.current_uid()
-
-    item = Item.secure_query( current_uid ) \
-        .filter( Item.id == file_id ).first()
-
-    # Safety checks.
-    if not item:
-        abort( 403 )
-
-    # TODO: Figure out display tag (img/audio/video/etc).
-    #p = importlib.import_module(
-    #    '.plugins.{}.files'.format( item.filetype ), 'cloud_on_film' )
-    #file_path = p.generate_thumbnail( file_id, (160, 120) )
-
-    file_type = mimetypes.guess_type( item.path )[0]
-
-    current_app.logger.debug( '{} mimetype: {}'.format( item.path, file_type ) )
-
-    with open( item.absolute_path, 'rb' ) as pic_f:
-        return send_file( io.BytesIO( pic_f.read() ), file_type )
-
-# endregion
 
 # region library
 
@@ -172,7 +111,7 @@ def cloud_libraries_upload( thread_id='' ):
             if 'thread_id' in request.args else None
         form = UploadLibraryForm()
         form.progress.url = \
-            url_for( 'libraries.cloud_ajax_libraries_upload' ) + \
+            url_for( 'libraries.ajax_libraries_upload' ) + \
             '?thread_id=' + str( thread_id )
         
         title = 'Uploading thread #{}'.format( thread_id )

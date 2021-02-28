@@ -553,6 +553,84 @@ class Folder( db.Model, JSONItemMixin ):
 
 # endregion
 
+# region plugin
+
+class FileExtension( db.Model ):
+
+    __tablename__ = 'item_types'
+
+    id = db.Column( db.Integer, primary_key=True )
+    extension = db.Column(
+        db.String( 12 ), index=True, unique=True, nullable=False )
+    mime_type = db.Column(
+        db.String( 128 ), index=False, unique=False, nullable=False )
+    plugin_id = db.Column( db.Integer, db.ForeignKey( 'plugins.id' ) )
+    plugin = db.relationship( 'Plugin',
+        backref=db.backref(
+            '_extensions',
+            collection_class=attribute_mapped_collection( 'extension' ),
+            lazy="joined",
+            cascade="all, delete-orphan" ) )
+
+class PluginMeta( db.Model, MetaPropertyMixin ):
+
+    ''' A model for storing variable metadata key-value pairs related
+    to Plugins. '''
+
+    __tablename__ = 'plugin_meta'
+
+    id = db.Column( db.Integer, primary_key=True )
+    key = db.Column( db.String( 12 ), index=True, unique=False, nullable=False )
+    value = \
+        db.Column( db.String( 256 ), index=False, unique=False, nullable=True )
+    plugin_id = db.Column( db.Integer, db.ForeignKey( 'plugins.id' ) )
+    plugin = db.relationship( 'Plugin',
+        backref=db.backref(
+            '_meta',
+            collection_class=attribute_mapped_collection( 'key' ),
+            lazy="joined",
+            cascade="all, delete-orphan" ) )
+
+class Plugin( db.Model ):
+
+    __tablename__ = 'plugins'
+
+    id = db.Column( db.Integer, primary_key=True )
+    machine_name = db.Column( db.String( 12 ), index=True, unique=True, nullable=False )
+    display_name = db.Column( db.String( 128 ), index=False, unique=True, nullable=False )
+    meta = association_proxy( '_meta', 'value',
+        creator=lambda k, v: PluginMeta( key=k, value=v ) )
+    enabled = db.Column(
+        db.Boolean, index=False, unique=False, nullable=False )
+    module_path = db.Column( db.String( 128 ), index=False, unique=True, nullable=False )
+    model_name = db.Column( db.String( 128 ), index=False, unique=True, nullable=False )
+    extensions = association_proxy( '_extensions', 'mime_type',
+        creator=lambda k, v: FileExtension( extension=k, mime_type=v ) )
+
+    @staticmethod
+    def from_extension( extension ):
+        return db.session.query( Plugin ) \
+            .filter( extension in Plugin.extensions ) \
+            .filter( Plugin.enabled ) \
+            .first()
+
+    @staticmethod
+    def polymorph():
+
+        plugins = db.session.query( Plugin ) \
+            .filter( Plugin.enabled ) \
+            .all()
+
+        models = []
+        for plugin in plugins:
+            plugin_module = importlib.import_module( plugin.module_path )
+            plugin_model = getattr( plugin_module, plugin.model_name )
+            models.append( plugin_model )
+
+        return db.with_polymorphic( Item, models )
+
+# endregion
+
 # region item
 
 class ItemMeta( db.Model, MetaPropertyMixin ):
@@ -626,6 +704,13 @@ class Item( db.Model, JSONItemMixin ):
         'polymorphic_identity': 'item',
         'polymorphic_on': plugin
     }
+
+    mime_type = db.column_property(
+        db.select(
+            [FileExtension.mime_type],
+            db.and_(
+                FileExtension.plugin_id == Plugin.id,
+                Plugin.machine_name == plugin ) ).label( 'mime_type' ) )
 
     def __str__( self ):
         return self.name
@@ -745,84 +830,6 @@ class Item( db.Model, JSONItemMixin ):
                 user_id == Item.owner_id ) )
 
         return query
-
-# endregion
-
-# region plugin
-
-class FileExtension( db.Model ):
-
-    __tablename__ = 'item_types'
-
-    id = db.Column( db.Integer, primary_key=True )
-    extension = db.Column(
-        db.String( 12 ), index=True, unique=True, nullable=False )
-    mime_type = db.Column(
-        db.String( 128 ), index=False, unique=False, nullable=False )
-    plugin_id = db.Column( db.Integer, db.ForeignKey( 'plugins.id' ) )
-    plugin = db.relationship( 'Plugin',
-        backref=db.backref(
-            '_extensions',
-            collection_class=attribute_mapped_collection( 'extension' ),
-            lazy="joined",
-            cascade="all, delete-orphan" ) )
-
-class PluginMeta( db.Model, MetaPropertyMixin ):
-
-    ''' A model for storing variable metadata key-value pairs related
-    to Plugins. '''
-
-    __tablename__ = 'plugin_meta'
-
-    id = db.Column( db.Integer, primary_key=True )
-    key = db.Column( db.String( 12 ), index=True, unique=False, nullable=False )
-    value = \
-        db.Column( db.String( 256 ), index=False, unique=False, nullable=True )
-    plugin_id = db.Column( db.Integer, db.ForeignKey( 'plugins.id' ) )
-    plugin = db.relationship( 'Plugin',
-        backref=db.backref(
-            '_meta',
-            collection_class=attribute_mapped_collection( 'key' ),
-            lazy="joined",
-            cascade="all, delete-orphan" ) )
-
-class Plugin( db.Model ):
-
-    __tablename__ = 'plugins'
-
-    id = db.Column( db.Integer, primary_key=True )
-    machine_name = db.Column( db.String( 12 ), index=True, unique=True, nullable=False )
-    display_name = db.Column( db.String( 128 ), index=False, unique=True, nullable=False )
-    meta = association_proxy( '_meta', 'value',
-        creator=lambda k, v: PluginMeta( key=k, value=v ) )
-    enabled = db.Column(
-        db.Boolean, index=False, unique=False, nullable=False )
-    module_path = db.Column( db.String( 128 ), index=False, unique=True, nullable=False )
-    model_name = db.Column( db.String( 128 ), index=False, unique=True, nullable=False )
-    extensions = association_proxy( '_extensions', 'mime_type',
-        creator=lambda k, v: FileExtension( extension=k, mime_type=v ) )
-
-    @staticmethod
-    def from_extension( extension ):
-        return db.session.query( Plugin ) \
-            .filter( extension in Plugin.extensions ) \
-            .filter( Plugin.enabled ) \
-            .first()
-
-    @staticmethod
-    def polymorph():
-
-        plugins = db.session.query( Plugin ) \
-            .filter( Plugin.enabled ) \
-            .all()
-
-        models = []
-        for plugin in plugins:
-            plugin_module = importlib.import_module( plugin.module_path )
-            plugin_model = getattr( plugin_module, plugin.model_name )
-            models.append( plugin_model )
-
-        return db.with_polymorphic( Item, models )
 
 # endregion
 

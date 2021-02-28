@@ -83,7 +83,7 @@ class SaveSearchForm( FlaskForm, COFBaseFormMixin ):
     query = _StringField( 'Search String', validators=[DataRequired()] )
     name = StringField( 'Search Name', validators=[DataRequired()] )
     save = SubmitField( 'Save Search' )
-    
+
 class SearchQueryForm( FlaskForm, COFBaseFormMixin ):
 
     class Meta:
@@ -103,7 +103,7 @@ class SearchQueryForm( FlaskForm, COFBaseFormMixin ):
     page = HiddenField( '' )
 
 class SearchDeleteForm( FlaskForm, COFBaseFormMixin ):
-    
+
     id = HiddenField( '' )
     prompt = LabelField(
         'Are you sure you wish to delete this saved search? This action cannot be undone.')

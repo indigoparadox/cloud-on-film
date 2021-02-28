@@ -45,11 +45,13 @@ def create_app( config=None ):
         from . import routes
         from . import routes
         from cloud_on_film.blueprints.ajax import ajax
+        from cloud_on_film.blueprints.contents import contents
 
         db.create_all()
 
         app.register_blueprint( routes.libraries )
         app.register_blueprint( ajax )
+        app.register_blueprint( contents )
 
         # TODO: Installer.
         import cloud_on_film.files.picture

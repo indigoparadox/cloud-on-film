@@ -12,7 +12,8 @@ class DataHelper( object ):
     def create_folders( test_class ):
 
         test_class.file_path = os.path.realpath( __file__ )
-        test_class.lib_path = os.path.dirname( os.path.dirname( os.path.dirname( test_class.file_path ) ) )
+        test_class.lib_path = os.path.dirname(
+            os.path.dirname( os.path.dirname( test_class.file_path ) ) )
         test_class.nsfw_lib_path = '/tmp/testing_nsfw_lib'
         test_class.rel_path = os.path.join(
             os.path.basename( os.path.dirname( test_class.file_path ) ),
