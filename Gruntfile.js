@@ -2,7 +2,7 @@
 module.exports = function( grunt ) {
 
    var env = grunt.option( 'env' ) || 'std';
-   var static_dir = 'src/static/';
+   var static_dir = 'cloud_on_film/static/';
 
    if( 'docker' == env ) {
       static_dir = 'app/static/';
