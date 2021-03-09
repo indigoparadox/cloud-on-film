@@ -2,7 +2,6 @@
 import os
 import sys
 import unittest
-import re
 import json
 from flask_testing import TestCase
 
@@ -58,7 +57,9 @@ class TestAJAX( TestCase ):
 
     def test_ajax_get_folder_machine_path( self ):
 
-        res = self.client.get( '/ajax/get/machine_path/Testing Library/Foo Files 1/Foo Files 2/Foo Files 3/Foo Files 4' )
+        res = self.client.get(
+            '/ajax/get/machine_path/Testing Library/' + \
+                'Foo Files 1/Foo Files 2/Foo Files 3/Foo Files 4' )
 
         item_data = json.loads( res.data )
 
@@ -67,7 +68,8 @@ class TestAJAX( TestCase ):
 
     def test_ajax_get_folder_machine_path_jstree( self ):
 
-        res = self.client.get( '/ajax/get/machine_path/Testing Library/Foo Files 1/Foo Files 2/Foo Files 3/Foo Files 4?format=jstree' )
+        res = self.client.get( '/ajax/get/machine_path/Testing Library/' + \
+            'Foo Files 1/Foo Files 2/Foo Files 3/Foo Files 4?format=jstree' )
 
         item_data = json.loads( res.data )
 
@@ -118,7 +120,7 @@ class TestAJAX( TestCase ):
 
         folders = json.loads( res.data )
 
-        self.assertEqual( 
+        self.assertEqual(
             folders, [
                 {'id': 'root', 'parent': '#', 'text': 'root'},
                 {'id': 'library-2', 'parent': 'root', 'text': 'NSFW Library'},
@@ -136,7 +138,7 @@ class TestAJAX( TestCase ):
 
         folders = json.loads( res.data )
 
-        self.assertEqual( 
+        self.assertEqual(
             folders, [
                 {'id': 'library-1', 'parent': 'root', 'text': 'Testing Library'},
                 {'children': True, 'id': 'folder-1', 'parent': 'library-1',
@@ -151,6 +153,6 @@ class TestAJAX( TestCase ):
 
         folders = json.loads( res.data )
 
-        self.assertEqual( 
+        self.assertEqual(
             folders, [
             ] )

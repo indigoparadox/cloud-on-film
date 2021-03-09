@@ -18,13 +18,13 @@ csrf = CSRFProtect()
 
 def create_app( config=None ):
 
+    ''' App factory function. Call this from the runner/WSGI. '''
+
     logging.basicConfig( level=logging.INFO )
     log_werkzeug = logging.getLogger( 'werkzeug' )
     log_werkzeug.setLevel( logging.ERROR )
 
     #logging.getLogger( 'sqlalchemy.engine' ).setLevel( logging.DEBUG )
-
-    ''' App factory function. Call this from the runner/WSGI. '''
 
     app = Flask( __name__, instance_relative_config=False,
         static_folder='../static', template_folder='../templates' )
@@ -52,8 +52,5 @@ def create_app( config=None ):
         app.register_blueprint( routes.libraries )
         app.register_blueprint( ajax )
         app.register_blueprint( contents )
-
-        # TODO: Installer.
-        import cloud_on_film.files.picture
 
         return app

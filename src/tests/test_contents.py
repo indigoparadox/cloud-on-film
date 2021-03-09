@@ -2,8 +2,6 @@
 import os
 import sys
 import unittest
-import re
-import json
 from io import BytesIO
 from flask_testing import TestCase
 from PIL import Image
@@ -73,7 +71,7 @@ class TestContents( TestCase ):
 
         for header in res.headers:
             if 'Content-Type' == header[0]:
-                self.assertEqual( header[1], 'image/jpeg' )
+                self.assertEqual( header[1], 'image/png' )
             elif 'Content-Length' == header[0]:
                 self.assertEqual( header[1], '60380' )
 

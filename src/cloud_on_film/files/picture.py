@@ -141,7 +141,7 @@ class Picture( Item ):
                 start_bytes = image_file_handle.read( 3 )
         except FileNotFoundError as e:
             current_app.logger.error( 'while checking type: %s', e )
-            raise ImageTypeException( 'missing' )
+            raise ImageTypeException( 'missing' ) from e
 
         image_type = None
         if MAGIC_JPEG == start_bytes:
@@ -185,8 +185,9 @@ class Picture( Item ):
                 try:
                     im.thumbnail( size, Image.ANTIALIAS )
                 except OSError as e:
-                    current_app.logger.warn( 'while generating thumbnail for {}: {}'.format(
-                        self.absolute_path, e ) )
+                    current_app.logger.warn(
+                        'while generating thumbnail for %s: %s',
+                        self.absolute_path, e )
                 thumb = Image.new( 'RGB', size, (0, 0, 0) )
                 thumb.paste( im,
                     (int( (size[0] - im.size[0]) / 2 ),

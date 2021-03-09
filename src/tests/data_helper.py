@@ -1,9 +1,12 @@
 
 import os
 import sys
-sys.path.insert( 0, os.path.dirname( os.path.dirname( __file__) ) )
 import shutil
+
 from flask import current_app
+
+sys.path.insert( 0, os.path.dirname( os.path.dirname( __file__) ) )
+
 from cloud_on_film.models import Library, Folder,Tag
 
 class DataHelper( object ):

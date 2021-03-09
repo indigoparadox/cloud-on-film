@@ -3,7 +3,6 @@ import os
 import sys
 import unittest
 import re
-import json
 from flask_testing import TestCase
 
 sys.path.insert( 0, os.path.dirname( os.path.dirname( __file__) ) )

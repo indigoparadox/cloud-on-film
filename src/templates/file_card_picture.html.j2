@@ -1,7 +1,8 @@
 
 <div class="col px-0 card bg-secondary{{ classes }}">
 
-    <div class="px-0 py-0 mx-auto libraries-thumbnail-wrapper" data-src="{{ url_for( 'contents.preview', file_id=id ) }}">
+    <div class="px-0 py-0 mx-auto libraries-thumbnail-wrapper"
+        data-src="{{ url_for( 'contents.preview', file_id=id ) }}?width=160&height=120">
 
         <input type="checkbox" class="item-checkbox float-right w-25 form-control" name="select-item-{{ id }}"
             id="select-item-{{ id }}" style="display: none" />
@@ -11,7 +12,7 @@
             <noscript>
                 <img
                     class="img-responsive libraries-thumbnail"
-                    src="{{ url_for( 'contents.preview', file_id=id ) }}"
+                    src="{{ url_for( 'contents.preview', file_id=id ) }}?width=160&height=120"
                     alt="{{ name }}" />
             </noscript>
         </a>

@@ -29,9 +29,7 @@ def list_tags():
 
     ''' Return a list of ACCESSIBLE tags. '''
 
-    current_uid = User.current_uid()
-    tag_query = db.session.query( Tag ) \
-            .filter( Tag.name != '' )
+    tag_query = db.session.query( Tag )
 
     if not 'show_empty' in request.args or \
     request.args.get( 'show_empty' ) != 'true':

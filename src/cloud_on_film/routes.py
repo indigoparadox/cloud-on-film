@@ -85,7 +85,7 @@ def cloud_libraries_new():
 
     form_widget = FormWidget( form=form, id='form-library-new', method='POST' )
     render = FormRenderer( form_widget, title='New Library' )
-    
+
     return render.render()
 
 @libraries.route( '/libraries/upload', methods=['GET', 'POST'] )

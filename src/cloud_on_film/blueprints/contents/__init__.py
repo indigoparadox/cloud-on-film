@@ -9,7 +9,7 @@ from cloud_on_film.models import \
 contents = Blueprint( 'contents', __name__ )
 
 @contents.route( '/contents/preview/<int:file_id>' )
-def cloud_plugin_preview( file_id ):
+def preview( file_id ):
 
     '''Generate a preview thumbnail to be called by a tag src attribute on gallery pages.'''
 
@@ -36,7 +36,7 @@ def cloud_plugin_preview( file_id ):
             item.thumbnail_mime() )
 
 @contents.route( '/contents/fullsize/<int:file_id>' )
-def cloud_plugin_fullsize( file_id ):
+def fullsize( file_id ):
 
     current_uid = User.current_uid()
 
@@ -49,7 +49,13 @@ def cloud_plugin_fullsize( file_id ):
 
     file_path = item.absolute_path
     mime_type = item.mime_type if item.mime_type \
-        else mimetypes.guess_type( file_path )
+        else mimetypes.guess_type( file_path )[0]
+
+    print( 'zzz')
+    print( 'zzz')
+    print( mime_type )
+    print( 'zzz')
+    print( 'zzz')
 
     with open( file_path, 'rb' ) as pic_f:
         return send_file( io.BytesIO( pic_f.read() ), mime_type )
