@@ -27,7 +27,7 @@ def create_app( config=None ):
     #logging.getLogger( 'sqlalchemy.engine' ).setLevel( logging.DEBUG )
 
     app = Flask( __name__, instance_relative_config=False,
-        static_folder='../static', template_folder='../templates' )
+        static_folder='static', template_folder='templates' )
 
     # Load our hybrid YAML config.
     if config:

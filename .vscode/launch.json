@@ -5,19 +5,12 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Python: Tests",
-            "type": "python",
-            "request": "launch",
-            "program": "src/test.py",
-            "console": "integratedTerminal"
-        },
-        {
             "name": "Python: Flask",
             "type": "python",
             "request": "launch",
             "module": "flask",
             "env": {
-                "FLASK_APP": "src/run.py",
+                "FLASK_APP": "cloud_on_film",
                 "FLASK_ENV": "development",
                 "FLASK_DEBUG": "0"
             },
