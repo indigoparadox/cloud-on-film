@@ -80,8 +80,6 @@ class TestSearch( TestCase ):
                 found_one = True
 
         self.assertEqual( 2, len( res ) )
-        for item in res:
-            self.assertFalse( item.nsfw )
         self.assertTrue( found_one and found_four )
 
     def test_search_like( self ):

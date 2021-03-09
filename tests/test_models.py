@@ -3,14 +3,17 @@ import os
 import sys
 import unittest
 import json
+
 from flask import current_app
 from flask_testing import TestCase
 
-sys.path.insert( 0, os.path.dirname( os.path.dirname( __file__) ) )
+sys.path.insert( 0, os.path.dirname( __file__) )
+
 from tests.data_helper import DataHelper
 from cloud_on_film import create_app, db
 from cloud_on_film.models import Library, Folder, Item, Tag
 from cloud_on_film.importing import picture
+from tests.fake_library import FakeLibrary
 
 class TestModels( TestCase ):
 
@@ -50,29 +53,29 @@ class TestModels( TestCase ):
     def test_folder_from_path( self ):
         current_app.logger.debug( 'testing folder_from_path...' )
         folder_test = Folder.from_path(
-            self.lib.id, 'Foo Files 1/Foo Files 2', self.user_id )
-        self.assertEqual( folder_test.name, 'Foo Files 2' )
-        self.assertEqual( str( folder_test ), 'Foo Files 2' )
-        self.assertEqual( folder_test.id, 2 )
-        self.assertEqual( folder_test.path, 'Foo Files 1/Foo Files 2' )
-        self.assertNotEqual( folder_test.path, 'xxx/Foo Files 2' )
-        self.assertNotEqual( folder_test.path, 'Foo Files 1/xxx' )
+            self.lib.id, 'subfolder2/subfolder3', self.user_id )
+        self.assertEqual( folder_test.name, 'subfolder3' )
+        self.assertEqual( str( folder_test ), 'subfolder3' )
+        self.assertEqual( folder_test.id, 3 )
+        self.assertEqual( folder_test.path, 'subfolder2/subfolder3' )
+        self.assertNotEqual( folder_test.path, 'xxx/subfolder3' )
+        self.assertNotEqual( folder_test.path, 'subfolder2/xxx' )
 
     def test_create_folder_from_path( self ):
         current_app.logger.debug( 'testing creating via folder_from_path...' )
         folder_test = Folder.from_path(
-            self.lib.id, 'Foo Files 1/Foo Files 2/Foo Files 3/Foo Files 4',
+            self.lib.id, 'subfolder2/subfolder3',
             self.user_id )
         self.assertEqual(
-            folder_test.path, 'Foo Files 1/Foo Files 2/Foo Files 3/Foo Files 4' )
-        self.assertEqual( folder_test.name, 'Foo Files 4' )
+            folder_test.path, 'subfolder2/subfolder3' )
+        self.assertEqual( folder_test.name, 'subfolder3' )
 
     def test_file_from_path( self ):
 
         from cloud_on_film.files.picture import Picture
 
         file1 = Picture.from_path(
-            self.lib.id, 'testing/random320x240.png', self.user_id )
+            self.lib.id, 'subfolder2/subfolder3/random320x240.png', self.user_id )
         self.assertEqual( file1.name, 'random320x240.png' )
         self.assertNotEqual( file1.name, 'xxx.py' )
         self.assertNotEqual( file1.name, 'xxx.png' )
@@ -98,9 +101,9 @@ class TestModels( TestCase ):
         DataHelper.create_data_items( self, db )
 
         file1 = Item.from_path(
-            self.lib.id, 'testing/random320x240.png', self.user_id )
+            self.lib.id, 'subfolder2/subfolder3/random320x240.png', self.user_id )
 
-        self.assertEqual( file1.folder.machine_path, ['testing_library', 3] )
+        self.assertEqual( file1.folder.machine_path, ['testing_library', 2, 3] )
 
     def test_query_width( self ):
 
@@ -120,28 +123,17 @@ class TestModels( TestCase ):
 
         # Perform the import.
         pics_json = None
-        with open( 'testing/test_import.json', 'r' ) as import_file:
+        with open( 'testdata/test_import.json', 'r' ) as import_file:
             pics_json = json.loads( import_file.read() )
         for pic_json in pics_json:
             pic_json['filename'] = os.path.join(
-                self.lib_path, pic_json['filename'] )
+                self.nsfw_lib_path, pic_json['filename'] )
             picture( pic_json )
 
         # Test the results.
         tag_testing_img = Tag.from_path( 'Testing Imports/Testing Image' )
 
         from cloud_on_film.files.picture import Picture
-
-        file_test = Item.secure_query( self.user_id ) \
-            .filter( Picture.width == 100 ) \
-            .first()
-
-        self.assertIn( tag_testing_img, file_test.tags )
-        self.assertEqual( 100, file_test.width )
-        self.assertEqual( 100, file_test.height )
-        self.assertEqual( 1, file_test.aspect )
-        self.assertFalse( file_test.nsfw )
-        self.assertEqual( 0, file_test.rating )
 
         file_test = Item.secure_query( self.user_id ) \
             .filter( Picture.width == 500 ) \
@@ -151,7 +143,7 @@ class TestModels( TestCase ):
         self.assertEqual( 500, file_test.width )
         self.assertEqual( 500, file_test.height )
         self.assertEqual( 1, file_test.aspect )
-        self.assertFalse( file_test.nsfw )
+        self.assertTrue( file_test.nsfw )
         self.assertEqual( 3, file_test.rating )
 
         file_test = Item.secure_query( self.user_id ) \
@@ -162,7 +154,7 @@ class TestModels( TestCase ):
         self.assertEqual( 640, file_test.width )
         self.assertEqual( 400, file_test.height )
         self.assertEqual( 10, file_test.aspect )
-        self.assertFalse( file_test.nsfw )
+        self.assertTrue( file_test.nsfw )
         self.assertEqual( 0, file_test.rating )
 
     def test_nsfw( self ):

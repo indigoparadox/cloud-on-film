@@ -52,29 +52,29 @@ class TestAJAX( TestCase ):
         item_data = json.loads( res.data )
 
         self.assertEqual(
-            'Testing Library/testing',
+            'Testing Library/subfolder2/subfolder3',
             item_data )
 
     def test_ajax_get_folder_machine_path( self ):
 
         res = self.client.get(
             '/ajax/get/machine_path/Testing Library/' + \
-                'Foo Files 1/Foo Files 2/Foo Files 3/Foo Files 4' )
+                'subfolder2/subfolder3' )
 
         item_data = json.loads( res.data )
 
         self.assertEqual(
-            ['testing_library', 1, 2, 5, 6], item_data )
+            ['testing_library', 2, 3], item_data )
 
     def test_ajax_get_folder_machine_path_jstree( self ):
 
         res = self.client.get( '/ajax/get/machine_path/Testing Library/' + \
-            'Foo Files 1/Foo Files 2/Foo Files 3/Foo Files 4?format=jstree' )
+            'subfolder2/subfolder3?format=jstree' )
 
         item_data = json.loads( res.data )
 
         self.assertEqual(
-            ['library-1','folder-1', 'folder-2', 'folder-5', 'folder-6'], item_data )
+            ['library-1','folder-2', 'folder-3'], item_data )
 
     def test_ajax_get_library_machine_path( self ):
 
@@ -88,7 +88,7 @@ class TestAJAX( TestCase ):
     def test_ajax_html_search( self ):
         res = self.client.get(
             '/ajax/html/search' + \
-            r'?query=%26%28%28rating%3D1%29%28nsfw%3D0%29%29' )
+            r'?query=%26%28%28rating%3D1%29%28nsfw%3D1%29%29' )
 
         items = json.loads( res.data )
         self.assertEqual( 1, len( items ) )
@@ -126,11 +126,14 @@ class TestAJAX( TestCase ):
                 {'id': 'library-2', 'parent': 'root', 'text': 'NSFW Library'},
                 {'id': 'library-1', 'parent': 'root', 'text': 'Testing Library'},
                 {'children': False, 'id': 'folder-4', 'parent': 'library-2',
-                    'text': 'foo_folder'},
-                {'children': True, 'id': 'folder-1', 'parent': 'library-1',
-                    'text': 'Foo Files 1'},
-                {'children': False, 'id': 'folder-3', 'parent': 'library-1',
-                    'text': 'testing'}] )
+                    'text': 'subfolder1'},
+                {'children': False, 'id': 'folder-5', 'parent': 'library-2',
+                    'text': 'subfolder2'},
+                {'children': False, 'id': 'folder-1', 'parent': 'library-1',
+                    'text': 'subfolder1'},
+                {'children': True, 'id': 'folder-2', 'parent': 'library-1',
+                    'text': 'subfolder2'}
+                ] )
 
     def test_list_ajax_folders_sub( self ):
 
@@ -141,10 +144,10 @@ class TestAJAX( TestCase ):
         self.assertEqual(
             folders, [
                 {'id': 'library-1', 'parent': 'root', 'text': 'Testing Library'},
-                {'children': True, 'id': 'folder-1', 'parent': 'library-1',
-                    'text': 'Foo Files 1'},
-                {'children': False, 'id': 'folder-3', 'parent': 'library-1',
-                    'text': 'testing'}
+                {'children': False, 'id': 'folder-1', 'parent': 'library-1',
+                    'text': 'subfolder1'},
+                {'children': True, 'id': 'folder-2', 'parent': 'library-1',
+                    'text': 'subfolder2'}
             ] )
 
     def test_list_ajax_folders_leaf( self ):

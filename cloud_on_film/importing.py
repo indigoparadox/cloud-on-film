@@ -8,7 +8,7 @@ import uuid
 from flask import current_app
 from datetime import datetime
 from PIL import Image
-from .models import db, HashEnum, Folder, Item, Tag, Library
+from .models import InvalidFolderException, db, HashEnum, Folder, Item, Tag, Library
 #from .files.picture import Picture
 from threading import Thread
 
@@ -63,6 +63,7 @@ def picture( picture ):
         if match:
             relative_path = match.groups()[0]
             library = lib
+            print( relative_path )
             break
 
     # Don't accept pictures not in a library.
@@ -75,7 +76,11 @@ def picture( picture ):
     # Spelunk into folders starting from the library we found.
     # Circumvent user checking.
     folder_relative_path = os.path.dirname( relative_path )
-    folder = Folder.from_path( library.id, folder_relative_path, current_uid )
+    try:
+        folder = Folder.from_path( library.id, folder_relative_path, current_uid )
+    except InvalidFolderException:
+        raise ItemImportException( 'Folder does not exist: {}'.format(
+            folder_relative_path ) )
 
     # See if the picture already exists.
     name = os.path.basename( picture['filename'] )

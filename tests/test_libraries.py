@@ -1,14 +1,20 @@
 
 import os
 import sys
-import unittest
+import tempfile
 import re
+import unittest
+from unittest.mock import Mock
+
+from faker import Faker
 from flask_testing import TestCase
 
-sys.path.insert( 0, os.path.dirname( os.path.dirname( __file__) ) )
-from tests.data_helper import DataHelper
+sys.path.insert( 0, os.path.dirname( __file__) )
+
 from cloud_on_film import create_app, db
 from cloud_on_film.models import SavedSearch
+from tests.fake_library import FakeLibrary
+from tests.data_helper import DataHelper
 
 class TestLibraries( TestCase ):
 
@@ -29,6 +35,16 @@ class TestLibraries( TestCase ):
         self.maxDiff = None
 
         self.user_id = 0
+
+        self.fake = Faker()
+        self.fake.add_provider( FakeLibrary )
+
+        #self.root_path = tempfile.mkdtemp()
+        #self.library_dict = self.fake.library( db, self.root_path, 5 )
+        #print( self.library_dict )
+
+        #print( self.root_path )
+
         DataHelper.create_folders( self )
         DataHelper.create_libraries( self, db )
         DataHelper.create_data_folders( self, db )

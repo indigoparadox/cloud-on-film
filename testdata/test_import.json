@@ -4,12 +4,12 @@
    "rating": 0,
    "file_format": 2,
    "timestamp": 1246311154,
-   "tags": ["Testing Imports", "Testing Imports/Testing Image", "Testing Imports/Testing Image/Random", "Random Images", "100x100 Images"],
+   "tags": ["Testing Imports", "Testing Imports/Testing Image", "Testing Imports/Testing Image/Random", "Random Images", "640x480 Images"],
    "time_created": 1333581581,
-   "height": 100,
-   "width": 100,
-   "filesize": 60,
-   "filename": "testing/random100x100.png",
+   "height": 640,
+   "width": 480,
+   "filesize": 1846828,
+   "filename": "subfolder2/random640x480.png",
    "id": 1,
    "md5": "2ad1249d1b24ab5b278208ccf27810dc"
 },
@@ -23,7 +23,7 @@
    "height": 500,
    "width": 500,
    "filesize": 1468,
-   "filename": "testing/random500x500.png",
+   "filename": "subfolder1/random500x500.png",
    "id": 2,
    "md5": "431e530a52a18eef1435c80ae25d454b"
 },
@@ -37,7 +37,7 @@
    "height": 400,
    "width": 640,
    "filesize": 1539032,
-   "filename": "testing/random640x400.png",
+   "filename": "subfolder2/random640x400.png",
    "id": 3,
    "md5": "ef6a27efd36ec3ad05c4d6ac7071c5a7"
 }
