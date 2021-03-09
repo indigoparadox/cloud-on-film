@@ -1,0 +1,2 @@
+include cloud_on_film/templates/*
+include cloud_on_film/static/*
