@@ -12,7 +12,12 @@
             "env": {
                 "FLASK_APP": "cloud_on_film",
                 "FLASK_ENV": "development",
-                "FLASK_DEBUG": "0"
+                "FLASK_DEBUG": "0",
+                "SECRET_KEY": "development",
+                "ITEMS_PER_PAGE": "20",
+                "TEMPLATES_AUTO_RELOAD": "true",
+                "COF_THUMBNAIL_PATH": "./thumbnails",
+                "SQLALCHEMY_DATABASE_URI": "sqlite:///../cof_dev.db"
             },
             "args": [
                 "run",

@@ -1,15 +1,9 @@
 
+import os
 import logging
 from flask_sqlalchemy import SQLAlchemy
 from flask import Flask, render_template, request
 from flask_wtf import CSRFProtect
-from .config import Config
-uwsgi_present = False
-try:
-    import uwsgi
-    uwsgi_present = True
-except ImportError:
-    uwsgi_present = False
 
 # Setup the database stuff.
 db = SQLAlchemy()
@@ -29,13 +23,28 @@ def create_app( config=None ):
     app = Flask( __name__, instance_relative_config=False,
         static_folder='static', template_folder='templates' )
 
-    # Load our hybrid YAML config.
+    app.config['ITEMS_PER_PAGE'] = \
+        int( os.getenv( 'COF_ITEMS_PER_PAGE' ) ) if \
+        os.getenv( 'COF_ITEMS_PER_PAGE' ) else 20
+    app.config['THUMBNAIL_PATH'] = \
+        os.getenv( 'COF_THUMBNAIL_PATH' ) if \
+        os.getenv( 'COF_THUMBNAIL_PATH' ) else '/tmp'
+    app.config['SQLALCHEMY_DATABASE_URI'] = \
+        os.getenv( 'SQLALCHEMY_DATABASE_URI' ) if \
+        os.getenv( 'SQLALCHEMY_DATABASE_URI' ) else 'sqlite:///:memory:'
+    app.config['SECRET_KEY'] = \
+        os.getenv( 'SECRET_KEY' ) if \
+        os.getenv( 'SECRET_KEY' ) else 'development'
+
+    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    app.config['ALLOWED_PREVIEWS'] = [
+        '160, 120',
+        '360, 270',
+        '230, 172'
+    ]
+
     if config:
         app.config.from_object( config )
-    else:
-        with app.open_instance_resource( 'config.yml', 'r' ) as config_f:
-            cfg = Config( config_f )
-            app.config.from_object( cfg )
 
     db.init_app( app )
 
