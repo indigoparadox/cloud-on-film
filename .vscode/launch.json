@@ -5,7 +5,7 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Python: Flask",
+            "name": "Python: Flask (SQlite)",
             "type": "python",
             "request": "launch",
             "module": "flask",
@@ -18,6 +18,28 @@
                 "TEMPLATES_AUTO_RELOAD": "true",
                 "COF_THUMBNAIL_PATH": "./thumbnails",
                 "SQLALCHEMY_DATABASE_URI": "sqlite:///../cof_dev.db"
+            },
+            "args": [
+                "run",
+                "--no-debugger",
+                "--no-reload"
+            ],
+            "jinja": true
+        },
+        {
+            "name": "Python: Flask (Dolt)",
+            "type": "python",
+            "request": "launch",
+            "module": "flask",
+            "env": {
+                "FLASK_APP": "cloud_on_film",
+                "FLASK_ENV": "development",
+                "FLASK_DEBUG": "0",
+                "SECRET_KEY": "development",
+                "ITEMS_PER_PAGE": "20",
+                "TEMPLATES_AUTO_RELOAD": "true",
+                "COF_THUMBNAIL_PATH": "./thumbnails",
+                "SQLALCHEMY_DATABASE_URI": "mysql+pymysql://root@localhost/cof_dev_dolt"
             },
             "args": [
                 "run",
