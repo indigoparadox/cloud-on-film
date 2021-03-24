@@ -20,4 +20,4 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
       - name: Run Tests
-        run: python3 -m unittest discover -s ./src/tests -p "test_*.py"
+        run: python3 -m unittest discover -s ./tests -p "test_*.py"
