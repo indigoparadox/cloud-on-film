@@ -2,6 +2,7 @@ env
 build
 dist
 cof_dev_db
+cof_dev_dolt
 *.egg-info
 __pycache__
 *.swp
