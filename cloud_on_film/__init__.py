@@ -29,6 +29,9 @@ def create_app( config=None ):
     app.config['THUMBNAIL_PATH'] = \
         os.getenv( 'COF_THUMBNAIL_PATH' ) if \
         os.getenv( 'COF_THUMBNAIL_PATH' ) else '/tmp'
+    app.config['SQLALCHEMY_QUERY_DEBUG'] = \
+        os.getenv( 'SQLALCHEMY_QUERY_DEBUG' ) if \
+        os.getenv( 'SQLALCHEMY_QUERY_DEBUG' ) else 'false'
     app.config['SQLALCHEMY_DATABASE_URI'] = \
         os.getenv( 'SQLALCHEMY_DATABASE_URI' ) if \
         os.getenv( 'SQLALCHEMY_DATABASE_URI' ) else 'sqlite:///:memory:'
@@ -51,7 +54,6 @@ def create_app( config=None ):
     csrf.init_app( app )
 
     with app.app_context():
-        from . import routes
         from . import routes
         from cloud_on_film.blueprints.ajax import ajax
         from cloud_on_film.blueprints.contents import contents
