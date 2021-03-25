@@ -7,7 +7,7 @@
       "bootstrap-tagsinput": "^0.7.1",
       "featherlight": "^1.7.14",
       "findup-sync": "^4.0.0",
-      "jquery": "2.2.1",
+      "jquery": "3.5.0",
       "jquery-ui": "1.12.1",
       "jstree": "^3.3.11",
       "popper.js": "1.14.7",
