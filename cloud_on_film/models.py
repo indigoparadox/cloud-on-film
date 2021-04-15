@@ -710,7 +710,7 @@ class Item( db.Model, JSONItemMixin ):
             [FileExtension.mime_type],
             db.and_(
                 FileExtension.plugin_id == Plugin.id,
-                Plugin.machine_name == plugin ) ).label( 'mime_type' ) )
+                Plugin.machine_name == plugin ) ).limit( 1 ).label( 'mime_type' ) )
 
     def __str__( self ):
         return self.name
