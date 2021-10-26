@@ -8,7 +8,7 @@
       "featherlight": "^1.7.14",
       "findup-sync": "^4.0.0",
       "jquery": "2.2.1",
-      "jquery-ui": "1.12.1",
+      "jquery-ui": "1.13.0",
       "jstree": "^3.3.11",
       "popper.js": "1.14.7",
       "typeahead.js": "^0.11.1",
