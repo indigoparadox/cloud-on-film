@@ -54,6 +54,10 @@ libraries.add_app_template_global( Library.enumerate_all, name='library_enumerat
 libraries.add_app_template_global( Tag.enumerate_roots, name='tag_enumerate_roots' )
 libraries.add_app_template_global( SavedSearch.enumerate_user, name='saved_search_enumerate_user' )
 
+@libraries.app_template_filter()
+def last_tag( tag ):
+    return tag.split( '/' )[-1]
+
 def url_self( **args ):
     return url_for( request.endpoint, **dict( request.view_args, **args ) )
 

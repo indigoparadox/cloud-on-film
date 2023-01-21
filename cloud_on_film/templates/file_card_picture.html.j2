@@ -29,6 +29,11 @@
                 {{ comment }}
                 {% endif %}
             </p>
+            <div class="d-flex flex-column">
+                {% for tag in tags %}
+                <small class="text-light m-1 badge badge-dark">{{ tag | last_tag }}</small>
+                {% endfor %}
+            </div>
 
             <!-- button bar -->
             <div class="d-flex flex-column">
