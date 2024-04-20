@@ -65,3 +65,6 @@ def create_app( config=None ):
         app.register_blueprint( contents )
 
         return app
+
+app = create_app()
+
