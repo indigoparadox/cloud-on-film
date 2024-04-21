@@ -183,7 +183,7 @@ class Picture( Item ):
         if not os.path.exists( thumb_path ):
             with Image.open( self.absolute_path ) as im:
                 try:
-                    im.thumbnail( size, Image.ANTIALIAS )
+                    im.thumbnail( size, Image.LANCZOS )
                 except OSError as e:
                     current_app.logger.warn(
                         'while generating thumbnail for %s: %s',
