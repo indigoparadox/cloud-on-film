@@ -13,6 +13,7 @@ RUN apk update && apk add --no-cache --virtual .build-deps \
 	postgresql-dev \
 	nodejs \
 	npm \
+   curl \
 ;
 
 # Copy app files.
