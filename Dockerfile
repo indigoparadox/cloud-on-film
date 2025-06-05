@@ -3,17 +3,21 @@ FROM python:3.11-alpine
 
 WORKDIR /code
 
-#RUN apt update && apt install -y nodejs npm
-RUN apk update && apk add --no-cache --virtual .build-deps \
+RUN apk add --no-cache --virtual .build-deps \
 	gcc \
 	libc-dev \
 	linux-headers \
-	mariadb-dev \
 	python3-dev \
+	mariadb-dev \
 	postgresql-dev \
-	nodejs \
-	npm \
+;
+RUN apk add --no-cache --virtual .rt-deps \
+   libpq \
+   mariadb-connector-c \
+   python3 \
+   nodejs \
    curl \
+   npm \
 ;
 
 # Copy app files.
@@ -36,6 +40,9 @@ RUN pip install --no-cache-dir --upgrade gunicorn
 RUN npm install --global grunt
 RUN npm install
 RUN grunt
+
+# Cleanup build env.
+RUN apk del .build-deps
 
 CMD ["gunicorn", "--bind", "0.0.0.0:80", "cloud_on_film:app"]
 
