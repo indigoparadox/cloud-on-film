@@ -48,6 +48,11 @@ $().ready( function() {
          query_str = '?csrf_token=' + csrfToken + '&keywords=' + encodeURI( keywords );
       } */
 
+      if( typeof page === 'undefined' ) {
+         // Only do pager stuff if page variable is defined.
+         return;
+      }
+
       page += 1;
       let pageRE = new RegExp( '%page%', 'g' );
       let folderIDRE = new RegExp( '%folder%', 'g' );
@@ -112,6 +117,11 @@ $.fn.enableThumbnailCard = function() {
          'nextIcon': '<img src="' + flaskRoot + 
             'static/arrow-right-64.png" alt="Next" />',
       } );
+
+   if( typeof edit_item_present === 'undefined' || true !== edit_item_present ) {
+      // Only enable checkbox and edit baggage if edit script is loaded.
+      return;
+   }
 
    $(this)
       .find( '.item-checkbox' )

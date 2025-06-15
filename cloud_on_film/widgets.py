@@ -159,6 +159,37 @@ class LibraryRenderer( WidgetRenderer ):
 
         return kwargs
 
+class RootRenderer( WidgetRenderer ):
+
+    ''' WidgetRenderer that renders the home page (root page/landing page)
+    for the entire app. '''
+
+    def __init__( self, **kwargs ):
+        super().__init__( template_name='root.html.j2', **kwargs )
+
+    def render_kwargs( self, **kwargs ):
+
+        kwargs = self.kwargs.copy()
+
+        library_scripts = [
+            (10, url_for( 'static', filename='jquery.unveil2.min.js' )),
+            (10, url_for( 'static', filename='featherlight.min.js' )),
+            (10, url_for( 'static', filename='featherlight.gallery.min.js' )),
+            (90, url_for( 'static', filename='libraries.js' ))]
+
+        kwargs = self.add_kwarg( 'include_scripts', library_scripts, kwargs )
+
+        library_styles = [
+            (10, url_for( 'static', filename='featherlight.min.css' )),
+            (10, url_for( 'static', filename='featherlight.gallery.min.css' )),
+            (90, url_for( 'static', filename='gallery.css' )) ]
+
+        kwargs = self.add_kwarg( 'include_styles', library_styles, kwargs )
+
+        kwargs = super().render_kwargs( **kwargs )
+
+        return kwargs
+
 # endregion
 
 # region widgets

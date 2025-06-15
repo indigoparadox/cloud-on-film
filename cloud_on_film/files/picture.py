@@ -247,6 +247,10 @@ class Picture( Item ):
             self.aspect else ''
         self_dict['rating'] = int( self_dict['rating'] )
         self_dict['classes'] += ' rating-{}'.format( self.rating )
+
+        # Format dict tags for display.
+        if self_dict['tags'] is None:
+            self_dict['tags'] = []
         for tag in self.tags:
             self_dict['classes'] += ' tag-{}'.format(
                 tag.name.lower().replace( '/', '-' ).replace( ' ', '-' ) )

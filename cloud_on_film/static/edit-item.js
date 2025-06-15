@@ -1,4 +1,6 @@
 
+const edit_item_present = true;
+
 (function( $ ) {
 
 }( jQuery ));

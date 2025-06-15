@@ -41,6 +41,7 @@ from .widgets import \
     FormRenderer, \
     FormWidget, \
     LibraryRenderer, \
+    RootRenderer, \
     SearchFormWidget, \
     SavedSearchFormWidget, WidgetRenderer
 from . import csrf
@@ -490,4 +491,14 @@ def cloud_items_ajax_batch():
 
 @libraries.route( '/' )
 def cloud_root():
-    return render_template( 'root.html.j2' )
+
+    # Grab the list of recently added items to add to the front page.
+    # TODO: Make limit configurable.
+    recent_items = Item.secure_query( User.current_uid() ) \
+        .order_by( Item.added ) \
+        .limit( 6 ) \
+        .all()
+    
+    renderer = RootRenderer( recent_items=recent_items )
+
+    return renderer.render()
