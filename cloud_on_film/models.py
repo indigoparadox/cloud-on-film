@@ -166,7 +166,7 @@ class User( db.Model, JSONItemMixin ):
     created = db.Column(
         db.DateTime, index=False, unique=False, nullable=False )
     libraries = db.relationship( 'Library', back_populates='owner' )
-    meta = db.relationship( 'UserMeta', back_populates='user' )
+    meta = db.relationship( 'UserMeta', back_populates='user', viewonly=True )
 
     @staticmethod
     def current_uid():
@@ -203,7 +203,7 @@ class Library( db.Model, JSONItemMixin ):
     id = db.Column( db.Integer, primary_key=True )
     folders = db.relationship( 'Folder', back_populates='library' )
     children = db.relationship(
-        'Folder',
+        'Folder', viewonly=True,
         primaryjoin=
             'and_(Library.id == Folder.library_id, Folder.parent_id == None)' )
     display_name = db.Column(
@@ -216,7 +216,7 @@ class Library( db.Model, JSONItemMixin ):
         db.Boolean, index=False, unique=False, nullable=False )
     owner = db.relationship( 'User', back_populates='libraries' )
     owner_id = db.Column( db.Integer, db.ForeignKey( 'users.id' ) )
-    meta = db.relationship( 'LibraryMeta', back_populates='library' )
+    meta = db.relationship( 'LibraryMeta', back_populates='library', viewonly=True )
 
     def __str__( self ):
         return self.machine_name
@@ -283,9 +283,9 @@ class Tag( db.Model ):
     parent = db.relationship( 'Tag', remote_side=[id] )
     name = db.Column(
         db.String( 64 ), index=True, unique=False, nullable=False )
-    meta = db.relationship( 'TagMeta', back_populates='tag' )
+    meta = db.relationship( 'TagMeta', back_populates='tag', viewonly=True )
     children = db.relationship( 'Tag', backref=db.backref(
-        'tag_parent', remote_side=[id] ) )
+        'tag_parent', remote_side=[id] ), viewonly=True )
 
     # Tags are a bit different than meta relationships at they're many-to-many.
     _items = db.relationship( 'Item', secondary=items_tags, back_populates='tags' )
@@ -388,9 +388,9 @@ class Folder( db.Model, JSONItemMixin ):
     library = db.relationship( 'Library', back_populates='folders' )
     name = db.Column(
         db.String( 256 ), index=True, unique=False, nullable=False )
-    meta = db.relationship( 'FolderMeta', back_populates='folder' )
+    meta = db.relationship( 'FolderMeta', back_populates='folder', viewonly=True )
     children = db.relationship(
-        'Folder',
+        'Folder', viewonly=True,
         backref=db.backref( 'folder_parent', remote_side=[id] ),
         order_by=name )
     status = db.Column( db.Enum( StatusEnum ) )
