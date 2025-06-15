@@ -18,8 +18,8 @@ function editItem( id ) {
             'text-success' : 'text-danger' );
         $('#form-edit #name').val( itemData['name'] );
         $('#form-edit #comment').val( itemData['comment'] );
-        let img_preview_tag = $('<img src="' + flaskRoot + 'preview/' +
-            itemData['id'] + '/230/172" id="form-edit-preview-img" ' +
+        let img_preview_tag = $('<img src="' + flaskRoot + 'contents/preview/' +
+            itemData['id'] + '?width=230&height=172" id="form-edit-preview-img" ' +
             'class="d-block w-100" style="display: none;" />');
         $('#form-edit-preview').empty();
         $('#form-edit-preview').append( img_preview_tag );

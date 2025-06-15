@@ -4,7 +4,7 @@
 <form id="{{ form_edit_batch_id }}" class="{{ form_edit_batch_class }}">
 
 <div class="d-flex flex-row flex-wrap h-100">
-    {# for field in item_form
+    {# for field in item_form 
     <div class="row">
         {{ field.label }}
     </div>
@@ -14,7 +14,7 @@
     <div class="d-flex flex-wrap flex-lg-nowrap my-3">
         <div class="preview mx-auto my-auto">
             <!-- TODO: Get tag from plugin? -->
-            <img src="/preview/{{ item_form.data['id'] }}/160/120" />
+            <img src="/contents/preview/{{ item_form.data['id'] }}?width=160&height=120" />
         </div>
         <div class="flex-fill d-flex flex-wrap">
             {% for field in item_form
